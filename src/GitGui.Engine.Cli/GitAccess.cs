@@ -1,0 +1,60 @@
+using System.Text;
+
+namespace GitGui.Engine.Cli;
+
+public sealed class GitCommandException(GitResult result) : InvalidOperationException(result.Error.Trim())
+{
+    public GitResult Result { get; } = result;
+}
+
+internal sealed class GitAccess(GitProcessRunner runner)
+{
+    internal static readonly UTF8Encoding Utf8 = new(false, true);
+    public async Task<byte[]> Bytes(string root, CancellationToken ct, string[] args, GitRunOptions? options = null)
+    {
+        if (options?.Environment.ContainsKey("GIT_INDEX_FILE") == true)
+            args = ["-c", "core.splitIndex=false", .. args];
+        var result = await runner.RunAsync(root, args, ct, options);
+        if (result.ExitCode != 0) throw new GitCommandException(result);
+        return result.Output;
+    }
+    public async Task<string> Text(string root, CancellationToken ct, params string[] args)
+        => Utf8.GetString(await Bytes(root, ct, args)).TrimEnd('\r', '\n');
+    public async Task<string?> TryText(string root, CancellationToken ct, params string[] args)
+    {
+        var result = await runner.RunAsync(root, args, ct);
+        if (result.ExitCode == 1 || result.ExitCode == 128 && args.Contains("--quiet")) return null;
+        if (result.ExitCode != 0) throw new GitCommandException(result);
+        return Utf8.GetString(result.Output).TrimEnd('\r', '\n');
+    }
+    public async Task Write(string root, CancellationToken ct, string[] args, byte[]? input = null,
+        IReadOnlyDictionary<string, string?>? environment = null)
+        => await Bytes(root, ct, args, new() { IsReadOnly = false, Input = input, HideOutput = true,
+            Environment = environment ?? new Dictionary<string, string?>() });
+
+    public async Task<string> Root(string path, CancellationToken ct)
+        => Path.GetFullPath(await Text(path, ct, "rev-parse", "--show-toplevel"));
+
+    public static string FullPath(string root, string relative)
+    {
+        if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative) ||
+            relative.Split('/').Any(p => p is "" or "." or ".." || p.Equals(".git", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("Unsafe repository path: " + relative);
+        var full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
+        if (!full.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)) + Path.DirectorySeparatorChar,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            throw new InvalidOperationException("Path escapes repository root.");
+        for (var parent = Path.GetDirectoryName(full); parent is not null && !SamePath(parent, root); parent = Path.GetDirectoryName(parent))
+            if (Directory.Exists(parent) && (File.GetAttributes(parent) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidOperationException("A repository path traverses a symbolic link. Operation blocked.");
+        return full;
+    }
+
+    public static bool SamePath(string left, string right) => string.Equals(
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)), Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    public static string[] NullFields(byte[] bytes) => Utf8.GetString(bytes).Split('\0', StringSplitOptions.RemoveEmptyEntries);
+    public static string QuotePath(string path) => "\"" + path.Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("\"", "\\\"", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal)
+        .Replace("\r", "\\r", StringComparison.Ordinal).Replace("\t", "\\t", StringComparison.Ordinal) + "\"";
+}

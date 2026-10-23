@@ -13,14 +13,20 @@ public sealed class CliRepoReader(GitProcessRunner runner) : IRepoReader
         return result.Output;
     }
 
-    public async Task<RepoStatus> GetStatusAsync(string repository, CancellationToken ct)
+    public Task<RepoStatus> GetStatusAsync(string repository, CancellationToken ct)
+        => GetStatusAsync(repository, false, ct);
+
+    public async Task<RepoStatus> GetStatusAsync(string repository, bool trusted, CancellationToken ct)
     {
         var version = Encoding.UTF8.GetString(await Run(repository, ct, "--version")).Split(' ')[2];
         var digits = version.Split('.');
         if (int.Parse(digits[0], CultureInfo.InvariantCulture) < 2 ||
             (digits[0] == "2" && int.Parse(digits[1], CultureInfo.InvariantCulture) < 40))
             throw new InvalidOperationException("Git 2.40 or newer is required.");
-        return PorcelainStatusParser.Parse(await Run(repository, ct, "status", "--porcelain=v2", "-z", "--branch"));
+        var result = await runner.RunAsync(repository,
+            ["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"], ct, new() { Trusted = trusted });
+        if (result.ExitCode != 0) throw new GitCommandException(result);
+        return PorcelainStatusParser.Parse(result.Output);
     }
 
     public async Task<RepoFormat> GetFormatAsync(string repository, CancellationToken ct)

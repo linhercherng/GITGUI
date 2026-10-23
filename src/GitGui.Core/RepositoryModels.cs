@@ -20,6 +20,11 @@ public interface IHistoryReader
     Task<IReadOnlyList<CommitInfo>> GetLogAsync(string repository, int limit, CancellationToken ct);
 }
 
+public interface IGraphHistoryReader
+{
+    Task<IReadOnlyList<CommitInfo>> GetGraphAsync(string repository, int skip, int take, CancellationToken ct);
+}
+
 public interface IRepoReader : IHistoryReader
 {
     Task<RepoStatus> GetStatusAsync(string repository, CancellationToken ct);
@@ -34,5 +39,3 @@ public interface IRecentRepositories
 }
 
 public enum RiskLevel { Low, Medium, High, RemoteIrreversible }
-
-// The M0 release exposes reads only. Writer and snapshot contracts will be introduced together.
