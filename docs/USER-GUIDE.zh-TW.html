@@ -85,6 +85,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li><strong>Reflog／遠端</strong>：檢視本地 HEAD 移動紀錄；新增、改名、修改 URL 或移除遠端。移除遠端不會刪除遠端伺服器上的倉庫。</li>
 </ul>
 <p>Rebase、cherry-pick 或 revert 中斷時，可使用「繼續」「略過」「中止」。edit 暫停時先修改檔案、暫存並 amend，再繼續。</p>
+<p>包含reword的計畫會重播提交，以相容Git2.40的空提交處理；即使前方項目選pick，其OID也可能改變。執行前請檢查計畫，並確認這些歷史是否已分享給他人。</p>
 <h2 id="section-7">8. 內建終端機</h2>
 <p>「終端機」會使用目前倉庫與同一套選定 Git。它是持續運行的逐行 shell，可輸入 Git 指令與一般命令，也會保留目前 shell 的工作目錄／環境變化。</p>
 <p>終端機開啟時會占用該倉庫的寫入佇列；先關閉終端機，再使用圖形介面寫入。關閉會終止 shell 及其子行程。此版本尚未提供完整 VT／PTY、全螢幕互動工具或 Ctrl+C 控制；需要這些功能時請用外部終端機。</p>

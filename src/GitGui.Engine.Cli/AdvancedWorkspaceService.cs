@@ -355,7 +355,10 @@ public sealed partial class WorkspaceService
                 await Run(["remote", "set-url", .. (op.PushUrl ? new[] { "--push" } : []), op.Remote ?? op.Name!, op.Url!]); break;
             case GitAction.RebaseInteractive:
                 await PrepareRebase(root, op, messages, ct);
-                await RunWithEditor(root, ["rebase", "--interactive", "--no-autostash", "--no-autosquash", "--no-update-refs", "--no-rebase-merges", "--no-fork-point", "--reapply-cherry-picks", "--keep-empty", "--empty=keep", await reader.Resolve(root, revision, ct)], ct, progress); break;
+                // Git 2.40's fast-forward reword path omits --allow-empty when amending.
+                // Replay reword plans (including preceding picks) with native hook/editor semantics;
+                // plans without reword retain Git's normal fast-forward behavior.
+                await RunWithEditor(root, ["rebase", "--interactive", .. (op.RebasePlan.Any(s => s.Action == RebaseStepKind.Reword) ? new[] { "--force-rebase" } : []), "--no-autostash", "--no-autosquash", "--no-update-refs", "--no-rebase-merges", "--no-fork-point", "--reapply-cherry-picks", "--keep-empty", "--empty=keep", await reader.Resolve(root, revision, ct)], ct, progress); break;
             case GitAction.ContinueOperation: case GitAction.SkipOperation: case GitAction.AbortOperation:
                 var action = op.Action == GitAction.ContinueOperation ? "--continue" : op.Action == GitAction.SkipOperation ? "--skip" : "--abort";
                 await RunWithEditor(root, [state.InProgress.Kind, action], ct, progress); break;

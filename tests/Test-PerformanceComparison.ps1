@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$directory = Join-Path $env:TEMP ('gitgui-perf-comparison-' + [Guid]::NewGuid().ToString('N'))
+$directory = Join-Path ([IO.Path]::GetTempPath()) ('gitgui-perf-comparison-' + [Guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $directory
 $compare = Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts/Compare-Performance.ps1'
 $baseline = @{ schema=1; fixture=@{ protocol=2; fsmonitorPrimed=$true; windowsFileSystemCache=$true; fingerprint='immutable'; head='abc'; commits=100000; files=50000; diffLines=10000; changedLines=100; git='2.56'; fsmonitor=$true };

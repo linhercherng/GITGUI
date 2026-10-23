@@ -93,6 +93,8 @@ git config --local user.email "you@example.com"
 
 Rebase、cherry-pick 或 revert 中斷時，可使用「繼續」「略過」「中止」。edit 暫停時先修改檔案、暫存並 amend，再繼續。
 
+包含reword的計畫會重播提交，以相容Git2.40的空提交處理；即使前方項目選pick，其OID也可能改變。執行前請檢查計畫，並確認這些歷史是否已分享給他人。
+
 ## 8. 內建終端機
 
 「終端機」會使用目前倉庫與同一套選定 Git。它是持續運行的逐行 shell，可輸入 Git 指令與一般命令，也會保留目前 shell 的工作目錄／環境變化。
