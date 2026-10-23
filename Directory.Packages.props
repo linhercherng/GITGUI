@@ -6,6 +6,7 @@
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.22" />
     <PackageVersion Include="Avalonia.Skia" Version="11.3.22" />
     <PackageVersion Include="Avalonia.Headless.XUnit" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="LibGit2Sharp" Version="0.32.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.32" />

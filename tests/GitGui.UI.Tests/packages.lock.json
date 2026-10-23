@@ -219,6 +219,13 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "gitgui.controls": {
+        "type": "Project",
+        "dependencies": {
+          "Avalonia": "[11.3.22, )",
+          "GitGui.Core": "[1.0.0, )"
+        }
+      },
       "gitgui.core": {
         "type": "Project"
       },
@@ -226,6 +233,7 @@
         "type": "Project",
         "dependencies": {
           "Avalonia": "[11.3.22, )",
+          "Avalonia.AvaloniaEdit": "[11.3.0, )",
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "GitGui.Core": "[1.0.0, )"
         }
@@ -239,6 +247,15 @@
           "Avalonia.BuildServices": "11.3.2",
           "Avalonia.Remote.Protocol": "11.3.22",
           "MicroCom.Runtime": "0.11.0"
+        }
+      },
+      "Avalonia.AvaloniaEdit": {
+        "type": "CentralTransitive",
+        "requested": "[11.3.0, )",
+        "resolved": "11.3.0",
+        "contentHash": "9M/jJb4DPqQmKtNMZn6+vpqlf+ZGMtK8vEBpPVP3De1xRCu1hv4ZAtoA8hY6bYj2hgv/luete3ixoOsEQ++YJQ==",
+        "dependencies": {
+          "Avalonia": "11.0.0"
         }
       },
       "CommunityToolkit.Mvvm": {

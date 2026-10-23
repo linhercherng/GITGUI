@@ -2,6 +2,8 @@
   <ItemGroup>
     <ProjectReference Include="../GitGui.Core/GitGui.Core.csproj" />
     <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <EmbeddedResource Include="Resources/*.json" />
   </ItemGroup>
 </Project>

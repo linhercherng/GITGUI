@@ -31,6 +31,10 @@ jobs:
         run: dotnet build GitGui.sln -c Release --no-restore
       - name: Test
         run: dotnet test GitGui.sln -c Release --no-build --logger trx --results-directory TestResults
+      - name: Windows AskPass apphost protocol
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net8.0/GitGui.App.exe
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

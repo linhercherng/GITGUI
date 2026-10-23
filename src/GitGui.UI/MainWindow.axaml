@@ -1,72 +1,141 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitGui.UI"
-        xmlns:core="using:GitGui.Core"
-        x:Class="GitGui.UI.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
-        Width="1280" Height="820" MinWidth="960" MinHeight="600"
-        Title="GITGUI · M0" Background="#14181F">
+        xmlns:vm="using:GitGui.UI" xmlns:core="using:GitGui.Core"
+        x:Class="GitGui.UI.MainWindow" x:DataType="vm:MainWindowViewModel"
+        Width="1480" Height="940" MinWidth="1100" MinHeight="700"
+        Title="GITGUI" Background="{DynamicResource CanvasBrush}"
+        Foreground="#E4EAF3" FontSize="13" FontFamily="Segoe UI,Inter,Microsoft JhengHei,PingFang TC,Noto Sans TC,sans-serif">
+  <Window.Resources>
+    <SolidColorBrush x:Key="CanvasBrush">#11151C</SolidColorBrush>
+    <SolidColorBrush x:Key="PanelBrush">#191F29</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderBrush">#303A49</SolidColorBrush>
+    <SolidColorBrush x:Key="MutedBrush">#A5B1C3</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentBrush">#78AEFF</SolidColorBrush>
+  </Window.Resources>
   <Window.Styles>
-    <Style Selector="TextBlock.heading"><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="FontSize" Value="16" /></Style>
-    <Style Selector="TabItem"><Setter Property="FontSize" Value="14" /></Style>
-    <Style Selector="Border.panel"><Setter Property="Background" Value="#1D232D" /><Setter Property="Padding" Value="16" /><Setter Property="CornerRadius" Value="8" /></Style>
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml"/>
+    <Style Selector="Button"><Setter Property="Padding" Value="12,7"/><Setter Property="MinHeight" Value="32"/><Setter Property="CornerRadius" Value="5"/><Setter Property="FontSize" Value="12"/></Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#2463B6"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.danger"><Setter Property="Foreground" Value="#FFABAC"/></Style>
+    <Style Selector="TextBox"><Setter Property="FontSize" Value="12"/><Setter Property="MinHeight" Value="32"/><Setter Property="CornerRadius" Value="4"/></Style>
+    <Style Selector="TextBlock.section"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="11"/><Setter Property="LetterSpacing" Value="0.7"/></Style>
+    <Style Selector="Border.panel"><Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="6"/></Style>
+    <Style Selector="CheckBox"><Setter Property="FontSize" Value="12"/><Setter Property="MinHeight" Value="28"/></Style>
+    <Style Selector="ListBox"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="0"/></Style>
+    <Style Selector="TabItem"><Setter Property="FontSize" Value="12"/><Setter Property="Padding" Value="12,10"/></Style>
+    <Style Selector="ToolTip"><Setter Property="MaxWidth" Value="420"/></Style>
   </Window.Styles>
-  <Grid RowDefinitions="Auto,*,Auto" Margin="20" RowSpacing="16">
-    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
-      <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-        <TextBlock Text="GITGUI" FontSize="23" FontWeight="Bold" />
-        <TextBlock Text="M0 · Repository reader" FontSize="11" Foreground="#90A2BA" />
-      </StackPanel>
-      <TextBox Grid.Column="1" Name="RepositoryPathInput" Text="{Binding RepositoryPath}" Watermark="Git 倉庫根目錄路徑" VerticalAlignment="Center" />
-      <Button Grid.Column="2" Content="瀏覽…" Click="BrowseClick" VerticalAlignment="Center" />
-      <Button Grid.Column="3" Name="OpenRepositoryButton" Content="開啟 / 重新整理" Command="{Binding RefreshCommand}" VerticalAlignment="Center" />
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+Enter" Command="{Binding ActionCommand}" CommandParameter="Commit"/>
+    <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}"/>
+  </Window.KeyBindings>
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="12" RowSpacing="10">
+    <Grid ColumnDefinitions="156,*,Auto,Auto,Auto,Auto" ColumnSpacing="8" Margin="4,2,4,2">
+      <StackPanel VerticalAlignment="Center"><TextBlock Text="GITGUI" FontWeight="Bold" FontSize="21" LetterSpacing="1.6"/><TextBlock Text="WORKSPACE" FontSize="10" Foreground="{DynamicResource MutedBrush}" LetterSpacing="1.5"/></StackPanel>
+      <TextBox Grid.Column="1" Name="RepositoryPathInput" Text="{Binding RepositoryPath}" Watermark="{Binding L[RepositoryPath]}" VerticalAlignment="Center" ToolTip.Tip="{Binding RepositoryPath}"/>
+      <Button Grid.Column="2" Content="{Binding L[Browse]}" Click="BrowseClick" VerticalAlignment="Center"/>
+      <Button Grid.Column="3" Name="OpenRepositoryButton" Content="{Binding L[Open]}" Command="{Binding RefreshCommand}" VerticalAlignment="Center"/>
+      <Button Grid.Column="4" Content="{Binding L[RepositoryActions]}" Click="RepositoryActionsClick" VerticalAlignment="Center"/>
+      <CheckBox Grid.Column="5" Content="EN" IsChecked="{Binding English}" VerticalAlignment="Center" Margin="8,0,0,0"/>
     </Grid>
-    <Grid Grid.Row="1" ColumnDefinitions="220,6,*,6,*" ColumnSpacing="8">
-      <Border Classes="panel">
-        <StackPanel Spacing="14">
-          <TextBlock Text="倉庫導覽" Classes="heading" />
-          <TextBlock Text="目前分支" Foreground="#90A2BA" />
-          <TextBlock Text="{Binding Branch}" FontSize="18" Foreground="#82CEB2" TextWrapping="Wrap" />
-          <Separator />
-          <TextBlock Text="最近開啟" Classes="heading" />
-          <ListBox ItemsSource="{Binding Recent}" SelectionChanged="RecentSelectionChanged" MaxHeight="360">
-            <ListBox.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" /></DataTemplate></ListBox.ItemTemplate>
-          </ListBox>
-          <TextBlock Text="M0 僅讀取倉庫。快照與寫入操作將依里程碑逐步開放。" Foreground="#90A2BA" TextWrapping="Wrap" />
-        </StackPanel>
+    <Border Grid.Row="1" Classes="panel" Padding="12,6">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock Text="{Binding Branch}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Tracking}" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding Summary}" Foreground="{DynamicResource MutedBrush}"/></StackPanel>
+        <TextBox Grid.Column="1" Text="{Binding RemoteName}" Width="100" Watermark="{Binding L[Remote]}" ToolTip.Tip="{Binding L[Remote]}"/>
+        <Button Grid.Column="2" Content="{Binding L[Fetch]}" Command="{Binding ActionCommand}" CommandParameter="Fetch" IsEnabled="{Binding CanOperate}"/>
+        <Button Grid.Column="3" Content="{Binding L[Pull]}" Command="{Binding ActionCommand}" CommandParameter="Pull" IsEnabled="{Binding CanOperate}"/>
+        <CheckBox Grid.Column="4" Content="{Binding L[ForcePush]}" IsChecked="{Binding ForcePush}" VerticalAlignment="Center" ToolTip.Tip="--force-with-lease --force-if-includes"/>
+        <Button Grid.Column="5" Content="{Binding L[Push]}" Command="{Binding ActionCommand}" CommandParameter="Push" IsEnabled="{Binding CanOperate}"/>
+        <Button Grid.Column="6" Content="{Binding L[Undo]}" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}"/>
+        <Button Grid.Column="7" Content="{Binding L[Redo]}" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}"/>
+      </Grid>
+    </Border>
+    <Grid Grid.Row="2" ColumnDefinitions="224,6,*,6,1.05*" ColumnSpacing="6">
+      <Border Classes="panel" Padding="12">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+          <TextBlock Classes="section" Text="{Binding L[Recent]}"/>
+          <ListBox Grid.Row="1" Name="RecentList" ItemsSource="{Binding Recent}" SelectionChanged="RecentSelectionChanged" MaxHeight="118"><ListBox.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/></DataTemplate></ListBox.ItemTemplate></ListBox>
+          <TextBlock Grid.Row="2" Classes="section" Text="{Binding L[Branches]}"/>
+          <ListBox Grid.Row="3" Name="RefsList" ItemsSource="{Binding Refs}" SelectedItem="{Binding SelectedRef}" DoubleTapped="BranchDoubleTapped"><ListBox.ItemTemplate><DataTemplate x:DataType="core:RefInfo"><StackPanel Margin="0,3"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="12"/><TextBlock Text="{Binding Tracking}" Foreground="{DynamicResource MutedBrush}" FontSize="10"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+          <Expander Grid.Row="4" Header="{Binding L[BranchActions]}" IsExpanded="True">
+            <StackPanel Spacing="7" Margin="0,8,0,0">
+              <TextBlock Text="{Binding L[BranchName]}" FontSize="11" Foreground="{DynamicResource MutedBrush}"/><TextBox Text="{Binding BranchName}"/>
+              <UniformGrid Columns="2" Rows="1"><Button Content="{Binding L[CreateBranch]}" Command="{Binding ActionCommand}" CommandParameter="CreateBranch" IsEnabled="{Binding CanOperate}" Margin="0,0,4,0"/><Button Content="{Binding L[SwitchBranch]}" Command="{Binding ActionCommand}" CommandParameter="SwitchBranch" IsEnabled="{Binding CanOperate}"/></UniformGrid>
+              <Button Content="{Binding L[Merge]}" Command="{Binding ActionCommand}" CommandParameter="Merge" IsEnabled="{Binding CanOperate}" HorizontalAlignment="Stretch"/>
+              <TextBlock Text="{Binding L[NewBranchName]}" FontSize="11" Foreground="{DynamicResource MutedBrush}"/><TextBox Text="{Binding NewBranchName}"/>
+              <Button Content="{Binding L[RenameBranch]}" Command="{Binding ActionCommand}" CommandParameter="RenameBranch" IsEnabled="{Binding CanOperate}" HorizontalAlignment="Stretch"/>
+              <CheckBox Content="{Binding L[ForceDelete]}" IsChecked="{Binding ForceDelete}"/>
+              <Button Classes="danger" Content="{Binding L[DeleteBranch]}" Command="{Binding ActionCommand}" CommandParameter="DeleteBranch" IsEnabled="{Binding CanOperate}" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+          </Expander>
+        </Grid>
       </Border>
-      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
-      <Border Grid.Column="2" Classes="panel">
-        <TabControl>
-          <TabItem Header="工作區變更">
-            <ListBox Name="ChangesList" ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange}">
-              <ListBox.ItemTemplate><DataTemplate x:DataType="core:FileChange"><TextBlock Text="{Binding Label}" FontFamily="Cascadia Code,Consolas,Microsoft JhengHei,monospace" TextWrapping="Wrap" /></DataTemplate></ListBox.ItemTemplate>
-            </ListBox>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent"/>
+      <Border Grid.Column="2" Classes="panel" Padding="8">
+        <TabControl Name="WorkspaceTabs">
+          <TabItem Header="{Binding L[WorkingTree]}">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8" Margin="2,6,2,2">
+              <Border IsVisible="{Binding IsUntrusted}" Background="#332E1D" Padding="10" CornerRadius="4"><StackPanel Spacing="6"><TextBlock Text="{Binding L[Untrusted]}" TextWrapping="Wrap" Foreground="#F4D99A" FontSize="12"/><TextBlock Text="{Binding TrustDetails}" TextWrapping="Wrap" FontSize="11"/><Button Content="{Binding L[Trust]}" Click="TrustClick"/></StackPanel></Border>
+              <Border Grid.Row="1" IsVisible="{Binding InProgress}" Background="#342533" Padding="10" CornerRadius="4"><StackPanel Spacing="6"><TextBlock Text="{Binding InProgressText}" Foreground="#F0BDD7" TextWrapping="Wrap"/><TextBlock Text="{Binding L[ResolveHint]}" TextWrapping="Wrap" FontSize="11"/><WrapPanel><Button Content="{Binding L[Ours]}" Command="{Binding ActionCommand}" CommandParameter="ResolveOurs" Margin="0,0,4,4"/><Button Content="{Binding L[Theirs]}" Command="{Binding ActionCommand}" CommandParameter="ResolveTheirs" Margin="0,0,4,4"/><Button Content="{Binding L[MarkResolved]}" Command="{Binding ActionCommand}" CommandParameter="MarkResolved" Margin="0,0,4,4"/><Button Content="{Binding L[MergeTool]}" Command="{Binding ActionCommand}" CommandParameter="ExternalMergeTool" Margin="0,0,4,4"/><Button Classes="danger" Content="{Binding L[AbortMerge]}" Command="{Binding ActionCommand}" CommandParameter="AbortMerge" Margin="0,0,4,4"/></WrapPanel></StackPanel></Border>
+              <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="6">
+                <WrapPanel><Button Content="{Binding L[Stage]}" Command="{Binding ActionCommand}" CommandParameter="Stage" IsEnabled="{Binding CanOperate}" Margin="0,0,4,4"/><Button Content="{Binding L[StageAll]}" Command="{Binding ActionCommand}" CommandParameter="StageAll" IsEnabled="{Binding CanOperate}" Margin="0,0,4,4"/><Button Content="{Binding L[Unstage]}" Command="{Binding ActionCommand}" CommandParameter="Unstage" IsEnabled="{Binding CanOperate}" Margin="0,0,4,4"/><Button Content="{Binding L[UnstageAll]}" Command="{Binding ActionCommand}" CommandParameter="UnstageAll" IsEnabled="{Binding CanOperate}" Margin="0,0,4,4"/><Button Classes="danger" Content="{Binding L[Discard]}" Command="{Binding ActionCommand}" CommandParameter="Discard" IsEnabled="{Binding CanOperate}" Margin="0,0,4,4"/></WrapPanel>
+                <TabControl Grid.Row="1" Name="ChangeTabs" SelectionChanged="ChangeTabSelectionChanged">
+                  <TabItem Header="{Binding L[Unstaged]}"><ListBox Name="ChangesList" ItemsSource="{Binding UnstagedChanges}" SelectionMode="Multiple" SelectionChanged="ChangesSelectionChanged"><ListBox.ItemTemplate><DataTemplate x:DataType="core:FileChange"><Grid ColumnDefinitions="24,*" Margin="0,3"><TextBlock Text="{Binding WorktreeStatus}" Foreground="#E7B77A" FontFamily="Consolas,monospace"/><TextBlock Grid.Column="1" Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
+                  <TabItem Header="{Binding L[Staged]}"><ListBox Name="StagedChangesList" ItemsSource="{Binding StagedChanges}" SelectionMode="Multiple" SelectionChanged="ChangesSelectionChanged"><ListBox.ItemTemplate><DataTemplate x:DataType="core:FileChange"><Grid ColumnDefinitions="24,*" Margin="0,3"><TextBlock Text="{Binding IndexStatus}" Foreground="#75D9A6" FontFamily="Consolas,monospace"/><TextBlock Grid.Column="1" Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
+                </TabControl>
+              </Grid>
+              <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="2,12,2,0"><StackPanel Spacing="7"><TextBlock Text="{Binding L[Message]}" Classes="section"/><TextBox Name="CommitMessageInput" Text="{Binding CommitMessage}" AcceptsReturn="True" MinHeight="92" MaxHeight="150" Watermark="{Binding L[Message]}"/><WrapPanel><CheckBox Content="{Binding L[Amend]}" IsChecked="{Binding Amend}" Margin="0,0,12,0"/><CheckBox Content="{Binding L[SkipHooks]}" IsChecked="{Binding SkipHooks}" Margin="0,0,12,0"/><CheckBox Content="{Binding L[Sign]}" IsChecked="{Binding SignCommit}"/></WrapPanel><Button Name="CommitButton" Classes="primary" Content="{Binding L[Commit]}" Command="{Binding ActionCommand}" CommandParameter="Commit" IsEnabled="{Binding CanOperate}" HorizontalAlignment="Stretch"/><TextBlock Text="{Binding L[CommitHint]}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/></StackPanel></Border>
+            </Grid>
           </TabItem>
-          <TabItem Header="提交歷史 · 500 筆">
-            <ListBox ItemsSource="{Binding Commits}" SelectedItem="{Binding SelectedCommit}">
-              <ListBox.ItemTemplate><DataTemplate x:DataType="core:CommitInfo"><StackPanel Margin="0,4"><TextBlock Text="{Binding Label}" TextWrapping="Wrap" /><TextBlock Text="{Binding Author}" Foreground="#90A2BA" FontSize="12" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
-            </ListBox>
+          <TabItem Header="{Binding L[History]}">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="2,8,2,2">
+              <StackPanel Spacing="6"><TextBox Text="{Binding Search}" Watermark="{Binding L[Search]}"/><Grid ColumnDefinitions="*,*" ColumnSpacing="6"><TextBox Text="{Binding AuthorFilter}" Watermark="{Binding L[Author]}"/><TextBox Grid.Column="1" Text="{Binding PathFilter}" Watermark="{Binding L[Path]}"/></Grid><Grid ColumnDefinitions="*,*" ColumnSpacing="6"><TextBox Text="{Binding SinceFilter}" Watermark="{Binding L[Since]}"/><TextBox Grid.Column="1" Text="{Binding UntilFilter}" Watermark="{Binding L[Until]}"/></Grid><Button Content="{Binding L[ApplyFilters]}" Command="{Binding SearchHistoryCommand}" HorizontalAlignment="Stretch"/></StackPanel>
+              <ContentControl Grid.Row="1" Name="GraphHost"/>
+              <Button Grid.Row="2" Content="{Binding L[LoadMore]}" Command="{Binding LoadMoreCommand}" HorizontalAlignment="Stretch"/>
+            </Grid>
+          </TabItem>
+          <TabItem Header="{Binding L[Snapshots]}">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10" Margin="2,8,2,2"><TextBlock Text="{Binding L[SnapshotHint]}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/><ListBox Grid.Row="1" ItemsSource="{Binding Snapshots}" SelectedItem="{Binding SelectedSnapshot}"><ListBox.ItemTemplate><DataTemplate x:DataType="core:SnapshotInfo"><StackPanel Margin="0,6"><TextBlock Text="{Binding Title}" TextWrapping="Wrap"/><TextBlock Text="{Binding CreatedAt}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Text="{Binding Id}" Foreground="{DynamicResource MutedBrush}" FontSize="10" TextTrimming="CharacterEllipsis"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox><Button Grid.Row="2" Content="{Binding L[Restore]}" Command="{Binding ActionCommand}" CommandParameter="RestoreSnapshot" IsEnabled="{Binding CanOperate}" HorizontalAlignment="Stretch"/></Grid>
           </TabItem>
         </TabControl>
       </Border>
-      <GridSplitter Grid.Column="3" ResizeDirection="Columns" Background="Transparent" />
-      <Border Grid.Column="4" Classes="panel">
-        <Grid RowDefinitions="Auto,*" RowSpacing="12">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="詳情與 Diff" Classes="heading" VerticalAlignment="Center" />
-            <CheckBox Grid.Column="1" Content="已暫存" IsChecked="{Binding ShowStaged}" />
-          </Grid>
-          <TextBox Grid.Row="1" Name="DiffViewer" Text="{Binding Diff, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" FontSize="12" FontFamily="Cascadia Code,Consolas,Microsoft JhengHei,monospace" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+      <GridSplitter Grid.Column="3" ResizeDirection="Columns" Background="Transparent"/>
+      <Border Grid.Column="4" Classes="panel" Padding="10">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+          <TextBlock Text="{Binding DiffTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DiffTitle}" Margin="2,4"/>
+          <StackPanel Grid.Row="1" Spacing="4"><TextBlock Text="{Binding PreviewSummary}" FontSize="11" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding PreviewNotice}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedBrush}"/><ProgressBar IsVisible="{Binding IsDiffLoading}" IsIndeterminate="True" Height="3"/></StackPanel>
+          <TabControl Grid.Row="2" Name="DetailTabs">
+            <TabItem Header="{Binding L[Diff]}"><Grid RowDefinitions="Auto,Auto,*" RowSpacing="8"><WrapPanel Margin="0,8,0,0"><CheckBox Content="{Binding L[ShowStaged]}" IsChecked="{Binding ShowStaged}" Margin="0,0,12,0"/><CheckBox Content="{Binding L[Split]}" IsChecked="{Binding SplitDiff}"/></WrapPanel><Button Grid.Row="1" Content="{Binding L[LoadAnyway]}" IsVisible="{Binding IsLargeDiff}" Command="{Binding LoadLargeDiffCommand}"/><vm:DiffEditor Grid.Row="2" Name="DiffViewer" Source="{Binding Diff}" LeftSource="{Binding LeftDiff}" RightSource="{Binding RightDiff}" IsSplit="{Binding SplitDiff}"/></Grid></TabItem>
+            <TabItem Header="{Binding L[PatchSelections]}"><Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="0,8,0,0"><TextBlock Text="{Binding L[PatchHint]}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><ListBox Grid.Row="1" ItemsSource="{Binding PatchRows}"><ListBox.ItemTemplate><DataTemplate x:DataType="vm:PatchSelection"><CheckBox IsChecked="{Binding Selected}" Content="{Binding Label}" FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="11"/></DataTemplate></ListBox.ItemTemplate></ListBox><WrapPanel Grid.Row="2"><Button Content="{Binding L[StagePatch]}" Command="{Binding ActionCommand}" CommandParameter="StagePatch" IsEnabled="{Binding CanApplyPatch}" Margin="0,0,6,6"/><Button Content="{Binding L[UnstagePatch]}" Command="{Binding ActionCommand}" CommandParameter="UnstagePatch" IsEnabled="{Binding CanApplyPatch}"/></WrapPanel></Grid></TabItem>
+            <TabItem Header="{Binding L[CommitDetails]}"><Grid RowDefinitions="*,*" RowSpacing="12" Margin="0,8,0,0"><TextBox Text="{Binding CommitDetails,Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"/><ListBox Grid.Row="1" ItemsSource="{Binding CommitFiles}" SelectedItem="{Binding SelectedCommitFile}"><ListBox.ItemTemplate><DataTemplate x:DataType="core:FileChange"><TextBlock Text="{Binding Label}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,4"/></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></TabItem>
+            <TabItem Header="{Binding L[ConflictEditor]}" IsVisible="{Binding HasConflict}">
+              <Grid RowDefinitions="Auto,Auto,*,Auto,*,Auto" RowSpacing="8" Margin="0,8,0,0">
+                <TextBlock Text="{Binding L[ConflictHelp]}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+                <StackPanel Grid.Row="1" IsVisible="{Binding ConflictBinary}" Spacing="8"><TextBlock Text="{Binding L[BinaryConflict]}" TextWrapping="Wrap" Foreground="#F4D99A"/><WrapPanel><Button Content="{Binding L[Ours]}" Command="{Binding ActionCommand}" CommandParameter="ResolveOurs" Margin="0,0,6,0"/><Button Content="{Binding L[Theirs]}" Command="{Binding ActionCommand}" CommandParameter="ResolveTheirs"/></WrapPanel></StackPanel>
+                <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="6" IsVisible="{Binding !ConflictBinary}" MinHeight="130">
+                  <Grid RowDefinitions="Auto,*" RowSpacing="5"><TextBlock Text="BASE" Classes="section"/><vm:CodeEditor Grid.Row="1" CodeText="{Binding ConflictBase,Mode=OneWay}"/></Grid>
+                  <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="5"><TextBlock Text="OURS" Classes="section"/><vm:CodeEditor Grid.Row="1" CodeText="{Binding ConflictOurs,Mode=OneWay}"/></Grid>
+                  <Grid Grid.Column="2" RowDefinitions="Auto,*" RowSpacing="5"><TextBlock Text="THEIRS" Classes="section"/><vm:CodeEditor Grid.Row="1" CodeText="{Binding ConflictTheirs,Mode=OneWay}"/></Grid>
+                </Grid>
+                <StackPanel Grid.Row="3" Spacing="6" IsVisible="{Binding !ConflictBinary}">
+                  <WrapPanel><Button Content="{Binding L[UseOursFile]}" IsEnabled="{Binding CanSaveConflict}" Command="{Binding UseConflictSideCommand}" CommandParameter="Ours" Margin="0,0,4,4"/><Button Content="{Binding L[UseTheirsFile]}" IsEnabled="{Binding CanSaveConflict}" Command="{Binding UseConflictSideCommand}" CommandParameter="Theirs" Margin="0,0,4,4"/><Button Content="{Binding L[UseBothFile]}" IsEnabled="{Binding CanSaveConflict}" Command="{Binding UseConflictSideCommand}" CommandParameter="Both" Margin="0,0,4,4"/></WrapPanel>
+                  <TextBlock Text="{Binding L[SelectConflictSection]}" Classes="section"/>
+                  <ComboBox ItemsSource="{Binding ConflictSections}" SelectedItem="{Binding SelectedConflictSection}" HorizontalAlignment="Stretch"><ComboBox.ItemTemplate><DataTemplate x:DataType="core:ConflictSection"><TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+                  <WrapPanel><Button Content="{Binding L[SectionOurs]}" IsEnabled="{Binding CanSaveConflict}" Command="{Binding UseConflictSectionCommand}" CommandParameter="Ours" Margin="0,0,4,4"/><Button Content="{Binding L[SectionTheirs]}" IsEnabled="{Binding CanSaveConflict}" Command="{Binding UseConflictSectionCommand}" CommandParameter="Theirs" Margin="0,0,4,4"/><Button Content="{Binding L[SectionBoth]}" IsEnabled="{Binding CanSaveConflict}" Command="{Binding UseConflictSectionCommand}" CommandParameter="Both" Margin="0,0,4,4"/></WrapPanel>
+                  <TextBlock Text="{Binding L[EditableResult]}" Classes="section"/>
+                </StackPanel>
+                <vm:CodeEditor Grid.Row="4" Name="ConflictResultInput" IsEnabled="{Binding CanSaveConflict}" IsVisible="{Binding !ConflictBinary}" CodeText="{Binding ConflictResult,Mode=TwoWay}" IsReadOnly="False" MinHeight="120"/>
+                <WrapPanel Grid.Row="5"><Button Classes="primary" Content="{Binding L[SaveConflict]}" Command="{Binding ActionCommand}" CommandParameter="WriteConflictResult" IsEnabled="{Binding CanSaveConflict}" Margin="0,0,6,4"/><Button Content="{Binding L[MarkResolved]}" Command="{Binding ActionCommand}" CommandParameter="MarkResolved" IsEnabled="{Binding CanOperate}" Margin="0,0,6,4"/><Button Content="{Binding L[MergeTool]}" Command="{Binding ActionCommand}" CommandParameter="ExternalMergeTool" IsEnabled="{Binding CanOperate}"/></WrapPanel>
+              </Grid>
+            </TabItem>
+            <TabItem Header="{Binding L[ImagePreview]}" IsVisible="{Binding HasImages}">
+              <ScrollViewer Margin="0,8,0,0"><Grid ColumnDefinitions="*,*" ColumnSpacing="10"><StackPanel Spacing="8"><TextBlock Text="{Binding L[Before]}" Classes="section"/><vm:PreviewImage Bytes="{Binding BeforeImage}"/></StackPanel><StackPanel Grid.Column="1" Spacing="8"><TextBlock Text="{Binding L[After]}" Classes="section"/><vm:PreviewImage Bytes="{Binding AfterImage}"/></StackPanel></Grid></ScrollViewer>
+            </TabItem>
+          </TabControl>
         </Grid>
       </Border>
     </Grid>
-    <Border Grid.Row="2" Classes="panel">
-      <StackPanel Spacing="6">
-        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" />
-        <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" Foreground="#D3DCED" />
-        <Expander Header="讀取方式與等效指令"><TextBox Text="{Binding Commands, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" /></Expander>
-      </StackPanel>
-    </Border>
+    <Border Grid.Row="3" Classes="panel" Padding="10,6"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><StackPanel Spacing="5"><ProgressBar IsVisible="{Binding IsBusy}" IsIndeterminate="{Binding !HasProgressPercent}" Value="{Binding ProgressPercent}" Height="3"/><TextBlock Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12"/><TextBlock Text="{Binding ProgressText}" IsVisible="{Binding IsBusy}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/></StackPanel><Button Grid.Column="1" Content="{Binding L[Cancel]}" IsVisible="{Binding CanCancel}" Command="{Binding CancelCommand}"/><Button Grid.Column="2" Content="{Binding L[Refresh]}" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}"/></Grid></Border>
+    <Expander Grid.Row="4" Header="{Binding L[OperationPanel]}" MaxHeight="220"><Grid RowDefinitions="Auto,*" RowSpacing="6" Margin="8"><Button Content="{Binding L[Copy]}" Click="CopyCommandsClick" HorizontalAlignment="Right"/><TextBox Grid.Row="1" Name="CommandOutput" Text="{Binding Commands,Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="11" MinHeight="100" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"/></Grid></Expander>
   </Grid>
 </Window>
