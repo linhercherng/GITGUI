@@ -80,6 +80,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         };
         vm.RepositoryOpened += RepositoryOpened;
         vm.PropertyChanged += ViewModelChanged;
+        ExpandActiveHistoryFilters();
         Closing += (_, args) =>
         {
             if (vm.IsBusy || advancedWindow?.ViewModel.IsWriting == true || toolsWindow?.ViewModel.IsWriting == true)
@@ -236,6 +237,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     }
     private void ViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(MainWindowViewModel.AuthorFilter) or nameof(MainWindowViewModel.PathFilter) or nameof(MainWindowViewModel.SinceFilter) or nameof(MainWindowViewModel.UntilFilter))
+            ExpandActiveHistoryFilters();
         if (e.PropertyName == nameof(MainWindowViewModel.English) && viewModel is { } localized)
             try { shortcuts.SetCulture(localized.English ? "en" : "zh-TW"); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { localized.Notice = localized.L["ShortcutSaveFailed"]; }
         if (toolsWindow is { } tools && viewModel is { } main && e.PropertyName is nameof(MainWindowViewModel.IsBusy) or nameof(MainWindowViewModel.TerminalActive))
@@ -251,6 +254,32 @@ public partial class MainWindow : Window, IWorkspaceInteraction
             this.FindControl<TabControl>("ChangeTabs")!.SelectedIndex = viewModel.ShowStaged ? 1 : 0;
         if (e.PropertyName == nameof(MainWindowViewModel.HasConflict) && viewModel?.HasConflict == true)
             this.FindControl<TabControl>("DetailTabs")!.SelectedIndex = 3;
+    }
+    private void ExpandActiveHistoryFilters()
+    {
+        if (viewModel is { } vm && (!string.IsNullOrWhiteSpace(vm.AuthorFilter) || !string.IsNullOrWhiteSpace(vm.PathFilter) ||
+            !string.IsNullOrWhiteSpace(vm.SinceFilter) || !string.IsNullOrWhiteSpace(vm.UntilFilter)))
+            this.FindControl<Expander>("HistoryAdvancedFilters")!.IsExpanded = true;
+    }
+    private void HistoryFiltersExpanding(object? sender, CancelRoutedEventArgs args)
+    {
+        if (sender is not Expander filters || filters.Content is not null || viewModel is not { } vm) return;
+        // Create the editor templates only on first expansion. Keep the same controls
+        // thereafter so collapsed sections and tab switches retain input/selection state.
+        var grid = new Grid { ColumnDefinitions = new("*,*"), RowDefinitions = new("Auto,Auto"), ColumnSpacing = 6, RowSpacing = 6, Margin = new(0, 6, 0, 0) };
+        AddFilter(nameof(vm.AuthorFilter), "Author", 0, 0);
+        AddFilter(nameof(vm.PathFilter), "Path", 0, 1);
+        AddFilter(nameof(vm.SinceFilter), "Since", 1, 0);
+        AddFilter(nameof(vm.UntilFilter), "Until", 1, 1);
+        filters.Content = grid;
+        void AddFilter(string property, string label, int row, int column)
+        {
+            var input = new TextBox { Name = "History" + property };
+            input.Bind(TextBox.TextProperty, new Binding(property) { Source = vm, Mode = BindingMode.TwoWay });
+            vm.L.Bind(input, TextBox.WatermarkProperty, label);
+            vm.L.Bind(input, Avalonia.Automation.AutomationProperties.NameProperty, label);
+            Grid.SetRow(input, row); Grid.SetColumn(input, column); grid.Children.Add(input);
+        }
     }
     private void RepositoryOpened(object? sender, EventArgs args)
     {

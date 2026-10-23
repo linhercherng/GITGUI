@@ -401,5 +401,6 @@
   "ShortcutScopeTools": "Repository tools",
   "RetryWithoutHooks": "Retry commit without hooks once",
   "RetryWithoutHooksDetails": "The commit hook rejected this commit. Retry the same reviewed commit once with --no-verify? This skips Git pre-commit and commit-msg hooks. Review their output first; signing, fresh validation and a recovery snapshot still apply.",
-  "OpenRepositoryHint": "Open a repository to begin."
+  "OpenRepositoryHint": "Open a repository to begin.",
+  "AdvancedFilters": "Advanced filters"
 }

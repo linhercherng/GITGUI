@@ -401,5 +401,6 @@
   "ShortcutScopeTools": "儲存庫工具",
   "RetryWithoutHooks": "僅這次略過 hooks 重試提交",
   "RetryWithoutHooksDetails": "提交遭到 hook 拒絕。是否對相同且已檢視的提交，僅這次使用 --no-verify 重試？這會略過 Git pre-commit 與 commit-msg hooks。請先檢視原始輸出；簽章、重新驗證與復原快照仍會執行。",
-  "OpenRepositoryHint": "開啟倉庫以開始工作。"
+  "OpenRepositoryHint": "開啟倉庫以開始工作。",
+  "AdvancedFilters": "進階篩選"
 }

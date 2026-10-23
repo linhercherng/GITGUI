@@ -324,6 +324,81 @@ public sealed class WindowTests
     }
 
     [AvaloniaFact]
+    public async Task History_advanced_filters_are_not_created_until_expanded_and_keep_the_original_search_command()
+    {
+        var backend = new SampleWorkspace();
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            if (vm.InitializeCommand.ExecutionTask is { } initialization) await initialization;
+            await vm.RefreshCommand.ExecuteAsync(null);
+            var tabs = window.FindControl<TabControl>("WorkspaceTabs")!; tabs.SelectedIndex = 1; window.UpdateLayout();
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBox>(), box => Avalonia.Automation.AutomationProperties.GetName(box) == vm.L["Author"]);
+            var filters = window.FindControl<Expander>("HistoryAdvancedFilters")!; Assert.NotNull(filters); Assert.Null(filters.Content);
+            var search = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => Avalonia.Automation.AutomationProperties.GetName(box) == vm.L["Search"]);
+            search.Text = "graph";
+            Assert.IsAssignableFrom<Avalonia.Automation.Provider.IExpandCollapseProvider>(Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(filters)).Expand(); window.UpdateLayout();
+            var inputs = filters.GetVisualDescendants().OfType<TextBox>().ToArray(); Assert.Equal(4, inputs.Length);
+            foreach (var (key, value) in new[] { ("Author", "Lin"), ("Path", "src/"), ("Since", "2026-01-01"), ("Until", "2026-10-23") })
+                Assert.Single(inputs, box => Avalonia.Automation.AutomationProperties.GetName(box) == vm.L[key]).Text = value;
+            var panel = filters.Content;
+            filters.IsExpanded = false; tabs.SelectedIndex = 0; window.UpdateLayout(); tabs.SelectedIndex = 1; filters.IsExpanded = true; window.UpdateLayout();
+            Assert.Same(panel, filters.Content);
+            Assert.Equal(new[] { "Lin", "src/", "2026-01-01", "2026-10-23" }, inputs.Select(box => box.Text));
+            var apply = Assert.Single(window.GetVisualDescendants().OfType<ActionButton>(), button => Equals(button.Content, vm.L["ApplyFilters"]));
+            Assert.Same(vm.SearchHistoryCommand, apply.Command); Assert.True(apply.Command!.CanExecute(null));
+            await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)apply.Command).ExecuteAsync(null);
+            Assert.Equal(new LogFilter("graph", "Lin", "src/", "2026-01-01", "2026-10-23", Take: 500), backend.LastFilter);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Advanced_history_filters_expand_with_space_and_tab_into_the_first_input()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            if (vm.InitializeCommand.ExecutionTask is { } initialization) await initialization;
+            window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 1; window.UpdateLayout();
+            var filters = window.FindControl<Expander>("HistoryAdvancedFilters")!;
+            var header = Assert.Single(filters.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>());
+            Assert.True(header.Focus());
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None); window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); Assert.True(filters.IsExpanded);
+            window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None); window.KeyReleaseQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+            var author = Assert.Single(filters.GetVisualDescendants().OfType<TextBox>(), box => Avalonia.Automation.AutomationProperties.GetName(box) == vm.L["Author"]);
+            Assert.Same(author, window.FocusManager!.GetFocusedElement());
+            window.KeyTextInput("Keyboard author"); Assert.Equal("Keyboard author", vm.AuthorFilter);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Existing_or_programmatic_history_filters_expand_and_localize_the_retained_inputs()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent()) { AuthorFilter = "Existing author" };
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            if (vm.InitializeCommand.ExecutionTask is { } initialization) await initialization;
+            window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 1; window.UpdateLayout();
+            var filters = window.FindControl<Expander>("HistoryAdvancedFilters")!; Assert.NotNull(filters); Assert.True(filters.IsExpanded);
+            var panel = filters.Content; Assert.NotNull(panel);
+            Assert.Equal("Existing author", Assert.Single(filters.GetVisualDescendants().OfType<TextBox>(), box => Avalonia.Automation.AutomationProperties.GetName(box) == vm.L["Author"]).Text);
+            filters.IsExpanded = false; vm.PathFilter = "docs/"; Assert.True(filters.IsExpanded); Assert.Same(panel, filters.Content);
+            vm.English = true; window.UpdateLayout();
+            Assert.Equal("Advanced filters", filters.Header);
+            Assert.Equal("Advanced filters", Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(filters)!.GetName());
+            Assert.Contains(filters.GetVisualDescendants().OfType<TextBox>(), box => Equals(box.Watermark, "Author") && Avalonia.Automation.AutomationProperties.GetName(box) == "Author");
+            vm.English = false; window.UpdateLayout(); Assert.Equal("進階篩選", filters.Header);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Filters_paging_recent_repository_and_failed_open_clear_stale_data()
     {
         var backend = new SampleWorkspace();
