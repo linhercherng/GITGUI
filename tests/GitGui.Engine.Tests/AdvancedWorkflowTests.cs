@@ -186,6 +186,41 @@ public sealed class AdvancedWorkflowTests
         Assert.Equal(3, result.History.Count); Assert.Equal("tracked.txt", result.History[^1].Path);
     }
 
+    [Fact]
+    public async Task Native_rename_history_remains_topological_when_parent_dates_are_newer_than_children()
+    {
+        using var repo = new TemporaryRepository(); await repo.Init();
+        await GitAtDate(repo, "2030-01-03T12:00:00+00:00", "commit", "--amend", "--reset-author", "-m", "dated parent");
+        var parent = (await repo.Git("rev-parse", "HEAD")).Trim();
+        await repo.Git("mv", "tracked.txt", "中文 空白.txt");
+        await GitAtDate(repo, "2030-01-02T12:00:00+00:00", "commit", "-m", "rename dated middle");
+        await File.WriteAllTextAsync(Path.Combine(repo.Root, "中文 空白.txt"), "base\nsecond\n");
+        await repo.Git("add", "--", "中文 空白.txt");
+        await GitAtDate(repo, "2030-01-01T12:00:00+00:00", "commit", "-m", "change older child");
+        var child = (await repo.Git("rev-parse", "HEAD")).Trim();
+
+        // Call the native reader directly so its fallback cannot hide a traversal-order exception.
+        var result = await new LibHistoryReader().ReadAsync(repo.Root, "中文 空白.txt", default);
+        Assert.Equal("libgit2", result.Backend);
+        Assert.Equal(new[] { "change older child", "rename dated middle", "dated parent" }, result.History.Select(h => h.Commit.Subject));
+        Assert.Equal(new[] { "中文 空白.txt", "中文 空白.txt", "tracked.txt" }, result.History.Select(h => h.Path));
+        Assert.Equal(new[] { "base", "second" }, result.Blame.Select(l => l.Text));
+        Assert.Equal(parent, result.Blame[0].Commit); Assert.Equal(child, result.Blame[1].Commit);
+    }
+
+    private static async Task GitAtDate(TemporaryRepository repo, string date, params string[] args)
+    {
+        var start = new ProcessStartInfo(GitRuntimeTests.FindSystemGit()) { WorkingDirectory = repo.Root, UseShellExecute = false,
+            RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+        foreach (var argument in args) start.ArgumentList.Add(argument);
+        start.Environment["GIT_AUTHOR_DATE"] = date; start.Environment["GIT_COMMITTER_DATE"] = date;
+        start.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
+        start.Environment["GIT_CONFIG_GLOBAL"] = Path.Combine(repo.Root, "missing-global-config");
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync(); await output; Assert.True(process.ExitCode == 0, await error);
+    }
+
     [Theory]
     [InlineData("sha1", "Git CLI")]
     [InlineData("sha256", "Git CLI")]

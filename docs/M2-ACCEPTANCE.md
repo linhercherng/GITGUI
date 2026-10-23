@@ -18,6 +18,8 @@
 所有 GUI 寫入經同一 common Git directory 佇列；終端機工作階段取得同一佇列租約。
 所有新操作沿用信任檢查及 CLI；風險操作前建立快照，高風險另確認。快照保存原始檔案、各 index stage、refs、stash 完整 reflog、remote 設定、sequencer/rebase/helper 狀態及可執行模式；內部 refs 保護物件可達性。
 
+檔案歷史的原生查詢明確指定 Topological | Time 排序，避免相同或倒退的提交時間使 rename 路徑追蹤先走訪父提交。此選項依據目前套件的 [FileHistory 實作](https://github.com/libgit2/libgit2sharp/blob/eaa698d078941fd5e3cc82b59b885cd35d8cc0f8/LibGit2Sharp/Core/FileHistory.cs#L114)；仍保留原生讀取失敗時的 CLI fallback。
+
 邊界：rebase 僅線性範圍，不隱含攤平 merge commit；bisect/sparse/submodule 等 P2 模式維持拒絕快照保證。終端機是逐行 redirected shell，無 VT/fullscreen/Ctrl+C forwarding；任意指令不宣稱自動可復原。檔案歷史／reflog 各顯示最近 500 筆。跨平台 CI 不等同 Linux/macOS 原生桌面人工驗收。
 
 執行紀錄：本機與 CI 結果、精確封裝 SHA、解壓後的命令／原生啟動驗證隨 Release 的 verification.json 一起發布。

@@ -10,7 +10,10 @@ public sealed class LibHistoryReader : IHistoryReader, IGraphHistoryReader, IFil
         {
             using var repo = new Repository(root);
             var history = new List<FileHistoryEntry>();
-            foreach (var entry in repo.Commits.QueryBy(path).Take(500))
+            // FileHistory carries rename paths from children to parents. Time-only
+            // ordering can visit a parent first when timestamps tie or clocks differ.
+            foreach (var entry in repo.Commits.QueryBy(path, new CommitFilter
+                { SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time }).Take(500))
             {
                 ct.ThrowIfCancellationRequested(); var c = entry.Commit;
                 history.Add(new(new(c.Sha, c.MessageShort, c.Author.Name, c.Author.When, c.Parents.Select(p => p.Sha).ToArray()), entry.Path));
