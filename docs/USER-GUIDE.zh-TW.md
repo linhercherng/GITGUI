@@ -75,6 +75,8 @@ git config --local user.email "you@example.com"
 
 快照保存在倉庫的 Git 物件與內部 refs，清單索引保存在應用程式 SQLite。它是操作復原工具，請另做獨立備份；刪除整個倉庫也會失去這些快照。遠端已推送內容不會因本地還原而撤回。
 
+復原會重建index快取。若曾改動LFS追蹤規則或`.gitattributes`，Git重新計算後的變更標記可能與先前快取不同；請檢視工作檔與暫存內容後再決定下一步。
+
 子模組快照僅處理父倉庫，詳細邊界見第 9 節；工作樹、LFS 與 bisect 依各自方式處理。快照還原若遇到 index/ref 鎖或可能覆蓋未保存資料，會拒絕執行，請先處理原始原因。
 
 更新／停用子模組或移除工作樹時，若 index 有 assume-unchanged 或 skip-worktree flags，程式會保守拒絕，因為 Git status 可能隱藏未保存的內容。先另行備份並清除相關 flags，再重試。

@@ -40,12 +40,18 @@ try {
 if ($Desktop) {
     $window = Start-Process -FilePath $appExe -WindowStyle Hidden -PassThru
     try {
-        Start-Sleep -Seconds 4
-        $window.Refresh()
+        # This checks eventual desktop readiness, not the strict performance gate.
+        # Poll the real window instead of assuming every machine is ready at 4 s.
+        $startup = [Diagnostics.Stopwatch]::StartNew()
+        do {
+            Start-Sleep -Milliseconds 250
+            $window.Refresh()
+            if ($window.HasExited -or ($window.Responding -and $window.MainWindowTitle -like '*GITGUI*')) { break }
+        } while ($startup.Elapsed.TotalSeconds -lt 30)
         if ($window.HasExited -or -not $window.Responding -or $window.MainWindowTitle -notlike '*GITGUI*') {
-            throw 'Desktop startup failed'
+            throw "Desktop startup failed after $([Math]::Round($startup.Elapsed.TotalSeconds, 2))s: Exited=$($window.HasExited), Responding=$($window.Responding), Title=$($window.MainWindowTitle)"
         }
-        Write-Output ('Windows desktop launch: PASS (' + $window.MainWindowTitle + ', Responding=True)')
+        Write-Output ('Windows desktop launch: PASS (' + $window.MainWindowTitle + ', Responding=True, ReadinessMs=' + [Math]::Round($startup.Elapsed.TotalMilliseconds, 2) + ')')
         $null = $window.CloseMainWindow()
         if (-not $window.WaitForExit(10000)) { throw 'Desktop did not close normally' }
     } finally {

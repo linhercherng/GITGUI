@@ -49,7 +49,10 @@ M2 stash（中文 untracked）與堆疊復原、附註 tag、remote CRUD、rebas
 M3 驗證工作樹管理、bisect reset、sparse undo、父倉庫 submodule undo 保留子資料、
 LFS 真實本地遠端物件傳輸／取出、內附 SSH signer 簽章標籤與 verify-tag，並確認離線手冊與截圖存在。
 M4增加實際Big5訊息位元組、無法編碼時HEAD與快照清單均未改變、語系／快捷鍵保存及舊資料表重新開啟。完整本機驗證另以 `-LegacyDatabase` 與 `-LegacyRepository` 傳入M3實際ZIP測試產生的資料；此選項嚴格限制為TEMP內既有的專用smoke fixture。資料庫使用副本，倉庫先完整備份並預建復原副本；在原路徑執行舊快照Undo/Redo，最後保留測試後目錄並恢復完整原始fixture，核對index、檔案、Git物件與原DB hash。快照綁定原根路徑，不能將此選項當成任意搬移快照的工具。一般CI不含該舊版本資料，不能把 `legacyCatalogCount=0` 稱為實測跨版本升級。
+
+升級檢查比對raw HEAD、可見refs、index的OID／mode／stage／flags及每個工作檔案hash；不要求可重建的index stat cache逐位元組相同。M3 fixture在取消LFS追蹤後留下不同的工作樹attributes與舊stat cache，重建index可使Git重新雜湊而改變porcelain標記，即使檔案與index內容完全相同。前後porcelain保留在驗證報告作診斷，不將舊快取的標記當成實際內容；原始fixture仍以完整備份恢復並核對hash。
 另外啟動真正的 GitGui.App.exe，驗證 AskPass UTF-8 往返與桌面主視窗啟動／正常關閉。
+桌面 smoke 在30秒內輪詢實際視窗就緒，記錄觀察到的時間；這是啟閉功能檢查，並非放寬原規格1.5秒冷啟動門檻。固定等待4秒的舊檢查曾在本機失敗，單獨重現約2秒就緒；嚴格效能結果仍以原生量測全樣本為準。
 Windows CI 每次建置也重建 ZIP 並執行無桌面 smoke test，提供可下載的 CI artifact。
 
 v0.5.0 的六格 Git 相容性 CI 中，只有 Windows 最新 Git 格重建並驗證發行 ZIP；Windows 2.40 格保留其精確 PATH，執行相同完整測試。固定版本與格式覆蓋見 [M3 相容性](M3-COMPATIBILITY.md)。目前正式套件仍為 x64；ARM64 決策見 [說明](M3-ARM-DECISION.md)。

@@ -26,6 +26,9 @@ string? legacyRecovery = null;
 string? legacyPreservedFixture = null;
 byte[]? legacySourceDatabaseHash = null;
 var legacyRestoreChecked = false;
+bool? legacyStatusCacheChanged = null;
+string? legacyStatusBeforeBase64 = null;
+string? legacyStatusAfterBase64 = null;
 if (args.Length == 3)
 {
     // Snapshot objects bind their original root. Only an owned, disposable old smoke
@@ -38,6 +41,9 @@ if (args.Length == 3)
     Check(await oldStore.IsTrustedAsync(args[2], default), "M3 trust did not survive runtime upgrade");
     var oldSnapshots = await oldStore.ListAsync(args[2], default); legacyCatalogCount = oldSnapshots.Count;
     Check(legacyCatalogCount > 0 && oldSnapshots.All(s => s.StateRef.StartsWith("refs/gitgui/snapshots/", StringComparison.Ordinal)), "M3 snapshot catalog did not survive upgrade");
+    // Disposed SQLite connections may retain pooled Windows file handles.
+    // Release idle handles before the byte-for-byte read-only database check.
+    Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
     Check(beforeHash.SequenceEqual(System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(legacy))), "Read-only upgrade modified M3 database bytes");
     legacyBackup = Path.Combine(root, "legacy-m3-repository-backup");
     CopyLegacyDirectory(legacyRepository, legacyBackup);
@@ -63,8 +69,10 @@ if (legacyStore is not null && legacySnapshot is not null && legacyRepository is
     var resolvedRoot = Encoding.UTF8.GetString(await LegacyRead("rev-parse", "--show-toplevel")).Trim();
     Check(Path.GetFullPath(resolvedRoot).Equals(legacyRoot, StringComparison.OrdinalIgnoreCase), "Legacy Git worktree escapes the owned smoke fixture");
     var beforeHead = await LegacyRead("rev-parse", "HEAD");
+    var beforeHeadBytes = await File.ReadAllBytesAsync(Path.Combine(legacyRoot, ".git", "HEAD"));
     var beforeRefs = await LegacyRead("for-each-ref", "refs/heads", "refs/tags", "refs/remotes");
     var beforeStatus = await LegacyRead("status", "--porcelain=v2", "-z", "--untracked-files=all");
+    legacyStatusBeforeBase64 = Convert.ToBase64String(beforeStatus);
     var beforeIndex = await LegacyRead("ls-files", "--stage", "-z");
     var beforeFlags = await LegacyRead("ls-files", "-v", "-z");
     var beforeFiles = await WorktreeFingerprint(legacyRoot);
@@ -76,11 +84,17 @@ if (legacyStore is not null && legacySnapshot is not null && legacyRepository is
         Check(oldUndo.Success && oldUndo.Snapshot is not null, "M4 could not restore an actual M3 snapshot: " + oldUndo.Message);
         var oldRedo = await upgradeService.ExecuteAsync(legacyRoot, new(GitAction.RestoreSnapshot) { SnapshotId = oldUndo.Snapshot!.Id }, null, default);
         Check(oldRedo.Success, "M3 snapshot redo failed: " + oldRedo.Message);
-        Check(beforeHead.SequenceEqual(await LegacyRead("rev-parse", "HEAD")) &&
-            beforeRefs.SequenceEqual(await LegacyRead("for-each-ref", "refs/heads", "refs/tags", "refs/remotes")) &&
-            beforeStatus.SequenceEqual(await LegacyRead("status", "--porcelain=v2", "-z", "--untracked-files=all")) &&
-            beforeIndex.SequenceEqual(await LegacyRead("ls-files", "--stage", "-z")) && beforeFlags.SequenceEqual(await LegacyRead("ls-files", "-v", "-z")) &&
-            beforeFiles.SequenceEqual(await WorktreeFingerprint(legacyRoot)), "Legacy snapshot undo/redo did not preserve file bytes, index or repository state");
+        // Rebuilding the index can reveal stale LFS/stat-cache status from the old fixture.
+        // Preserve raw porcelain for diagnosis; assert its underlying data independently.
+        var afterStatus = await LegacyRead("status", "--porcelain=v2", "-z", "--untracked-files=all");
+        legacyStatusAfterBase64 = Convert.ToBase64String(afterStatus);
+        legacyStatusCacheChanged = !beforeStatus.SequenceEqual(afterStatus);
+        Check(beforeHead.SequenceEqual(await LegacyRead("rev-parse", "HEAD")), "Legacy snapshot undo/redo changed HEAD OID");
+        Check(beforeHeadBytes.SequenceEqual(await File.ReadAllBytesAsync(Path.Combine(legacyRoot, ".git", "HEAD"))), "Legacy snapshot undo/redo changed raw HEAD attachment");
+        Check(beforeRefs.SequenceEqual(await LegacyRead("for-each-ref", "refs/heads", "refs/tags", "refs/remotes")), "Legacy snapshot undo/redo changed visible refs");
+        Check(beforeIndex.SequenceEqual(await LegacyRead("ls-files", "--stage", "-z")), "Legacy snapshot undo/redo changed index OIDs, modes or stages");
+        Check(beforeFlags.SequenceEqual(await LegacyRead("ls-files", "-v", "-z")), "Legacy snapshot undo/redo changed index flags");
+        Check(beforeFiles.SequenceEqual(await WorktreeFingerprint(legacyRoot)), "Legacy snapshot undo/redo changed worktree bytes");
         legacyRestoreChecked = true;
     }
     finally
@@ -261,6 +275,7 @@ Check(commands.All(c => c.Command.Contains(git.Executable, StringComparison.Ordi
 Check(commands.Any(c => c.Command.Contains("update-ref --stdin", StringComparison.Ordinal)), "Ref transaction not exercised");
 Console.WriteLine(JsonSerializer.Serialize(new { result = "PASS", runtime = RuntimeEnvironment.GetRuntimeDirectory(),
     git = git.Executable, gitVersion = git.Version, commands = commands.Count, legacyCatalogCount, legacyRestoreChecked, legacyPreservedFixture,
+    legacyStatusCacheChanged, legacyStatusBeforeBase64, legacyStatusAfterBase64,
     checks = "SQLite/native libgit2/init/stage/commit/hooks/amend/branch/snapshot undo+redo/push/clone/M2 stash recovery/tag/remote/rebase reword/blame/reflog/terminal/M3 worktree/bisect/sparse undo/submodule parent undo preserves child/LFS real local-remote transfer+checkout/bundled SSH signed tag verification/M4 settings+snapshot catalog reopen/locale+shortcut persistence/Big5 commit/unrepresentable message no-write/audit redaction" }));
 
 async Task<OperationOutcome> Tool(RepositoryToolOperation operation)
