@@ -49,3 +49,13 @@
 本輪不宣稱達到大型效能指標，也未執行 BenchmarkDotNet。未驗證真實 macOS/Linux 桌面操作、Git 2.40 精確版、reftable 倉庫、各種 GCM/SSH/LFS/proxy/mergetool 組合與跨平台安裝封裝。這些與 README 所列不支援狀態留待後續里程碑。
 
 M0 原本的 18 項測試已併入本輪回歸範圍；不是把 M0 結果當作 M1 功能證據。
+
+## Portable Git 驗證補充
+
+新增 GitRuntime，讓指定路徑、程式旁 PortableGit/Git 與 PATH 共用同一個執行器；一般命令及 PreparedRefs 都不再直接啟動裸 git 名稱。UI 可選資料夾／執行檔、驗證版本、保存與自動偵測。設定變更視窗開啟時停止工作區操作／監看刷新，避免操作中切換 Git。
+
+本機結果：Core 21、Engine 83、UI 22，合計 126 passed / 0 failed / 0 skipped。真實 PortableGit 2.56.0.windows.3 的空白／中文路徑與受限子行程 PATH 案例通過；另針對新增傳輸及命令路徑斷言重跑 PortableGitTests 2 項通過，指令紀錄調整後 ProcessRunnerTests 5 項通過。
+
+Release locked restore/build 通過，無新套件。Windows apphost AskPass／桌面啟動及正常關閉通過；[Git 設定截圖](images/portable-git-settings.png) 已人工檢視。詳細來源雜湊與重現方式見 [PORTABLE-GIT.md](PORTABLE-GIT.md)。
+
+程式碼自行審查涵蓋：Core 無 Process 相依；SQLite 參數化及驗證成功才保存；明確路徑失效不退回其他版本；完整發行包的 helpers 只影響子行程環境；快照 ref 交易沿用相同執行路徑；記錄採完整路徑並引用 PowerShell／shell 特殊字元。三平台 CI 在此次推送後核對，Windows 另下載並核對官方 PortableGit 供整合測試使用。

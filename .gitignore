@@ -14,3 +14,7 @@ artifacts/
 .env
 *.key
 *.pem
+/PortableGit/
+/Git/
+/tools/PortableGit/
+/tools/git/
