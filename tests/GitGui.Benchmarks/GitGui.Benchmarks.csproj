@@ -1,7 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Exe</OutputType><IsPackable>false</IsPackable></PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><IsPackable>false</IsPackable>
+    <BenchmarkSourceRoot Condition="'$(BenchmarkSourceRoot)' == ''">$(MSBuildThisFileDirectory)../..</BenchmarkSourceRoot>
+  </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/GitGui.Engine.Cli/GitGui.Engine.Cli.csproj" />
+    <ProjectReference Include="$(BenchmarkSourceRoot)/src/GitGui.Engine.Cli/GitGui.Engine.Cli.csproj" />
+    <ProjectReference Include="$(BenchmarkSourceRoot)/src/GitGui.Engine.Lib/GitGui.Engine.Lib.csproj" />
+    <ProjectReference Include="$(BenchmarkSourceRoot)/src/GitGui.Infrastructure/GitGui.Infrastructure.csproj" />
     <PackageReference Include="BenchmarkDotNet" />
   </ItemGroup>
 </Project>

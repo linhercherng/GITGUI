@@ -31,6 +31,10 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
 
     public Task<WorkspaceState> OpenAsync(string path, LogFilter filter, CancellationToken ct)
         => Task.Run(() => reader.Open(path, filter, ct), ct);
+    public Task<WorkspaceStatus> RefreshStatusAsync(string root, CancellationToken ct)
+        => Task.Run(() => reader.Status(root, ct), ct);
+    public Task<HistoryPage> GetHistoryPageAsync(string root, LogFilter filter, string? generation, CancellationToken ct)
+        => Task.Run(() => reader.Page(root, filter, generation, ct), ct);
     public Task<string> GetDiffAsync(string root, DiffRequest request, CancellationToken ct)
         => Task.Run(() => reader.Diff(root, request, ct), ct);
     public Task<CommitDetails> GetCommitAsync(string root, string commit, CancellationToken ct)
@@ -74,8 +78,9 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
             await queue.WaitAsync(ct); entered = true;
             if (creates) return await CreateRepository(root, op, progress, ct);
             await TrustAsync(root, ct);
-            var state = await reader.Open(root, new(Take: 1), ct);
+            var state = await reader.Open(root, new(Take: 1), ct, presentation: false);
             await Preflight(root, state, op, ct);
+            var messageBytes = await PrepareMessageBytes(root, op, ct);
             var overwritePaths = await OperationOverwritePaths(root, state.InProgress, op, ct);
             var risk = Risk(op);
             if (risk is RiskLevel.High or RiskLevel.RemoteIrreversible)
@@ -130,7 +135,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
                     else await Run(["restore", "--staged", "--source=HEAD", "--", .. op.Paths]);
                     break;
                 case GitAction.StagePatch: case GitAction.UnstagePatch:
-                    var patch = Encoding.UTF8.GetBytes(op.Patch!);
+                    var patch = GitAccess.Utf8.GetBytes(op.Patch!);
                     await Run(["apply", "--cached", "--recount", "--check", "--whitespace=nowarn"], patch);
                     await Run(["apply", "--cached", "--recount", "--whitespace=nowarn"], patch);
                     break;
@@ -145,7 +150,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
                     if (op.Amend) commitArgs.Add("--amend");
                     if (op.SkipHooks) commitArgs.Add("--no-verify");
                     if (op.Sign) commitArgs.Add("-S");
-                    await Run(commitArgs.ToArray(), Encoding.UTF8.GetBytes(op.Message!)); break;
+                    await Run(commitArgs.ToArray(), messageBytes.Commit); break;
                 case GitAction.CreateBranch:
                     await Run(["branch", "--", op.Name!]); break;
                 case GitAction.SwitchBranch:
@@ -221,7 +226,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
                     break;
                 case GitAction.RestoreSnapshot:
                     await snapshots.RestoreAsync(root, target!, executionToken); break;
-                default: await ExecuteAdvanced(root, state, op, executionToken, progress); break;
+                default: await ExecuteAdvanced(root, state, op, messageBytes, executionToken, progress); break;
             }
             if (snapshot is not null)
             {
@@ -235,8 +240,15 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
         {
             var text = ex is GitCommandException gitError
                 ? gitError.Result.Error + "\n" + Encoding.UTF8.GetString(gitError.Result.Output) : ex.Message;
-            var kind = Classify(text);
-            if (op.Action is GitAction.Merge or GitAction.Pull && text.Contains("CONFLICT", StringComparison.OrdinalIgnoreCase)) kind = GitErrorKind.Conflict;
+            var exit = ex is GitCommandException failure ? failure.Result.ExitCode : -1;
+            var unmerged = false;
+            if (exit == 1 && op.Action is (GitAction.Merge or GitAction.Pull or GitAction.CherryPick or GitAction.Revert or
+                GitAction.StashApply or GitAction.StashPop or GitAction.RebaseInteractive or GitAction.ContinueOperation or GitAction.SkipOperation))
+            {
+                try { unmerged = (await git.Bytes(root, CancellationToken.None, ["ls-files", "--unmerged", "-z"])).Length > 0; }
+                catch (Exception) { /* Keep the original command failure if inspection also fails. */ }
+            }
+            var kind = GitFailurePolicy.Classify(exit, text, unmerged);
             return new(false, GitProcessRunner.Redact(text.Trim()), kind, snapshot);
         }
         finally { if (entered) queue!.Release(); }
@@ -244,6 +256,9 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
 
     private async Task Preflight(string root, WorkspaceState state, GitOperation op, CancellationToken ct)
     {
+        GitPathPolicy.ValidateSelection(state.Status.Files, op.Paths);
+        if (op.Action is GitAction.StagePatch or GitAction.UnstagePatch && state.Status.Files.Any(f => !f.IsPathSupported))
+            throw new InvalidOperationException("Partial staging is unavailable while non-UTF-8 paths are present. Use whole-file staging for supported paths, or rename unsupported paths with a byte-aware Git tool.");
         var gitDirectory = await git.Text(root, ct, "rev-parse", "--absolute-git-dir");
         if (File.Exists(Path.Combine(gitDirectory, "index.lock"))) throw new InvalidOperationException("index.lock exists; wait for the other Git process.");
         var sequenceAllowed = op.Action is GitAction.Fetch or GitAction.Stage or GitAction.Unstage or GitAction.StagePatch or GitAction.UnstagePatch or
@@ -379,18 +394,5 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
                 Regex.IsMatch(uri.Query, "token|password|secret", RegexOptions.IgnoreCase))
                 throw new ArgumentException("Use Git Credential Manager or AskPass instead of credentials embedded in the URL.");
         }
-    }
-    private static GitErrorKind Classify(string text)
-    {
-        if (text.Contains("stale info", StringComparison.OrdinalIgnoreCase)) return GitErrorKind.StaleLease;
-        if (text.Contains("CONFLICT", StringComparison.Ordinal)) return GitErrorKind.Conflict;
-        if (text.Contains("Authentication failed", StringComparison.OrdinalIgnoreCase) || text.Contains("Permission denied (publickey)", StringComparison.OrdinalIgnoreCase)) return GitErrorKind.AuthFailed;
-        if (text.Contains("index.lock", StringComparison.OrdinalIgnoreCase)) return GitErrorKind.LockExists;
-        if (text.Contains("hook", StringComparison.OrdinalIgnoreCase)) return GitErrorKind.HookRejected;
-        if (text.Contains("non-fast-forward", StringComparison.OrdinalIgnoreCase) || text.Contains("rejected", StringComparison.OrdinalIgnoreCase) ||
-            text.Contains("Not possible to fast-forward", StringComparison.OrdinalIgnoreCase)) return GitErrorKind.NonFastForward;
-        if (text.Contains("Could not resolve host", StringComparison.OrdinalIgnoreCase) || text.Contains("timed out", StringComparison.OrdinalIgnoreCase)) return GitErrorKind.Network;
-        if (text.Contains("would be overwritten", StringComparison.OrdinalIgnoreCase)) return GitErrorKind.DirtyWorktree;
-        return GitErrorKind.Unknown;
     }
 }

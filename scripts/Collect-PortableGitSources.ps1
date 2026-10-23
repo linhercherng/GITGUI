@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$PortableGit,
-    [Parameter(Mandatory = $true)][string]$OutputDirectory
+    [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.5.0'
 )
 $ErrorActionPreference = 'Stop'
 $output = [IO.Path]::GetFullPath($OutputDirectory)
@@ -20,12 +21,19 @@ foreach ($record in $records) {
         if ((Get-FileHash -LiteralPath $partial).Hash.ToLowerInvariant() -ne $record.sha256) { throw "Source checksum mismatch: $($record.file)" }
         Move-Item -LiteralPath $partial -Destination $target -Force
     }
-    & tar -tf $target 1>$null
-    if ($LASTEXITCODE -ne 0) { throw "Source archive cannot be read: $($record.file)" }
+    # Some Windows tar builds cannot accept Unicode absolute paths. Keep argv
+    # ASCII and inherit the Unicode working directory from PowerShell instead.
+    Push-Location $sources
+    try {
+        & tar -tf $record.file 1>$null
+        if ($LASTEXITCODE -ne 0) { throw "Source archive cannot be read: $($record.file)" }
+    } finally { Pop-Location }
 }
 Copy-Item -LiteralPath $manifest -Destination "$sources/source-manifest.json" -Force
 Copy-Item -LiteralPath (Join-Path $PortableGit 'etc/package-versions.txt') -Destination $sources -Force
-Copy-Item -LiteralPath "$PSScriptRoot/../docs/portable/THIRD-PARTY.txt" -Destination $sources -Force
+(Get-Content -LiteralPath "$PSScriptRoot/../docs/portable/THIRD-PARTY.txt" -Raw).Replace('0.1.0', $Version) |
+    Set-Content -LiteralPath (Join-Path $sources 'THIRD-PARTY.txt') -Encoding utf8
+Copy-Item -LiteralPath "$PSScriptRoot/../LICENSE" -Destination (Join-Path $sources 'GITGUI-LICENSE.txt') -Force
 $zip = Join-Path $output 'PortableGit-2.56.0.3-copyleft-sources.zip'
 if (Test-Path -LiteralPath $zip) { throw 'Source ZIP already exists; do not replace released artifacts.' }
 [IO.Compression.ZipFile]::CreateFromDirectory($sources, $zip, [IO.Compression.CompressionLevel]::NoCompression, $true)

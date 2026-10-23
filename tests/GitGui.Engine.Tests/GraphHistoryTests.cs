@@ -8,6 +8,26 @@ namespace GitGui.Engine.Tests;
 public class GraphHistoryTests
 {
     [Fact]
+    public async Task Workspace_uses_Git_commit_graph_for_a_whole_paged_generation()
+    {
+        using var repo = new TemporaryRepository(); await repo.Init();
+        for (var i = 0; i < 4; i++) await repo.Git("commit", "--allow-empty", "-m", "commit " + i);
+        var library = new Probe(false); var runner = new GitProcessRunner(); var catalog = new MemoryCatalog();
+        IWorkspaceService service = new WorkspaceService(runner, new TestSettings(), catalog, new(runner, catalog), new TestInteraction(), library);
+        var before = await service.OpenAsync(repo.Root, new(Take: 2), default);
+        Assert.Equal(1, library.Calls);
+        await repo.Git("commit-graph", "write", "--reachable");
+        var reset = await service.GetHistoryPageAsync(repo.Root, new(Skip: 2, Take: 1), before.HistoryGeneration, default);
+        Assert.True(reset.Reset); Assert.NotEqual(before.HistoryGeneration, reset.Generation);
+        Assert.Equal(1, library.Calls);
+        var first = await service.OpenAsync(repo.Root, new(Take: 2), default);
+        var next = await service.GetHistoryPageAsync(repo.Root, new(Skip: 2, Take: 3), first.HistoryGeneration, default);
+        Assert.False(next.Reset); Assert.Equal(1, library.Calls);
+        var expected = (await repo.Git("log", "--topo-order", "--format=%H", "HEAD")).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+        Assert.Equal(expected, first.Commits.Concat(next.Commits).Select(c => c.Hash));
+    }
+
+    [Fact]
     public async Task Library_graph_includes_branch_tag_and_detached_tips_but_excludes_snapshots()
     {
         using var repo = new TemporaryRepository();
@@ -50,7 +70,7 @@ public class GraphHistoryTests
         var result = await service.OpenAsync(repo.Root, new(), default);
         Assert.Single(result.Commits);
         Assert.Equal(format == "sha1" ? 1 : 0, library.Calls);
-        if (format == "sha1" && !fail) Assert.Equal("library", result.Commits[0].Subject);
+        if (format == "sha1" && !fail) Assert.Equal("initial", result.Commits[0].Subject);
         else Assert.Equal("initial", result.Commits[0].Subject);
         var calls = library.Calls;
         Assert.Equal("initial", Assert.Single((await service.OpenAsync(repo.Root, new(Search: "initial"), default)).Commits).Subject);
@@ -62,11 +82,12 @@ public class GraphHistoryTests
     private sealed class Probe(bool fail) : IGraphHistoryReader
     {
         public int Calls { get; private set; }
-        public Task<IReadOnlyList<CommitInfo>> GetGraphAsync(string repository, int skip, int take, CancellationToken ct)
+        public async Task<IReadOnlyList<CommitInfo>> GetGraphAsync(string repository, int skip, int take, CancellationToken ct)
         {
             Calls++;
             if (fail) throw new InvalidOperationException("native unavailable");
-            return Task.FromResult<IReadOnlyList<CommitInfo>>([new("library", "library", "test", DateTimeOffset.UtcNow, [])]);
+            using var reader = new LibHistoryReader();
+            return await reader.GetGraphAsync(repository, skip, take, ct);
         }
     }
 }

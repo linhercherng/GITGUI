@@ -1,9 +1,12 @@
 param(
     [Parameter(Mandatory = $true)][string]$Archive,
-    [switch]$Desktop
+    [switch]$Desktop,
+    [string]$LegacyDatabase,
+    [string]$LegacyRepository
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
+if ([bool]$LegacyDatabase -ne [bool]$LegacyRepository) { throw 'LegacyDatabase and LegacyRepository must be supplied together' }
 $zip = (Resolve-Path -LiteralPath $Archive).Path
 $temporary = Join-Path $env:TEMP ('GITGUI 解壓測試 ' + [Guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $temporary
@@ -11,12 +14,14 @@ $null = New-Item -ItemType Directory -Path $temporary
 $package = @(Get-ChildItem -LiteralPath $temporary -Directory)
 if ($package.Count -ne 1) { throw 'ZIP must have exactly one top-level directory' }
 $app = $package[0].FullName
-foreach ($document in @('USER-GUIDE.zh-TW.md', 'USER-GUIDE.zh-TW.html', 'docs/M3-COMPATIBILITY.md', 'docs/M3-ARM-DECISION.md', 'images/m3-main.png', 'images/m3-tools.png')) {
+foreach ($document in @('LICENSE', 'USER-GUIDE.zh-TW.md', 'USER-GUIDE.zh-TW.html', 'docs/M3-COMPATIBILITY.md', 'docs/M3-ARM-DECISION.md', 'docs/M4-ACCEPTANCE.md', 'docs/M4-PERFORMANCE.md', 'images/m3-main.png', 'images/m3-tools.png')) {
     if (-not (Test-Path -LiteralPath (Join-Path $app $document) -PathType Leaf)) { throw "Missing offline guide asset: $document" }
 }
 $guide = Get-Content -LiteralPath (Join-Path $app 'USER-GUIDE.zh-TW.md') -Raw
-if ($guide -notmatch '適用版本：0\.4\.0' -or $guide -notmatch '\]\(docs/M3-COMPATIBILITY\.md\)') { throw 'Offline guide version/links are invalid' }
-foreach ($image in @('m3-main.png', 'm3-tools.png')) {
+$buildInfo = Get-Content -LiteralPath (Join-Path $app 'build-info.json') -Raw | ConvertFrom-Json
+if (-not $guide.Contains('適用版本：' + $buildInfo.version) -or $guide -notmatch '\]\(docs/M3-COMPATIBILITY\.md\)') { throw 'Offline guide version/links are invalid' }
+if ($buildInfo.dotnetRuntime -ne '10.0.13' -or (Get-Content -LiteralPath (Join-Path $app 'LICENSE') -Raw) -notmatch 'MIT License') { throw 'Runtime/license inventory is invalid' }
+foreach ($image in @('m3-main.png', 'm3-tools.png', 'm4-main.png', 'm4-main-history.png')) {
     if ((Get-FileHash -LiteralPath (Join-Path $app "images/$image")).Hash -ne (Get-FileHash -LiteralPath (Join-Path $repo "docs/images/$image")).Hash) { throw "Offline guide image differs: $image" }
 }
 $harness = Join-Path $temporary 'test-driver'
@@ -24,8 +29,8 @@ Push-Location $repo
 try {
     $version = (Get-Content "$app/build-info.json" -Raw | ConvertFrom-Json).version
     & dotnet publish tests/GitGui.PackageSmoke/GitGui.PackageSmoke.csproj -c Release -r win-x64 --self-contained true `
-        -p:RuntimeFrameworkVersion=8.0.32 -p:NuGetLockFilePath=packages.win-x64.lock.json -p:RestoreLockedMode=true `
-        -p:PublishTrimmed=false -p:PublishSingleFile=false -p:Version=$version -o $harness
+        -p:RuntimeFrameworkVersion=10.0.13 -p:NuGetLockFilePath=packages.win-x64.lock.json -p:RestoreLockedMode=true `
+        -p:PublishReadyToRun=true -p:PublishTrimmed=false -p:PublishSingleFile=false -p:Version=$version -o $harness
     if ($LASTEXITCODE -ne 0) { throw 'Package test driver build failed' }
     # Prove the driver tests the exact released engine, SQLite/libgit2 and runtime binaries.
     foreach ($file in Get-ChildItem -LiteralPath $harness -File) {
@@ -60,6 +65,10 @@ try {
         $process.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
         $process.StandardErrorEncoding = [Text.UTF8Encoding]::new($false)
         $process.ArgumentList.Add((Join-Path $temporary 'isolated repositories'))
+        if ($LegacyDatabase) {
+            $process.ArgumentList.Add((Resolve-Path -LiteralPath $LegacyDatabase).Path)
+            $process.ArgumentList.Add((Resolve-Path -LiteralPath $LegacyRepository).Path)
+        }
         $child = [Diagnostics.Process]::Start($process)
         try {
             $stdout = $child.StandardOutput.ReadToEndAsync()

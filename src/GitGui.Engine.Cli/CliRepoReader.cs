@@ -18,11 +18,6 @@ public sealed class CliRepoReader(GitProcessRunner runner) : IRepoReader
 
     public async Task<RepoStatus> GetStatusAsync(string repository, bool trusted, CancellationToken ct)
     {
-        var version = Encoding.UTF8.GetString(await Run(repository, ct, "--version")).Split(' ')[2];
-        var digits = version.Split('.');
-        if (int.Parse(digits[0], CultureInfo.InvariantCulture) < 2 ||
-            (digits[0] == "2" && int.Parse(digits[1], CultureInfo.InvariantCulture) < 40))
-            throw new InvalidOperationException("Git 2.40 or newer is required.");
         var result = await runner.RunAsync(repository,
             ["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"], ct, new() { Trusted = trusted });
         if (result.ExitCode != 0) throw new GitCommandException(result);
@@ -31,14 +26,10 @@ public sealed class CliRepoReader(GitProcessRunner runner) : IRepoReader
 
     public async Task<RepoFormat> GetFormatAsync(string repository, CancellationToken ct)
     {
-        async Task<string> Config(string key, string fallback)
-        {
-            var result = await runner.ReadAsync(repository, ["config", "--get", key], ct);
-            if (result.ExitCode == 1) return fallback;
-            if (result.ExitCode != 0) throw new InvalidOperationException(result.Error.Trim());
-            return Encoding.UTF8.GetString(result.Output).Trim();
-        }
-        return new(await Config("extensions.objectFormat", "sha1"), await Config("extensions.refStorage", "files"));
+        var result = await runner.ReadAsync(repository, ["config", "-z", "--get-regexp", "^extensions\\.(objectformat|refstorage)$"], ct);
+        if (result.ExitCode is not (0 or 1)) throw new GitCommandException(result);
+        var values = GitAccess.NullFields(result.Output).Select(s => s.Split('\n', 2)).ToDictionary(s => s[0], s => s[1], StringComparer.OrdinalIgnoreCase);
+        return new(values.GetValueOrDefault("extensions.objectformat", "sha1"), values.GetValueOrDefault("extensions.refstorage", "files"));
     }
 
     public async Task<IReadOnlyList<CommitInfo>> GetLogAsync(string repository, int limit, CancellationToken ct)
@@ -55,7 +46,7 @@ public sealed class CliRepoReader(GitProcessRunner runner) : IRepoReader
             commits.Add(new(fields[n], fields[n + 1], fields[n + 2],
                 DateTimeOffset.Parse(fields[n + 3], CultureInfo.InvariantCulture),
                 fields[n + 4].Split(' ', StringSplitOptions.RemoveEmptyEntries)));
-        return commits;
+        return await new CommitTextReader(runner).EnrichAsync(repository, commits, ct);
     }
 
     public async Task<string> GetDiffAsync(string repository, string path, bool staged, CancellationToken ct)

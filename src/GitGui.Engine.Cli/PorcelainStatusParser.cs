@@ -42,8 +42,9 @@ public static class PorcelainStatusParser
             if (path.Length == 0) throw new FormatException("Empty porcelain path.");
             var xy = fields == 1 ? "??" : text.Split(' ', 3)[1];
             if (xy.Length != 2) throw new FormatException("Invalid porcelain status.");
-            string? original = record[0] == '2' ? Encoding.UTF8.GetString(Next()) : null;
-            files.Add(new(Encoding.UTF8.GetString(path), xy[..1], xy[1..], path, original));
+            var original = record[0] == '2' ? Next() : null;
+            files.Add(new(GitPathPolicy.DecodePath(path), xy[..1], xy[1..], path,
+                original is null ? null : GitPathPolicy.DecodePath(original)) { RawOriginalPath = original });
         }
         return new(branch, head, files);
     }

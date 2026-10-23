@@ -12,9 +12,10 @@ public sealed class AppearanceWindow : Window
         Title = l["Appearance"]; Width = 560; CanResize = false;
         SizeToContent = SizeToContent.Height; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         AppearanceManager.StyleWindow(this);
+        l.Bind(this, TitleProperty, "Appearance");
         var panel = new StackPanel { Spacing = 12, Margin = new Thickness(24) };
-        panel.Children.Add(new TextBlock { Text = l["Appearance"], FontSize = 22, FontWeight = FontWeight.SemiBold });
-        panel.Children.Add(new TextBlock { Text = l["AppearanceHint"], TextWrapping = TextWrapping.Wrap });
+        var heading = new TextBlock { FontSize = 22, FontWeight = FontWeight.SemiBold }; l.Bind(heading, TextBlock.TextProperty, "Appearance"); panel.Children.Add(heading);
+        var hint = new TextBlock { TextWrapping = TextWrapping.Wrap }; l.Bind(hint, TextBlock.TextProperty, "AppearanceHint"); panel.Children.Add(hint);
         var status = new TextBlock { Name = "AppearanceStatus", TextWrapping = TextWrapping.Wrap };
         AppearanceManager.Bind(status, TextBlock.ForegroundProperty, "MutedBrush");
         var choices = new List<(Button Button, TextBlock Check, AppearancePalette Palette)>();
@@ -35,12 +36,13 @@ public sealed class AppearanceWindow : Window
                     HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(9, 0, 0, 0) } };
             row.Children.Add(swatch);
             var name = new TextBlock { Text = l[palette.NameKey], FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+            l.Bind(name, TextBlock.TextProperty, palette.NameKey);
             Grid.SetColumn(name, 1); row.Children.Add(name);
             var check = new TextBlock { VerticalAlignment = VerticalAlignment.Center, FontSize = 12 };
             AppearanceManager.Bind(check, TextBlock.ForegroundProperty, "AccentBrush"); Grid.SetColumn(check, 2); row.Children.Add(check);
             var button = new Button { Name = "Theme_" + palette.Id, Content = row, HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(12), MinHeight = 58 };
-            Avalonia.Automation.AutomationProperties.SetName(button, l[palette.NameKey]);
+            l.Bind(button, Avalonia.Automation.AutomationProperties.NameProperty, palette.NameKey);
             button.Click += (_, _) =>
             {
                 try { appearance.Select(palette.Id); status.Text = l["AppearanceSaved"]; Update(); }
@@ -50,8 +52,11 @@ public sealed class AppearanceWindow : Window
         }
         Update(); panel.Children.Add(status);
         var close = new ActionButton { Icon = "Close", Content = l["Close"], HorizontalAlignment = HorizontalAlignment.Right };
+        l.Bind(close, ContentControl.ContentProperty, "Close");
         close.Click += (_, _) => Close(); panel.Children.Add(close); Content = panel;
         KeyBindings.Add(new Avalonia.Input.KeyBinding { Gesture = new(Avalonia.Input.Key.Escape),
             Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => Close()) });
+        void LocaleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => Update();
+        l.PropertyChanged += LocaleChanged; Closed += (_, _) => l.PropertyChanged -= LocaleChanged;
     }
 }

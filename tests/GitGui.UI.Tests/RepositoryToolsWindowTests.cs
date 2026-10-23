@@ -100,7 +100,9 @@ public sealed class RepositoryToolsWindowTests
     public async Task Main_toolbar_owns_tools_and_blocks_main_writes_terminal_and_close_during_tool_write()
     {
         var backend = new Backend { Pending = new() }; using var main = new MainWindowViewModel(backend, new Recent()) { RepositoryPath = Root };
-        var window = new MainWindow(main, workspace: backend, repositoryTools: backend); window.Show(); await main.RefreshCommand.ExecuteAsync(null);
+        var window = new MainWindow(main, workspace: backend, repositoryTools: backend); window.Show();
+        if (main.InitializeCommand.ExecutionTask is { } initialization) await initialization;
+        await main.RefreshCommand.ExecuteAsync(null);
         window.UpdateLayout(); var button = Find<Button>(window, "RepositoryToolsButton");
         var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
         window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); Dispatcher.UIThread.RunJobs();
@@ -111,6 +113,7 @@ public sealed class RepositoryToolsWindowTests
         await main.ActionCommand.ExecuteAsync("CreateBranch"); Assert.Empty(backend.WorkspaceExecuted);
         window.Close(); Assert.True(window.IsVisible);
         backend.Pending.SetResult(new(true, "Installed")); await write;
+        if (main.RefreshCommand.ExecutionTask is { } refresh) await refresh;
         Assert.True(main.CanOperate);
         main.IsBusy = true; Assert.True(tools.ViewModel.IsBlocked);
         await tools.ViewModel.ExecuteCommand.ExecuteAsync("LfsInstall"); Assert.Single(backend.ToolsExecuted);

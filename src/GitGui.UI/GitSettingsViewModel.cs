@@ -18,7 +18,7 @@ public sealed partial class GitSettingsViewModel(IGitRuntimeSettings settings) :
     public async Task InitializeAsync()
     {
         IsBusy = true;
-        try { PathText = await settings.GetPathAsync(lifetime.Token) ?? ""; }
+        try { PathText = await Task.Run(() => settings.GetPathAsync(lifetime.Token), lifetime.Token) ?? ""; }
         catch (Exception ex) { Status = ex.Message; }
         finally { IsBusy = false; }
         await CheckAsync();
@@ -36,7 +36,7 @@ public sealed partial class GitSettingsViewModel(IGitRuntimeSettings settings) :
         try
         {
             var path = string.IsNullOrWhiteSpace(PathText) ? null : PathText.Trim();
-            var result = save ? await settings.SaveAsync(path, lifetime.Token) : await settings.CheckAsync(path, lifetime.Token);
+            var result = await Task.Run(() => save ? settings.SaveAsync(path, lifetime.Token) : settings.CheckAsync(path, lifetime.Token), lifetime.Token);
             if (disposed) return;
             Status = result.Version + "\n" + result.Executable;
             if (save) Saved?.Invoke(this, result);

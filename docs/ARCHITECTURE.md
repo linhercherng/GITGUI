@@ -2,6 +2,14 @@
 
 日期：2026-10-23。原始規格保留在 specification.md；以下記錄實作對規格細節的具體處理。
 
+## M4 讀取與散佈決策
+
+寫入仍重新讀取信任／狀態／操作中標記，不共用展示快取。提交圖依可見refs、detached HEAD、篩選、選定Git及object-view fingerprint建立世代；續載固定同世代，refs或shallow/grafts/replacement改變即重置。Git已有單檔／分割commit-graph時，整個世代採CLI拓撲查詢以使用其索引；其他一般SHA-1/files仍優先使用native游標，避免在頁與頁之間混用不同排序。
+
+`RepositoryObjectView`是Core內的共用唯讀檔案指紋小工具，供兩個引擎一致辨識config、shallow、grafts及replace refs；不啟動行程、不做授權、不修改檔案。這是Core原先偏純資料責任的窄例外，避免兩個引擎的失效條件漂移。原生游標及展示快取均限制筆數與文字總量；巨大訊息可顯示但不長期保留於details快取。工作檔Diff不快取，仍由Git重新取得，避免相同status字元遮蔽外部編輯。
+
+設定版本向後相容：原SQLite資料表不重建，UI新偏好存獨立ui.json，以同目錄暫存檔及原子替換保存。語系與快捷鍵不包含倉庫路徑或憑證。Windows發行採.NET10 LTS自含執行環境與ReadyToRun，完整PortableGit獨立散佈；主程式MIT與第三方授權分開保留。
+
 ## 模組
 
 | 專案 | 責任 |
@@ -40,4 +48,4 @@ LibGit2Sharp 的圖形查詢只從普通分支、遠端分支、tag 及 HEAD 取
 
 圖形純資料在背景計算，只繪可見固定高列，提供橫向捲動；Diff 由 AvaloniaEdit 虛擬化。每次選取查詢都綁定倉庫、路徑、模式與 commit 身分，遲到的回應不能覆蓋較新選取。衝突草稿以路徑與編輯版本保存，載入／儲存中禁止編輯與採用，完成時只清除已儲存的那一版草稿。
 
-檔案監看涵蓋 root、gitdir 與 linked-worktree commondir，300ms debounce，自己的操作結束後統一刷新。尚未完成精準增量狀態／提交快取與背景自動 fetch，這些不是目前效能保證。
+檔案監看涵蓋root、gitdir與linked-worktree commondir，原生執行緒先合併事件，再做300ms debounce；依事件分流status／history／config，忽略Git內fsmonitor cookie與IPC，避免查詢自我觸發。自己的操作結束後統一刷新。M4已加入提交快取與狀態獨立刷新；背景自動fetch仍未加入，完整原生效能尚未達標，見M4效能文件。

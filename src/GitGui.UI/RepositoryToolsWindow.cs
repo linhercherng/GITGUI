@@ -15,7 +15,7 @@ namespace GitGui.UI;
 public sealed class RepositoryToolsWindow : Window
 {
     public RepositoryToolsWindowViewModel ViewModel { get; }
-    public RepositoryToolsWindow(RepositoryToolsWindowViewModel vm)
+    public RepositoryToolsWindow(RepositoryToolsWindowViewModel vm, ShortcutManager? shortcuts = null)
     {
         ViewModel = vm; DataContext = vm; Width = 1120; Height = 840; MinWidth = 940; MinHeight = 700;
         FontSize = 13; FontFamily = new("Segoe UI,Microsoft JhengHei,PingFang TC,Noto Sans TC,sans-serif");
@@ -38,17 +38,35 @@ public sealed class RepositoryToolsWindow : Window
         copy.Click += async (_, _) => { if (Clipboard is { } clipboard) await clipboard.SetTextAsync(vm.Commands); }; Grid.SetRow(copy, 1); outputGrid.Children.Add(copy);
         output.Content = outputGrid; Grid.SetRow(output, 2); root.Children.Add(output);
         var footer = new Grid { ColumnDefinitions = new("*,Auto,Auto,Auto"), ColumnSpacing = 8 };
-        var status = new StackPanel { Spacing = 6 }; var progress = new ProgressBar { IsIndeterminate = true, Height = 3 }; progress.Bind(IsVisibleProperty, B(nameof(vm.IsBusy))); status.Children.Add(progress);
+        var status = new StackPanel { Spacing = 6 }; status.Children.Add(new OperationFeedbackBar { Feedback = vm.Feedback }); var progress = new ProgressBar { IsIndeterminate = true, Height = 3 }; progress.Bind(IsVisibleProperty, B(nameof(vm.IsBusy))); status.Children.Add(progress);
         var notice = new TextBlock { TextWrapping = TextWrapping.Wrap }; notice.Bind(TextBlock.TextProperty, B(nameof(vm.Notice))); status.Children.Add(notice);
         var phase = new TextBlock { FontSize = 11 }; phase.Bind(TextBlock.TextProperty, B(nameof(vm.ProgressText))); AppearanceManager.Bind(phase, TextBlock.ForegroundProperty, "MutedBrush"); status.Children.Add(phase); footer.Children.Add(status);
         var cancel = Button("Cancel", "Cancel", "Close"); cancel.Command = vm.CancelCommand; cancel.Bind(IsVisibleProperty, B(nameof(vm.CanCancel))); cancel.Bind(IsEnabledProperty, B(nameof(vm.CanCancel))); Grid.SetColumn(cancel, 1); footer.Children.Add(cancel);
         var undo = Button("AdvancedUndo", "Undo", "Undo", nameof(vm.CanUndo)); undo.Command = vm.UndoCommand; Grid.SetColumn(undo, 2); footer.Children.Add(undo);
         var close = new ActionButton { Icon = "Close" }; close.Bind(ContentControl.ContentProperty, B("L[Close]")); close.Click += (_, _) => Close(); Grid.SetColumn(close, 3); footer.Children.Add(close);
         Grid.SetRow(footer, 3); root.Children.Add(footer); Content = root;
+        vm.Feedback.Navigate = async action =>
+        {
+            if (action is GitSuggestedAction.Fetch or GitSuggestedAction.Pull) await vm.ExecuteSuggestedAsync(action == GitSuggestedAction.Fetch ? GitAction.Fetch : GitAction.Pull);
+            else if (action == GitSuggestedAction.ResolveConflicts && Owner is MainWindow main) await main.HandleSuggestedActionAsync(action);
+            else if (action == GitSuggestedAction.ShowOutput) output.IsExpanded = true;
+            else await OperationFeedback.ShowHelpAsync(this, vm.L, action);
+        };
         Opened += async (_, _) => await vm.RefreshCommand.ExecuteAsync(null);
         Closing += (_, args) => { if (vm.IsWriting) { args.Cancel = true; vm.Notice = vm.L["ToolsWait"]; } };
         Closed += (_, _) => vm.Dispose();
-        KeyBindings.Add(new KeyBinding { Gesture = new(Key.F5), Command = vm.RefreshCommand });
+        shortcuts ??= new(); var manager = shortcuts;
+        manager.Attach(this, "Tools", vm.L, ShortcutManager.Definitions.Where(d => d.Scope == "Tools").Select(d =>
+        {
+            var action = d.Id[6..];
+            return new UiCommand(action, async () =>
+            {
+                if (action == "Palette") await manager.ShowPaletteAsync(this);
+                else if (action == "Refresh") await vm.RefreshCommand.ExecuteAsync(null);
+                else if (action == "Undo") await vm.UndoCommand.ExecuteAsync(null);
+                else await vm.ExecuteCommand.ExecuteAsync(action);
+            }, () => action == "Palette" || (action == "Undo" ? vm.CanUndo : vm.CanOperate));
+        }).ToArray());
         KeyBindings.Add(new KeyBinding { Gesture = new(Key.Escape), Command = new RelayCommand(() => Close()) });
     }
     private Binding B(string path, BindingMode mode = BindingMode.Default) => new(path) { Source = ViewModel, Mode = mode };
@@ -66,7 +84,7 @@ public sealed class RepositoryToolsWindow : Window
     {
         var stack = Stack(); stack.Children.Add(Label(label));
         var input = new TextBox { Name = "ToolsInput_" + property, AcceptsReturn = multiline, TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap, MinHeight = multiline ? 92 : 32, MaxHeight = multiline ? 160 : double.PositiveInfinity };
-        input.Bind(TextBox.TextProperty, B(property, BindingMode.TwoWay)); input.Bind(IsEnabledProperty, B(nameof(ViewModel.CanOperate))); AutomationProperties.SetName(input, ViewModel.L[label]); stack.Children.Add(input); return stack;
+        input.Bind(TextBox.TextProperty, B(property, BindingMode.TwoWay)); input.Bind(IsEnabledProperty, B(nameof(ViewModel.CanOperate))); ViewModel.L.Bind(input, AutomationProperties.NameProperty, label); stack.Children.Add(input); return stack;
     }
     private CheckBox Check(string property, string key)
     {
@@ -80,13 +98,21 @@ public sealed class RepositoryToolsWindow : Window
     {
         var list = new ListBox { Name = "ToolsList_" + property, Background = Brushes.Transparent };
         list.Bind(ItemsControl.ItemsSourceProperty, B(property)); list.Bind(Avalonia.Controls.Primitives.SelectingItemsControl.SelectedItemProperty, B(selection, BindingMode.TwoWay));
-        list.Bind(IsEnabledProperty, B(nameof(ViewModel.CanOperate))); list.ItemTemplate = new FuncDataTemplate<T>((item, _) => item is null ? new TextBlock() : RowText(text(item))); return list;
+        list.Bind(IsEnabledProperty, B(nameof(ViewModel.CanOperate))); list.ItemTemplate = new FuncDataTemplate<T>((item, _) =>
+        {
+            if (item is null) return new TextBlock();
+            var row = RowText(text(item));
+            void Update(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => row.Text = text(item);
+            row.AttachedToVisualTree += (_, _) => ViewModel.L.PropertyChanged += Update;
+            row.DetachedFromVisualTree += (_, _) => ViewModel.L.PropertyChanged -= Update;
+            return row;
+        }); return list;
     }
     private static void Right(Grid grid, Control panel) { Grid.SetColumn(panel, 1); grid.Children.Add(new ScrollViewer { Content = panel, [Grid.ColumnProperty] = 1 }); }
     private Control SubmodulePanel()
     {
         var grid = Split(); var rows = new Grid { RowDefinitions = new("Auto,*"), RowSpacing = 9 }; rows.Children.Add(Label("ToolsSubmoduleBoundary"));
-        var list = List<SubmoduleInfo>(nameof(ViewModel.Submodules), nameof(ViewModel.SelectedSubmodule), item => item.Path + "\n" + item.State + " · " + item.Commit); Grid.SetRow(list, 1); rows.Children.Add(list); grid.Children.Add(rows);
+        var list = List<SubmoduleInfo>(nameof(ViewModel.Submodules), nameof(ViewModel.SelectedSubmodule), item => item.Path + "\n" + ViewModel.L[item.State == "initialized" ? "SubmoduleInitialized" : "SubmoduleUninitialized"] + " · " + item.Commit); Grid.SetRow(list, 1); rows.Children.Add(list); grid.Children.Add(rows);
         var form = Stack(); form.Children.Add(Field(nameof(ViewModel.SubmodulePath), "ToolsSubmodulePath")); form.Children.Add(Field(nameof(ViewModel.SubmoduleUrl), "Url"));
         form.Children.Add(Button("ToolsSubmoduleAdd", "SubmoduleAdd", "Plus")); form.Children.Add(Check(nameof(ViewModel.Recursive), "ToolsRecursive"));
         var actions = new WrapPanel(); actions.Children.Add(Button("ToolsInitialize", "SubmoduleInitialize", "Open")); actions.Children.Add(Button("ToolsUpdate", "SubmoduleUpdate", "Refresh")); actions.Children.Add(Button("ToolsSync", "SubmoduleSync", "Switch")); actions.Children.Add(Button("ToolsDeinitialize", "SubmoduleDeinitialize", "Minus")); form.Children.Add(actions); Right(grid, form); return grid;
@@ -94,7 +120,7 @@ public sealed class RepositoryToolsWindow : Window
     private Control WorktreePanel()
     {
         var grid = Split(); var rows = new Grid { RowDefinitions = new("Auto,*"), RowSpacing = 9 }; rows.Children.Add(Label("ToolsWorktreeBoundary"));
-        var list = List<WorktreeInfo>(nameof(ViewModel.Worktrees), nameof(ViewModel.SelectedWorktree), item => item.Path + "\n" + (item.Detached ? "detached" : item.Branch) + " · " + item.Head + (item.Locked ? "\n" + ViewModel.L["ToolsLocked"] + ": " + item.LockReason : "") + (item.Prunable ? "\n" + ViewModel.L["ToolsPrunable"] : "")); Grid.SetRow(list, 1); rows.Children.Add(list); grid.Children.Add(rows);
+        var list = List<WorktreeInfo>(nameof(ViewModel.Worktrees), nameof(ViewModel.SelectedWorktree), item => item.Path + "\n" + (item.Detached ? ViewModel.L["DetachedHead"] : item.Branch) + " · " + item.Head + (item.Locked ? "\n" + ViewModel.L["ToolsLocked"] + ": " + item.LockReason : "") + (item.Prunable ? "\n" + ViewModel.L["ToolsPrunable"] : "")); Grid.SetRow(list, 1); rows.Children.Add(list); grid.Children.Add(rows);
         var form = Stack(); form.Children.Add(Field(nameof(ViewModel.WorktreePath), "ToolsWorktreePath")); form.Children.Add(Field(nameof(ViewModel.WorktreeBranch), "ToolsWorktreeBranch")); form.Children.Add(Field(nameof(ViewModel.WorktreeRevision), "AdvancedRevision")); form.Children.Add(Button("ToolsWorktreeAdd", "WorktreeAdd", "Plus"));
         form.Children.Add(Field(nameof(ViewModel.LockReason), "ToolsLockReason")); var actions = new WrapPanel(); actions.Children.Add(Button("ToolsLock", "WorktreeLock", "Shield")); actions.Children.Add(Button("ToolsUnlock", "WorktreeUnlock", "Open")); actions.Children.Add(Button("ToolsRemove", "WorktreeRemove", "Trash")); actions.Children.Add(Button("ToolsPrune", "WorktreePrune", "Refresh")); form.Children.Add(actions); Right(grid, form); return grid;
     }

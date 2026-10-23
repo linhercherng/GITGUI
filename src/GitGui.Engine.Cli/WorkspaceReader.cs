@@ -5,24 +5,42 @@ using GitGui.Core;
 
 namespace GitGui.Engine.Cli;
 
-internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettings settings, IGraphHistoryReader? history = null)
+internal sealed partial class WorkspaceReader(GitProcessRunner runner, IRepositorySettings settings, IGraphHistoryReader? history = null)
 {
     private readonly GitAccess git = new(runner);
     private readonly CliRepoReader statusReader = new(runner);
 
-    public async Task<WorkspaceState> Open(string path, LogFilter filter, CancellationToken ct)
+    public async Task<WorkspaceState> Open(string path, LogFilter filter, CancellationToken ct, bool presentation = true)
     {
-        var root = await git.Root(path, ct);
+        var root = presentation ? (await Descriptor(path, ct)).Root : await git.Root(path, ct);
         var trusted = await settings.IsTrustedAsync(root, ct);
-        var status = await statusReader.GetStatusAsync(root, trusted, ct);
-        var refs = await Refs(root, ct);
-        var commits = status.Head == "(initial)" && refs.Count == 0 ? [] : await Log(root, filter, status, ct);
-        var remoteNames = (await git.Text(root, ct, "remote")).Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var remotes = new List<RemoteInfo>();
-        foreach (var name in remoteNames)
-            remotes.Add(new(name.TrimEnd('\r'), GitProcessRunner.Redact(await git.Text(root, ct, "remote", "get-url", name.TrimEnd('\r')))));
-        return new(root, status, commits, refs, remotes, await InProgress(root, status, ct),
-            trusted, await RiskySettings(root, ct));
+        var statusTask = statusReader.GetStatusAsync(root, trusted, ct);
+        var refsTask = Refs(root, ct);
+        var remoteTask = runner.RunAsync(root, ["config", "-z", "--get-regexp", "^remote\\..*\\.url$"], ct);
+        var riskyTask = RiskySettings(root, ct);
+        var textTask = new TextConfigurationReader(runner).ReadAsync(root, ct);
+        var pageTask = ReadPage();
+        await Task.WhenAll(statusTask, refsTask, remoteTask, riskyTask, textTask, pageTask);
+        var status = await statusTask; var refs = await refsTask; var page = await pageTask;
+        RememberStatus(root, status);
+        var commits = page?.Commits ?? [];
+        var remoteResult = await remoteTask;
+        if (remoteResult.ExitCode is not (0 or 1)) throw new GitCommandException(remoteResult);
+        var remotes = GitAccess.NullFields(remoteResult.Output).Select(field =>
+        { var at = field.IndexOf('\n'); return new RemoteInfo(field[7..(at - 4)], GitProcessRunner.Redact(field[(at + 1)..])); })
+            .DistinctBy(r => r.Name).ToArray();
+        return new(root, status, commits, refs, remotes, await InProgress(root, status, ct, presentation),
+            trusted, await riskyTask)
+        { HistoryGeneration = page?.Generation, HasMoreHistory = page?.HasMore ?? false,
+            TextSettings = await textTask };
+        async Task<HistoryPage?> ReadPage()
+        {
+            if (!presentation) return null;
+            var visible = await refsTask;
+            var descriptor = await Descriptor(root, ct);
+            var head = await Head(descriptor, visible, ct);
+            return await History(root, filter, new("", head ?? "(initial)", []), visible, null, ct);
+        }
     }
 
     public async Task<IReadOnlyList<RefInfo>> Refs(string root, CancellationToken ct)
@@ -37,24 +55,37 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
         }).ToArray();
     }
 
-    public async Task<IReadOnlyList<CommitInfo>> Log(string root, LogFilter filter, RepoStatus status, CancellationToken ct)
+    public async Task<IReadOnlyList<CommitInfo>> Log(string root, LogFilter filter, RepoStatus status, CancellationToken ct,
+        IReadOnlyList<RefInfo>? visibleRefs = null)
     {
-        if (history is not null && filter.Search.Length == 0 && filter.Author.Length == 0 &&
+        var objectView = RepositoryObjectView.Read(root);
+        if (history is not null && (long)filter.Skip + filter.Take <= 100_000 && filter.Search.Length == 0 && filter.Author.Length == 0 &&
             filter.Path.Length == 0 && filter.Since.Length == 0 && filter.Until.Length == 0 &&
-            ReadBackendPolicy.CanUseLibrary(await statusReader.GetFormatAsync(root, ct)))
+            ReadBackendPolicy.CanUseLibrary((await Descriptor(root, ct)).Format) && !objectView.RequiresCli && !objectView.HasCommitGraph)
         {
-            try { return await history.GetGraphAsync(root, filter.Skip, filter.Take, ct); }
+            try
+            {
+                var values = history is IStableGraphHistoryReader stable && visibleRefs is not null
+                    ? await stable.GetGraphAsync(root, VisibleTips(visibleRefs, status), filter.Skip, filter.Take, ct)
+                    : await history.GetGraphAsync(root, filter.Skip, filter.Take, ct);
+                return await new CommitTextReader(runner).EnrichAsync(root, values, ct);
+            }
             catch (OperationCanceledException) { throw; }
             catch (Exception) { /* Unsupported native reads retry the same query with Git CLI. */ }
         }
         var args = new List<string> { "log", "--topo-order", "--branches", "--remotes", "--tags", "-z",
-            "--encoding=UTF-8", "--format=%H%x00%s%x00%an%x00%aI%x00%P", "--max-count=" + Math.Clamp(filter.Take, 1, 100_000),
+            "--encoding=UTF-8", "--format=%H%x00%x00%an%x00%aI%x00%P", "--max-count=" + Math.Clamp(filter.Take, 1, 100_000),
             "--skip=" + Math.Max(0, filter.Skip), "--fixed-strings", "--regexp-ignore-case" };
+        if (visibleRefs is not null)
+        {
+            args.RemoveAll(a => a is "--branches" or "--remotes" or "--tags");
+            args.AddRange(VisibleTips(visibleRefs, status));
+        }
         var searchedCommit = Regex.IsMatch(filter.Search, "^[0-9a-fA-F]{7,64}$")
             ? await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", "--end-of-options", filter.Search + "^{commit}") : null;
         if (searchedCommit is not null)
         {
-            args.RemoveAll(arg => arg is "--branches" or "--remotes" or "--tags");
+            args.RemoveAll(arg => arg is "--branches" or "--remotes" or "--tags" || visibleRefs is not null && VisibleTips(visibleRefs, status).Contains(arg));
             args.Add("--no-walk"); args.Add(searchedCommit);
         }
         else if (filter.Search.Length > 0) args.Add("--grep=" + filter.Search);
@@ -66,7 +97,7 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
                 throw new ArgumentException("Date filters must use a date such as 2026-10-23.");
             args.Add(flag + date.ToString("O"));
         }
-        if (searchedCommit is null && status.Head is not (null or "(initial)")) args.Add("HEAD");
+        if (visibleRefs is null && searchedCommit is null && status.Head is not (null or "(initial)")) args.Add("HEAD");
         args.Add("--");
         if (filter.Path.Length > 0) { GitAccess.FullPath(root, filter.Path); args.Add(filter.Path); }
         var fields = Decode(await git.Bytes(root, ct, args.ToArray())).Split('\0');
@@ -74,12 +105,13 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
         for (var n = 0; n + 4 < fields.Length; n += 5)
             result.Add(new(fields[n], fields[n + 1], fields[n + 2], DateTimeOffset.Parse(fields[n + 3], CultureInfo.InvariantCulture),
                 fields[n + 4].Split(' ', StringSplitOptions.RemoveEmptyEntries)));
-        return result;
+        return await new CommitTextReader(runner).EnrichAsync(root, result, ct);
     }
 
-    public async Task<InProgressState> InProgress(string root, RepoStatus status, CancellationToken ct)
+    public async Task<InProgressState> InProgress(string root, RepoStatus status, CancellationToken ct, bool presentation = false)
     {
-        var directory = await git.Text(root, ct, "rev-parse", "--absolute-git-dir");
+        var descriptor = presentation ? await Descriptor(root, ct) : null;
+        var directory = descriptor?.GitDir ?? await git.Text(root, ct, "rev-parse", "--absolute-git-dir");
         var kind = new[] { ("rebase-merge", "rebase"), ("rebase-apply", "rebase"), ("MERGE_HEAD", "merge"),
             ("CHERRY_PICK_HEAD", "cherry-pick"), ("REVERT_HEAD", "revert"), ("BISECT_LOG", "bisect") }
             .FirstOrDefault(pair => File.Exists(Path.Combine(directory, pair.Item1)) || Directory.Exists(Path.Combine(directory, pair.Item1))).Item2 ?? "";
@@ -89,7 +121,7 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
             kind = File.Exists(todo) && (await File.ReadAllTextAsync(todo, ct)).TrimStart().StartsWith("revert ", StringComparison.Ordinal)
                 ? "revert" : "cherry-pick";
         }
-        if (kind.Length == 0 && await git.TryText(root, ct, "config", "--get", "extensions.refStorage") == "reftable")
+        if (kind.Length == 0 && (descriptor?.Format.RefStorage ?? await git.TryText(root, ct, "config", "--get", "extensions.refStorage")) == "reftable")
             foreach (var (name, operation) in new[] { ("CHERRY_PICK_HEAD", "cherry-pick"), ("REVERT_HEAD", "revert"), ("MERGE_HEAD", "merge") })
                 if (await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", name) is not null) { kind = operation; break; }
         return new(kind, status.Files.Any(f => f.IndexStatus == "U" || f.WorktreeStatus == "U" ||
@@ -111,46 +143,51 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
         return await git.Text(root, ct, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}");
     }
 
-    public async Task<CommitDetails> Commit(string root, string commit, CancellationToken ct)
+    private async Task<CommitDetails> ReadCommit(string root, string commit, CancellationToken ct)
     {
         var oid = await Resolve(root, commit, ct);
-        var data = Decode(await git.Bytes(root, ct, ["show", "-s", "--encoding=UTF-8", "--format=%H%x00%an%x00%aI%x00%P%x00%B", oid])).Split('\0', 5);
+        var data = Decode(await git.Bytes(root, ct, ["show", "-s", "--encoding=UTF-8", "--format=%H%x00%an%x00%aI%x00%P%x00", oid])).Split('\0', 5);
         var parents = data[3].Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var args = new List<string> { "diff-tree", "--no-commit-id", "--name-status", "-z", "-r", "--no-renames" };
         if (parents.Length > 0) args.Add(parents[0]); else args.Add("--root");
         args.Add(oid); args.Add("--");
-        var entries = GitAccess.NullFields(await git.Bytes(root, ct, args.ToArray()));
+        var entries = RawFields(await git.Bytes(root, ct, args.ToArray()));
         var files = new List<FileChange>();
-        for (var n = 0; n + 1 < entries.Length; n += 2)
-            files.Add(new(entries[n + 1], entries[n], ".", Encoding.UTF8.GetBytes(entries[n + 1])));
-        var message = data[4].TrimEnd('\r', '\n');
-        return new(new(oid, message.Split('\n')[0], data[1], DateTimeOffset.Parse(data[2], CultureInfo.InvariantCulture), parents), message, files);
+        for (var n = 0; n + 1 < entries.Count; n += 2)
+            files.Add(new(GitPathPolicy.DecodePath(entries[n + 1]), Encoding.ASCII.GetString(entries[n]), ".", entries[n + 1]));
+        var text = await new CommitTextReader(runner).ReadAsync(root, oid, ct);
+        var message = text.Message.TrimEnd('\r', '\n');
+        return new(new(oid, text.Subject, data[1], DateTimeOffset.Parse(data[2], CultureInfo.InvariantCulture), parents)
+            { MessageEncoding = text.Encoding }, message, files) { MessageEncoding = text.Encoding };
     }
 
     public async Task<string> Diff(string root, DiffRequest request, CancellationToken ct)
     {
+        ValidateReadablePath(root, request.Path);
         GitAccess.FullPath(root, request.Path);
         var args = new List<string> { "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames", "--unified=3" };
         var acceptedOne = false;
         if (request.Commit is not null)
         {
-            var detail = await Commit(root, request.Commit, ct);
-            if (detail.Commit.Parents.Count > 0) args.Add(detail.Commit.Parents[0]);
+            var detail = await CommitMetadata(root, request.Commit, ct);
+            if (detail.Parents.Count > 0) args.Add(detail.Parents[0]);
             else { args[0] = "diff-tree"; args.AddRange(["--root", "-p", "--no-commit-id"]); }
-            args.Add(detail.Commit.Hash);
+            args.Add(detail.Hash);
         }
         else if (request.Staged) args.Add("--cached");
-        else
+        args.AddRange(["--", request.Path]);
+        var options = new GitRunOptions { Trusted = await settings.IsTrustedAsync(root, ct) };
+        var result = await runner.RunAsync(root, args, ct, options);
+        // A nonempty native diff already proves this is an indexed change. Only
+        // an empty working diff needs the extra check for a new, untracked file.
+        if (request.Commit is null && !request.Staged && result.ExitCode == 0 && result.Output.Length == 0 &&
+            (await git.Bytes(root, ct, ["ls-files", "-z", "--", request.Path])).Length == 0)
         {
-            var tracked = await git.Bytes(root, ct, ["ls-files", "-z", "--", request.Path]);
-            if (tracked.Length == 0)
-            {
-                args.AddRange(["--no-index", "--", "/dev/null", request.Path]);
-                acceptedOne = true;
-            }
+            args.RemoveRange(args.Count - 2, 2);
+            args.AddRange(["--no-index", "--", "/dev/null", request.Path]);
+            acceptedOne = true;
+            result = await runner.RunAsync(root, args, ct, options);
         }
-        if (!acceptedOne) args.AddRange(["--", request.Path]);
-        var result = await runner.RunAsync(root, args, ct, new() { Trusted = await settings.IsTrustedAsync(root, ct) });
         if (result.ExitCode != 0 && !(acceptedOne && result.ExitCode == 1)) throw new GitCommandException(result);
         try { return GitAccess.Utf8.GetString(result.Output); }
         catch (DecoderFallbackException)
@@ -201,6 +238,7 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
 
     public async Task<FilePreview> Preview(string root, DiffRequest request, CancellationToken ct)
     {
+        ValidateReadablePath(root, request.Path);
         const int imageLimit = 8 * 1024 * 1024;
         var full = GitAccess.FullPath(root, request.Path);
         var image = new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico" }
@@ -219,9 +257,9 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
         (long? Size, byte[]? Image) after;
         if (request.Commit is not null)
         {
-            var detail = await Commit(root, request.Commit, ct);
-            before = await Blob(detail.Commit.Parents.Count > 0 ? detail.Commit.Parents[0] + ":" + request.Path : null);
-            after = await Blob(detail.Commit.Hash + ":" + request.Path);
+            var detail = await CommitMetadata(root, request.Commit, ct);
+            before = await Blob(detail.Parents.Count > 0 ? detail.Parents[0] + ":" + request.Path : null);
+            after = await Blob(detail.Hash + ":" + request.Path);
         }
         else if (request.Staged)
         {

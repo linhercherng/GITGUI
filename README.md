@@ -2,15 +2,15 @@
 
 [![CI](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml/badge.svg)](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)
 
-跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。提供 **M1 日常操作、M2 進階歷史、M3 倉庫工具與安全快照復原**，並附完整 Portable Git 的 Windows x64 免安裝版。
+跨平台桌面 Git 用戶端，使用 **C# / .NET 10 LTS + Avalonia 11**。提供 **日常 Git 操作、進階歷史、倉庫工具與安全快照復原**，並附完整 Portable Git 的 Windows x64 免安裝版。主程式採 [MIT 授權](LICENSE)。
 
-![M3 工作區，Headless 測試資料](docs/images/m3-main.png)
+![M4 工作區，Headless 測試資料](docs/images/m4-main.png)
 
-截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m3-main-history.png)、[三方衝突編輯](docs/images/m3-main-conflict.png)。
+截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m4-main-history.png)、[三方衝突編輯](docs/images/m3-main-conflict.png)。
 
 ## Windows 免安裝版
 
-從 [GitHub 最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載 `GITGUI-0.4.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
+從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.5.0) 下載 `GITGUI-0.5.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。本版執行檔未簽章；支援OS限制見下方M4驗收說明。大型倉庫首屏及嚴格16ms回應目標尚未完整通過，因此列為預覽版，M4正式驗收仍未完成。
 
 請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
 
@@ -18,7 +18,7 @@
 
 ## 從原始碼執行
 
-需要 .NET SDK **8.0.404** 或同屬 .NET 8 的較新 SDK，以及 Git **2.40+**。支援已安裝的 Git 與 **Portable Git**，不要求 Git 在系統 PATH 中。
+需要 .NET SDK **10.0.402**（global.json 允許同 feature band 的修補版本），以及 Git **2.40+**。支援已安裝的 Git 與 **Portable Git**，不要求 Git 在系統 PATH 中。
 
 ```powershell
 git clone https://github.com/linhercherng/GITGUI.git
@@ -74,7 +74,7 @@ v0.2.0 加入應用程式圖示、一致的線條操作圖示與按鈕層級。�
 | 檔案、hunk、行暫存與取消 | 檔案工具列；右側「選取 hunk / 行」勾選後套用 |
 | 捨棄變更 | 列出選取檔案，確認後建立快照再執行 |
 | commit、amend | 提交訊息、修改上一筆、此次略過 hooks、簽章選項；Ctrl+Enter |
-| 提交圖、搜尋與篩選 | 拓撲圖、作者／路徑／日期篩選、每批載入 1,000 筆 |
+| 提交圖、搜尋與篩選 | 拓撲圖、作者／路徑／日期篩選、首批 500 筆，再分批載入 1,000 筆 |
 | 工作區與 commit Diff | AvaloniaEdit 行內／並排、大小變化、圖片前後預覽 |
 | 分支 CRUD | 左側分支清單與操作；雙擊切換 |
 | fetch、pull | 上方工具列；pull 先快照，遵守 pull.ff；rebase 設定會先詢問此次改用 merge |
@@ -95,13 +95,13 @@ v0.2.0 加入應用程式圖示、一致的線條操作圖示與按鈕層級。�
 
 ## 驗證與架構
 
-v0.4.0 的相容性矩陣固定使用 Git **2.40.0** 與查核日最新穩定版 **2.56.0**，各跑 Windows／Ubuntu／macOS Intel 三平台完整套件；實際成功狀態以對應 commit 的六格 CI 為準。SHA-1／SHA-256 搭配 files／reftable 執行相同真實流程，舊版 Git 不支援的 reftable 兩格明確標記 skip。來源、雜湊與重現方式見 [M3 相容性](docs/M3-COMPATIBILITY.md)。Windows ARM64／Linux ARM64 暫不提供正式套件，決策與 native 資產證據見 [ARM 決策](docs/M3-ARM-DECISION.md)。
+v0.5.0 的相容性矩陣固定使用 Git **2.40.0** 與查核日最新穩定版 **2.56.0**，各跑 Windows／Ubuntu／macOS Intel 三平台完整套件；實際成功狀態以對應 commit 的六格 CI 為準。SHA-1／SHA-256 搭配 files／reftable 執行相同真實流程，舊版 Git 不支援的 reftable 兩格明確標記 skip。來源、雜湊與重現方式見 [M3 相容性](docs/M3-COMPATIBILITY.md)。Windows ARM64／Linux ARM64 暫不提供正式套件，決策與 native 資產證據見 [ARM 決策](docs/M3-ARM-DECISION.md)。
 
 ```powershell
 dotnet build GitGui.sln -c Release
 dotnet test GitGui.sln -c Release
 # Windows：實際 apphost 憑證管線與桌面啟動
-./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net8.0/GitGui.App.exe -Desktop
+./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net10.0/GitGui.App.exe -Desktop
 ```
 
 詳細證據與邊界見 [驗證紀錄](docs/VALIDATION.md)、[M1 驗收表](docs/M1-ACCEPTANCE.md)、[架構決策](docs/ARCHITECTURE.md)。七個主專案維持單向相依：Core 無 UI／Process／libgit2；所有寫入與網路都走 git CLI。一般 SHA-1/files 提交圖走 LibGit2Sharp，格式不支援或原生讀取失敗時自動降級；篩選與 Diff 使用 CLI 以保持 Git patch 語意。
@@ -114,9 +114,9 @@ dotnet test GitGui.sln -c Release
 - 為保證原子 refs 復原，M1 不允許把分支 `topic` 直接改名為 `topic/sub` 或反向操作。
 - 非 UTF-8 檔案請使用整檔暫存或 ours/theirs；不提供可能改變編碼的逐行暫存／文字衝突編輯。無效 UTF-8 檔名的寫入會安全拒絕。Commit 訊息支援 Big5 fallback。
 - 單檔 Diff 超過 1 MiB／20,000 行先摺疊；圖片預覽每側最多 8 MiB；一般 CLI 輸出上限 32 MiB。快照檔案資料另走有界串流。
-- 尚未量測 10 萬 commit／5 萬檔案效能目標；精準增量快取、背景自動 fetch、完整無障礙與跨平台安裝檔留待後續。Diff 目前以變更色彩標記，程式語言高亮仍待補齊。
+- 10 萬 commit／5 萬檔案的效能數據與量測邊界見 [M4 效能](docs/M4-PERFORMANCE.md)。背景自動 fetch 與跨平台安裝檔留待後續。Diff 目前以變更色彩標記，程式語言高亮仍待補齊。
 - 遠端同步與 LFS 物件轉移測試使用隔離的本地 bare remote；簽章測試使用臨時 SSH key。未宣稱實測每種 SSH agent、遠端 LFS 服務、代理與外部 mergetool。真實 macOS/Linux 桌面互動也需另外驗收。
 - 資料存於 `.NET LocalApplicationData/GitGui`（Windows 通常是 `%LOCALAPPDATA%\GitGui`）。信任設定、最近倉庫與快照索引持久保存；憑證經同使用者 AskPass 管線傳遞，不寫入資料庫／日誌。操作輸出僅留本次視窗記憶體；生命週期日誌保留 14 天。
-- .NET 8 升級與授權方式是正式版前追蹤事項。目前未附 LICENSE；公開程式碼不代表授予再散佈授權。
+- M4 使用 .NET 10 LTS，隨包附 .NET 10.0.13。Microsoft 目前支援的桌面平台為 Windows 11、指定 Windows 10 Enterprise/LTSC 版本、macOS 15+、Ubuntu 22.04+；原規格 macOS 13 已離開上游支援週期，不能宣稱完成其實機驗證。來源與相容性範圍見 [M4 驗收](docs/M4-ACCEPTANCE.md)。
 
 原始規格日期：2026-10-23，全文保存於 [specification.md](docs/specification.md)，未改寫原始內容。其他優先級見 [ROADMAP](docs/ROADMAP.md)。

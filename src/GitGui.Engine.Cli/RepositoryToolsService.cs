@@ -101,7 +101,8 @@ public sealed partial class RepositoryToolsService : IRepositoryToolsService
         catch (Exception ex)
         {
             var message = ex is GitCommandException failure ? failure.Result.Error + Encoding.UTF8.GetString(failure.Result.Output) : ex.Message;
-            return new(false, GitProcessRunner.Redact(message.Trim()), GitErrorKind.Unknown, snapshot);
+            return new(false, GitProcessRunner.Redact(message.Trim()),
+                GitFailurePolicy.Classify(ex is GitCommandException command ? command.Result.ExitCode : -1, message), snapshot);
         }
     }
 

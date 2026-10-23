@@ -47,16 +47,19 @@ jobs:
         run: ./tests/PreparePortableGit.ps1
       - name: Test
         run: dotnet test GitGui.sln -c Release --no-build --logger trx --results-directory TestResults
+      - name: Verify performance comparison gate rejects invalid evidence
+        shell: pwsh
+        run: ./tests/Test-PerformanceComparison.ps1
       - name: Windows AskPass apphost protocol
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
-        run: ./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net8.0/GitGui.App.exe
+        run: ./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net10.0/GitGui.App.exe
       - name: Build and verify self-contained Windows portable ZIP
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
         run: |
           ./scripts/Build-WindowsPortable.ps1 -OutputDirectory "$env:RUNNER_TEMP/windows-package"
-          ./tests/Test-WindowsPortable.ps1 -Archive "$env:RUNNER_TEMP/windows-package/GITGUI-0.4.0-win-x64-portable.zip"
+          ./tests/Test-WindowsPortable.ps1 -Archive "$env:RUNNER_TEMP/windows-package/GITGUI-0.5.0-win-x64-portable.zip"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         with:

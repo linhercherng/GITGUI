@@ -13,25 +13,25 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 @media(max-width:700px){main{margin:0;padding:24px 18px;border:0;border-radius:0}nav ol{columns:1}h1{font-size:27px}table{display:block;overflow:auto}}
 @media print{body,main{background:white;color:black}main{margin:0;padding:0;border:0}nav{break-inside:avoid}h2{break-after:avoid}pre,img,table{break-inside:avoid}a{color:inherit}}
 </style>
-<main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M3</div>
+<main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M4</div>
 <h1 id="gitgui">GITGUI 操作手冊</h1>
-<p>適用版本：0.4.0（M3）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 常見問題與驗證範圍</a></li></ol></nav>
+<p>適用版本：0.5.0（M4 預覽版）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。正式版本號、下載檔名與驗證結果，請以同版 Release 為準；本版功能與回歸測試通過，但大型倉庫首屏及嚴格16ms回應目標仍未完整通過；不屬於M4正式完成驗收。詳見 <a href="M4-PERFORMANCE.md">效能結果</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#section-15">16. 中文訊息、路徑與換行設定</a></li><li><a href="#section-16">17. 狀態刷新與提交分頁</a></li><li><a href="#section-17">18. 錯誤建議與本機日誌</a></li><li><a href="#section-18">19. 常見問題與驗證範圍</a></li></ol></nav>
 <h2 id="section-0">1. 解壓縮與啟動</h2>
 <ol>
-<li>下載 <code>GITGUI-0.4.0-win-x64-portable.zip</code>。</li>
+<li>從本專案 Release 下載 <code>GITGUI-0.5.0-win-x64-portable.zip</code>。</li>
 <li>在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。</li>
 <li>開啟解壓縮資料夾，執行 <code>GitGui.App.exe</code>。請勿直接從 ZIP 內執行。</li>
 <li>第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 <code>PortableGit\cmd\git.exe</code>。</li>
 </ol>
 <p>不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。</p>
 <p>若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 <code>SHA256SUMS.txt</code>；此版本未提供程式碼簽章。</p>
-<pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.4.0-win-x64-portable.zip' -Algorithm SHA256
+<pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.5.0-win-x64-portable.zip' -Algorithm SHA256
 </code></pre>
-<p>上方 <code>C:\下載</code> 是範例，請換成你的實際下載位置。</p>
+<p>上方 <code>C:\下載</code> 是範例，請換成實際下載位置。</p>
 <h2 id="section-1">2. 畫面與外觀</h2>
 <p>主畫面左側選擇最近倉庫與 refs，中間切換工作區、提交圖與快照並輸入提交訊息，右側檢視差異、衝突與提交詳情。操作面板可查看實際 Git 指令與輸出。</p>
-<p>「外觀」可選擇 Graphite、Midnight、Forest、Porcelain 四種配色。主工具列的 EN 選項可切換繁體中文或英文。外觀設定會保留供下次啟動使用。</p>
-<p><img src="images/m3-main.png" alt="M3 主畫面" /></p>
+<p>「外觀」可選擇 Graphite、Midnight、Forest、Porcelain 四種配色。主工具列的 EN 選項可切換繁體中文或英文，會同步更新主視窗、進階、倉庫工具與設定視窗的介面資源。外觀、語系與自訂快捷鍵會保留供下次啟動使用。Git 原始輸出、使用者輸入的分支名稱與提交訊息維持原文。</p>
+<p><img src="images/m4-main.png" alt="M4 主畫面" /></p>
 <h2 id="section-2">3. 開啟、建立或複製倉庫</h2>
 <ul>
 <li>已有本機倉庫：按「瀏覽」選擇工作目錄，或直接輸入路徑後按「開啟」。</li>
@@ -149,7 +149,84 @@ git config --local user.email &quot;you@example.com&quot;
 git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&quot;
 </code></pre>
 <p>簽章需要可用的 signer／agent；硬體金鑰、密碼提示與第三方 GPG 設定依你的環境而定。簽章成功不等同遠端平台已將該金鑰認定為你的帳號，請另外完成平台金鑰登記。</p>
-<h2 id="section-14">15. 常見問題與驗證範圍</h2>
+<h2 id="section-14">15. 快捷鍵、命令選單與無障礙操作</h2>
+<p>主畫面右下方按「快捷鍵」，可依主視窗、進階與倉庫工具的作用範圍搜尋命令並設定按鍵。</p>
+<ol>
+<li>找到命令，在右側欄位輸入組合，例如 <code>Ctrl+Shift+K</code>，按該列「儲存」。</li>
+<li>清空組合後儲存，即解除該命令的快捷鍵；按鈕與命令選單仍可使用。</li>
+<li>按「還原預設」會重設所有自訂快捷鍵。</li>
+<li>同一作用範圍不能重複使用相同組合。文字輸入、複製貼上、復原，以及 Tab／方向鍵等保留按鍵不能覆寫；儲存失敗時會顯示原因。</li>
+</ol>
+<p>常用預設值：</p>
+<table>
+<thead>
+<tr>
+<th>按鍵</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>F5</code></td>
+<td>重新整理目前視窗。</td>
+</tr>
+<tr>
+<td><code>Ctrl+Enter</code></td>
+<td>在主視窗提交已暫存內容，仍會檢查訊息、衝突與操作狀態。</td>
+</tr>
+<tr>
+<td><code>Ctrl+Shift+P</code></td>
+<td>開啟目前主視窗／進階／倉庫工具的命令選單，輸入名稱搜尋，再按 Enter 執行。</td>
+</tr>
+<tr>
+<td><code>F6</code>／<code>Shift+F6</code></td>
+<td>在主畫面的主要區域間向前／向後切換焦點。</td>
+</tr>
+<tr>
+<td><code>Tab</code>／<code>Shift+Tab</code></td>
+<td>在可操作控制項間移動。</td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>關閉可關閉的對話框或命令選單。</td>
+</tr>
+</tbody>
+</table>
+<p>尚未綁定按鍵的命令也能從命令選單找到。正在執行操作、沒有選取項目或有未解決衝突時，快捷鍵與按鈕使用相同的停用規則。</p>
+<p>介面提供控制項名稱、焦點導覽與提交圖的 automation peer，供輔助工具識別目前提交、清單與按鈕。這些支援包含程式層的無障礙與鍵盤測試；各作業系統原生螢幕閱讀器的實際朗讀與操作結果，仍需另外驗證，尚未宣稱 Windows Narrator 人工驗收通過。</p>
+<h2 id="section-15">16. 中文訊息、路徑與換行設定</h2>
+<p>右側詳情會顯示選取提交的訊息編碼，以及目前倉庫的 <code>core.autocrlf</code>、<code>core.safecrlf</code>、<code>core.eol</code> 設定與換行轉換提醒。</p>
+<ul>
+<li>有 <code>encoding</code> 標頭的 commit，依標頭解碼；沒有標頭時先讀 UTF-8，若位元組不合法，再嘗試 Big5，並標示偵測結果。</li>
+<li>未知或無法解碼的訊息會標示狀態。互動 rebase 若需要讀取這類訊息，會要求先用能保留原始位元組的 Git 工具處理，避免把錯誤解碼結果寫回歷史。</li>
+<li>新提交、amend，以及 rebase 的 reword／自訂 squash 訊息，使用倉庫明確設定的 <code>i18n.commitEncoding</code>；未設定時使用 UTF-8。程式保留原設定。</li>
+<li>若編碼不受支援，或訊息含該編碼無法表示的字元，例如 Big5 設定下的 emoji，會在建立快照或寫入 Git 前拒絕。請修改訊息，或自行確認後變更倉庫的編碼設定，再重試。rebase 暫停期間若改變此設定，須恢復原值才能沿用已保存的訊息檔繼續。</li>
+</ul>
+<p>例如要讓之後的新訊息使用 UTF-8，可在確認團隊需求後執行：</p>
+<pre><code class="language-text">git config --local i18n.commitEncoding UTF-8
+</code></pre>
+<p>這只調整之後的訊息編碼，不會轉換或修復既有 commit。附註標籤訊息使用 UTF-8。</p>
+<p>中文、空格、換行與 emoji 檔名以原始路徑處理。無法以 UTF-8 表示的檔名會用 <code>\xFF</code> 等轉義顯示，並保留原始位元組與 rename 來源；為避免誤改同名的有效路徑，相關編輯／暫存操作會被停用或拒絕。請使用支援原始位元組路徑的工具重新命名後再操作。倉庫有此類路徑時，部分暫存也會保守拒絕；其他受支援檔案仍可整檔暫存。非 UTF-8 的文字差異與二進位／符號連結衝突，使用整檔處理，不經文字編輯器另存轉碼。</p>
+<p><code>core.autocrlf</code> 未設定時顯示 <code>unset</code>，Git 預設視為 <code>false</code>。<code>true</code>、<code>input</code>、<code>false</code> 的行尾轉換行為不同，也可能受 <code>.gitattributes</code> 影響。請先查看提醒與差異，再決定是否修改設定；GITGUI 不會自動改成另一種換行政策。Windows 的 Git 執行程序會啟用 <code>core.longpaths</code>。</p>
+<h2 id="section-16">17. 狀態刷新與提交分頁</h2>
+<p>外部編輯檔案、切回視窗或按重新整理時，程式可局部更新工作區狀態與目前差異，避免每次都重建整份提交清單。使用者仍可透過重新整理取得新的 refs 與提交內容。</p>
+<p>提交圖預設先載入 500 筆。按「載入更多」繼續取得下一頁；搜尋或改變篩選條件會從新的查詢開始。若讀取期間歷史已改變，會重新載入，以免把不同版本的分頁混在一起。</p>
+<p>大型差異先顯示檔案資訊與提示，需要時再按「仍要載入」。切換檔案後，以目前選取項目的載入結果為準；差異載入中不能送出尚未確認的部分暫存。</p>
+<p>這些是載入與刷新行為說明。十萬筆提交／五萬個檔案的啟動、記憶體與捲動效能是否符合目標，請以同版量測報告為準。</p>
+<h2 id="section-17">18. 錯誤建議與本機日誌</h2>
+<p>操作失敗時，主視窗、進階與倉庫工具會顯示白話原因及建議動作。例如 lease 過期先 Fetch、非快轉推送先檢查同步狀態、衝突轉到解決流程、登入失敗開啟憑證說明、鎖定問題開啟鎖定說明。請先讀取原始原因，再執行建議；建議按鈕不會略過信任、確認或目前操作狀態的檢查。</p>
+<p>提交被辨識為 hook 拒絕時，可按「略過 hooks 重試」；必須另行確認，只重試同一份尚未改變的提交訊息、倉庫與選項，不會把略過設定保存為預設。修改草稿或切換倉庫後，請重新送出提交。其他 hook 操作仍先顯示輸出。</p>
+<p>展開「操作面板」可查看實際指令與 Git 輸出，並複製內容。憑證欄位會遮罩；若要將輸出貼給他人，仍請自行檢查倉庫路徑及檔案內容是否適合分享。</p>
+<p>Windows 的應用程式資料位置：</p>
+<pre><code class="language-text">%LOCALAPPDATA%\GitGui\ui.json          語系與自訂快捷鍵
+%LOCALAPPDATA%\GitGui\appearance.json  外觀
+%LOCALAPPDATA%\GitGui\gitgui.db        最近倉庫、信任與快照清單等索引
+%LOCALAPPDATA%\GitGui\gitgui-YYYYMMDD.log  本機診斷日誌
+</code></pre>
+<p>可把 <code>%LOCALAPPDATA%\GitGui</code> 貼到檔案總管網址列開啟。macOS／Linux 使用作業系統提供的本機應用程式資料目錄下的 <code>GitGui</code> 資料夾。</p>
+<p>日誌按日切檔並保留 14 天，也會記錄取消或啟動失敗的指令嘗試。持久化內容包含遮罩後的參數、工作目錄、耗時、結束碼與 stderr 分類，不保存 stdout、diff／blob、提交訊息、任意 hook stderr 或 AskPass 回答。操作面板與持久化日誌的內容範圍不同。日誌無法寫入時，不應把已成功的 Git 操作改判為失敗。</p>
+<p>目前沒有自動上傳日誌或預設啟用的遙測；日誌留在本機。</p>
+<h2 id="section-18">19. 常見問題與驗證範圍</h2>
 <table>
 <thead>
 <tr>
@@ -186,9 +263,18 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <td>還原被資料夾／子倉庫擋下</td>
 <td>先另行備份該資料，保留原倉庫並檢查實際路徑；不要為了還原而直接刪除子倉庫。</td>
 </tr>
+<tr>
+<td>Big5 提交不能包含 emoji</td>
+<td>修改訊息，或先確認需求再明確變更 <code>i18n.commitEncoding</code>；程式不會靜默替換字元。</td>
+</tr>
+<tr>
+<td>快捷鍵無法儲存</td>
+<td>檢查是否與同一作用範圍的命令重複，或使用了保留按鍵。也可清空解除綁定、還原預設。</td>
+</tr>
 </tbody>
 </table>
-<p>Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與實際 Windows ZIP／桌面測試的結果以同版 Release 的 <code>verification.json</code> 及相容性文件為準。大型效能目標、完整無障礙與 VT／PTY 屬於後續工作，尚未宣稱完成。</p>
-<p>相關文件：<a href="M3-COMPATIBILITY.md">M3 相容性</a>、<a href="M3-ARM-DECISION.md">ARM 決策</a>、<a href="specification.md">原始規格</a>、<a href="WINDOWS-RELEASE.md">Windows 打包</a>。Release：<a href="https://github.com/linhercherng/GITGUI/releases">https://github.com/linhercherng/GITGUI/releases</a>。</p>
+<p>Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與實際 Windows ZIP／桌面測試的結果以同版 Release 的 <code>verification.json</code> 及相容性文件為準。M4 已加入鍵盤自訂、無障礙介面與分頁刷新支援；原生螢幕閱讀器人工驗證、大型效能目標及完整 VT／PTY 的完成狀態須分別確認。</p>
+<p>主程式採 MIT 授權，免安裝資料夾內的 <code>LICENSE</code> 保留著作權與免責聲明；Portable Git 與其他相依元件仍依各自授權，見 <code>THIRD-PARTY.txt</code> 與 <code>licenses/</code>。</p>
+<p>相關文件：<a href="M4-ACCEPTANCE.md">M4 驗收</a>、<a href="M4-PERFORMANCE.md">M4 效能</a>、<a href="M3-COMPATIBILITY.md">M3 相容性</a>、<a href="M3-ARM-DECISION.md">ARM 決策</a>、<a href="specification.md">原始規格</a>、<a href="WINDOWS-RELEASE.md">Windows 打包</a>。Release：<a href="https://github.com/linhercherng/GITGUI/releases">https://github.com/linhercherng/GITGUI/releases</a>。</p>
 
 <footer>離線手冊隨同 GITGUI 提供。原始可編輯版本：<a href="USER-GUIDE.zh-TW.md">USER-GUIDE.zh-TW.md</a></footer></main></html>

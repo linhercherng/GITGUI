@@ -30,7 +30,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 @media(max-width:700px){main{margin:0;padding:24px 18px;border:0;border-radius:0}nav ol{columns:1}h1{font-size:27px}table{display:block;overflow:auto}}
 @media print{body,main{background:white;color:black}main{margin:0;padding:0;border:0}nav{break-inside:avoid}h2{break-after:avoid}pre,img,table{break-inside:avoid}a{color:inherit}}
 </style>
-<main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M3</div>
+<main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M4</div>
 $body
 <footer>離線手冊隨同 GITGUI 提供。原始可編輯版本：<a href="USER-GUIDE.zh-TW.md">USER-GUIDE.zh-TW.md</a></footer></main></html>
 "@

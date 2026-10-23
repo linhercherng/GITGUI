@@ -90,7 +90,8 @@ internal sealed class PreparedRefs : IAsyncDisposable
         var error = GitProcessRunner.Redact(await errors);
         completed = true;
         runner.Record(new(DateTimeOffset.Now, GitProcessRunner.FormatCommand(process.StartInfo.FileName, ["update-ref", "--stdin"]),
-            commands + "prepare\ncommit\n" + error, process.ExitCode, watch.Elapsed));
+            commands + "prepare\ncommit\n" + error, process.ExitCode, watch.Elapsed)
+        { WorkingDirectory = process.StartInfo.WorkingDirectory, Arguments = ["update-ref", "--stdin"], StandardError = error });
         if (response != "commit: ok" || process.ExitCode != 0) throw new InvalidOperationException("Ref restoration failed: " + error);
     }
     public async ValueTask DisposeAsync()

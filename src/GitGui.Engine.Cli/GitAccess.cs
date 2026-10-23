@@ -1,4 +1,5 @@
 using System.Text;
+using GitGui.Core;
 
 namespace GitGui.Engine.Cli;
 
@@ -43,7 +44,7 @@ internal sealed class GitAccess(GitProcessRunner runner)
 
     public static string FullPath(string root, string relative)
     {
-        if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative) ||
+        if (!GitPathPolicy.IsRepresentable(relative) || Path.IsPathRooted(relative) ||
             relative.Split('/').Any(p => p is "" or "." or ".." || p.Equals(".git", StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException("Unsafe repository path: " + relative);
         var full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));

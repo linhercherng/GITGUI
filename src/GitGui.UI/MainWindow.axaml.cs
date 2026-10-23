@@ -26,10 +26,15 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private AdvancedWindow? advancedWindow;
     private IRepositoryToolsService? repositoryTools;
     private RepositoryToolsWindow? toolsWindow;
+    private ShortcutManager shortcuts = new();
+    private Control? historyGraph;
     private FileSystemWatcher? worktreeWatcher;
     private FileSystemWatcher? gitWatcher;
     private FileSystemWatcher? commonWatcher;
     private readonly DispatcherTimer debounce = new() { Interval = TimeSpan.FromMilliseconds(300) };
+    private readonly RepositoryRefreshQueue refreshQueue = new();
+    private string? watchedGitDirectory;
+    private string? watchedCommonDirectory;
     private bool closed;
     private int openDialogs;
     private bool skipNextActivationRefresh;
@@ -39,14 +44,19 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         AvaloniaXamlLoader.Load(this);
     }
     public MainWindow(MainWindowViewModel vm, Control? graph = null, IGitRuntimeSettings? gitSettings = null, AppearanceManager? appearance = null,
-        IWorkspaceService? workspace = null, ITerminalService? terminalService = null, IRepositoryToolsService? repositoryTools = null) : this()
+        IWorkspaceService? workspace = null, ITerminalService? terminalService = null, IRepositoryToolsService? repositoryTools = null, ShortcutManager? shortcuts = null) : this()
     {
         viewModel = vm;
         this.gitSettings = gitSettings;
         this.appearance = appearance ?? new AppearanceManager();
         this.workspace = workspace; this.terminalService = terminalService;
         this.repositoryTools = repositoryTools;
+        this.shortcuts = shortcuts ?? new();
+        vm.English = this.shortcuts.Culture == "en";
+        this.shortcuts.CultureChanged += CultureChanged;
         DataContext = vm;
+        vm.Feedback.Navigate = HandleSuggestedActionAsync;
+        vm.ConfirmSkipHooks = async () => (await ConfirmAsync(new(vm.L["RetryWithoutHooks"], vm.L["RetryWithoutHooksDetails"], RiskLevel.High), CancellationToken.None)).Accepted;
         if (graph is null)
         {
             var list = new ListBox();
@@ -54,8 +64,12 @@ public partial class MainWindow : Window, IWorkspaceInteraction
             list.Bind(SelectingItemsControlSelectedItem(), new Binding(nameof(vm.SelectedCommit)) { Mode = BindingMode.TwoWay });
             graph = list;
         }
+        historyGraph = graph;
+        foreach (var name in new[] { "ChangesList", "StagedChangesList", "CommitFilesList" }) UiAccessibility.NameFileItems(this.FindControl<ListBox>(name)!, vm.L);
+        vm.L.Bind(graph, Avalonia.Automation.AutomationProperties.NameProperty, "GraphName");
         this.FindControl<ContentControl>("GraphHost")!.Content = new ScrollViewer { Content = graph, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
-        KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.P, KeyModifiers.Control | KeyModifiers.Shift), Command = new AsyncRelayCommand(OpenCommandPaletteAsync) });
+        this.shortcuts.Attach(this, "Main", vm.L, ShortcutManager.Definitions.Where(d => d.Scope == "Main").Select(d => new UiCommand(d.Id[5..], () => ExecuteUiCommand(d.Id[5..]), () => CanExecuteUiCommand(d.Id[5..]))).ToArray());
+        Closed += (_, _) => this.shortcuts.CultureChanged -= CultureChanged;
         Opened += async (_, _) => await vm.InitializeCommand.ExecuteAsync(null);
         Closed += (_, _) => { closed = true; debounce.Stop(); worktreeWatcher?.Dispose(); gitWatcher?.Dispose(); commonWatcher?.Dispose(); vm.RepositoryOpened -= RepositoryOpened; vm.PropertyChanged -= ViewModelChanged; vm.Dispose(); };
         Activated += async (_, _) =>
@@ -69,9 +83,106 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         Closing += (_, args) =>
         {
             if (vm.IsBusy || advancedWindow?.ViewModel.IsWriting == true || toolsWindow?.ViewModel.IsWriting == true)
-            { args.Cancel = true; vm.Notice = "操作進行中，請完成後再關閉 / Wait for the active operation before closing."; }
+            { args.Cancel = true; vm.Notice = vm.L["ToolsWait"]; }
         };
-        debounce.Tick += async (_, _) => { debounce.Stop(); if (vm.HasRepository && !vm.IsBusy && !closed) await vm.RefreshCommand.ExecuteAsync(null); };
+        debounce.Tick += async (_, _) =>
+        {
+            debounce.Stop();
+            if (closed || !vm.HasRepository) return;
+            if (!refreshQueue.Take(Environment.TickCount64, vm.IsBusy, out var kinds, out var delay))
+            { if (delay > 0) { debounce.Interval = TimeSpan.FromMilliseconds(delay); debounce.Start(); } return; }
+            if ((kinds & (RepositoryRefreshKind.History | RepositoryRefreshKind.Configuration)) != 0) await vm.RefreshCommand.ExecuteAsync(null);
+            else await vm.RefreshStatusAsync();
+        };
+    }
+    private void CultureChanged(object? sender, EventArgs args) { if (viewModel is { } vm) vm.English = shortcuts.Culture == "en"; }
+    private bool CanExecuteUiCommand(string action)
+    {
+        if (viewModel is not { } vm || closed || openDialogs > 0) return false;
+        if (action == "Cancel") return vm.CanCancel;
+        if (action is "StagePatch" or "UnstagePatch") return vm.CanApplyPatch;
+        if (action is "WriteConflictResult" or "UseOursFile" or "UseTheirsFile" or "UseBothFile" or "SectionOurs" or "SectionTheirs" or "SectionBoth") return vm.CanSaveConflict;
+        if (action is "Palette" or "ShortcutSettings" or "Appearance") return true;
+        if (action is "Refresh" or "Browse" or "Open" or "GitSettings" or "RepositoryActions" or "Init" or "Clone") return vm.CanConfigure;
+        if (action.StartsWith("Focus", StringComparison.Ordinal) || action is "NextPane" or "PreviousPane") return vm.HasRepository;
+        return vm.CanOperate;
+    }
+    private int focusedPane;
+    private async Task ExecuteUiCommand(string action)
+    {
+        if (viewModel is not { } vm || !CanExecuteUiCommand(action)) return;
+        var args = new RoutedEventArgs();
+        switch (action)
+        {
+            case "Palette": await ShowCommandPaletteAsync(); break;
+            case "ShortcutSettings": await ShowShortcutSettingsAsync(); break;
+            case "Browse": BrowseClick(this, args); break;
+            case "Open": case "Refresh": await vm.RefreshCommand.ExecuteAsync(null); break;
+            case "RepositoryActions": RepositoryActionsClick(this, args); break;
+            case "GitSettings": GitSettingsClick(this, args); break;
+            case "Appearance": AppearanceClick(this, args); break;
+            case "AdvancedOpen": AdvancedClick(this, args); break;
+            case "ToolsOpen": RepositoryToolsClick(this, args); break;
+            case "Terminal": TerminalClick(this, args); break;
+            case "Undo": await vm.UndoCommand.ExecuteAsync(null); break;
+            case "Redo": await vm.RedoCommand.ExecuteAsync(null); break;
+            case "Cancel": vm.CancelCommand.Execute(null); break;
+            case "SearchHistory": await vm.SearchHistoryCommand.ExecuteAsync(null); break;
+            case "LoadMore": await vm.LoadMoreCommand.ExecuteAsync(null); break;
+            case "LoadLargeDiff": await vm.LoadLargeDiffCommand.ExecuteAsync(null); break;
+            case "UseOursFile": vm.UseConflictSideCommand.Execute("Ours"); break;
+            case "UseTheirsFile": vm.UseConflictSideCommand.Execute("Theirs"); break;
+            case "UseBothFile": vm.UseConflictSideCommand.Execute("Both"); break;
+            case "SectionOurs": vm.UseConflictSectionCommand.Execute("Ours"); break;
+            case "SectionTheirs": vm.UseConflictSectionCommand.Execute("Theirs"); break;
+            case "SectionBoth": vm.UseConflictSectionCommand.Execute("Both"); break;
+            case "FocusFiles": FocusPane(0); break;
+            case "FocusHistory": FocusPane(1); break;
+            case "FocusDiff": FocusPane(2); break;
+            case "FocusCommit": FocusPane(3); break;
+            case "NextPane": FocusPane((focusedPane + 1) % 4); break;
+            case "PreviousPane": FocusPane((focusedPane + 3) % 4); break;
+            default: await vm.ActionCommand.ExecuteAsync(action); break;
+        }
+    }
+    private void FocusPane(int index)
+    {
+        focusedPane = index;
+        this.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = index == 1 ? 1 : 0;
+        if (index == 0)
+        {
+            var list = this.FindControl<ListBox>(viewModel?.ShowStaged == true ? "StagedChangesList" : "ChangesList")!;
+            list.Focusable = true; list.Focus();
+        }
+        else if (index == 1) historyGraph?.Focus();
+        else if (index == 2) { this.FindControl<TabControl>("DetailTabs")!.SelectedIndex = 0; this.FindControl<DiffEditor>("DiffViewer")!.FocusDocument(); }
+        else this.FindControl<TextBox>("CommitMessageInput")!.Focus();
+    }
+    private async Task ShowShortcutSettingsAsync()
+    {
+        if (viewModel is not { } vm) return;
+        var focus = FocusManager?.GetFocusedElement(); openDialogs++;
+        try { await new ShortcutSettingsWindow(shortcuts, vm.L).ShowDialog(this); }
+        finally { openDialogs--; focus?.Focus(); skipNextActivationRefresh = true; }
+    }
+    private async Task ShowCommandPaletteAsync()
+    {
+        openDialogs++;
+        try { await shortcuts.ShowPaletteAsync(this); }
+        finally { openDialogs--; skipNextActivationRefresh = true; }
+    }
+    private async void ShortcutSettingsClick(object? sender, RoutedEventArgs args) => await ShowShortcutSettingsAsync();
+    internal async Task HandleSuggestedActionAsync(GitSuggestedAction action)
+    {
+        if (viewModel is not { } vm) return;
+        if (action is GitSuggestedAction.Fetch or GitSuggestedAction.Pull)
+        { if (vm.CanOperate) await vm.ActionCommand.ExecuteAsync(action.ToString()); }
+        else if (action == GitSuggestedAction.ResolveConflicts)
+        { this.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 0; this.FindControl<TabControl>("DetailTabs")!.SelectedIndex = vm.HasConflict ? 3 : 0; Activate(); }
+        else if (action == GitSuggestedAction.Stash)
+        { AdvancedClick(this, new()); if (advancedWindow is { } advanced) advanced.FindControl<TabControl>("AdvancedTabs")!.SelectedIndex = 0; }
+        else if (action == GitSuggestedAction.ShowOutput) this.FindControl<Expander>("MainOperationPanel")!.IsExpanded = true;
+        else await OperationFeedback.ShowHelpAsync(this, vm.L, action);
     }
     private static AvaloniaProperty SelectingItemsControlSelectedItem() => Avalonia.Controls.Primitives.SelectingItemsControl.SelectedItemProperty;
     private void RepositoryToolsClick(object? sender, RoutedEventArgs args)
@@ -81,7 +192,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         advancedWindow?.Close();
         if (advancedWindow is not null) { vm.Notice = vm.L["AdvancedWait"]; return; }
         var model = new RepositoryToolsWindowViewModel(workspace, repositoryTools, vm.Root, vm.L);
-        var window = toolsWindow = new RepositoryToolsWindow(model);
+        var window = toolsWindow = new RepositoryToolsWindow(model, shortcuts);
         model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(model.IsWriting)) vm.ExternalWriteActive = model.IsWriting; };
         model.WorkspaceChanged += async (_, _) => { if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
         window.Closed += async (_, _) => { toolsWindow = null; vm.ExternalWriteActive = false; if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
@@ -95,7 +206,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         if (toolsWindow is not null) { vm.Notice = vm.L["ToolsWait"]; return; }
         var model = new AdvancedWindowViewModel(workspace, advanced, vm.Root,
             vm.SelectedCommitFile?.Path ?? vm.SelectedChange?.Path, vm.SelectedCommit?.Hash, vm.L);
-        var window = advancedWindow = new AdvancedWindow(model);
+        var window = advancedWindow = new AdvancedWindow(model, shortcuts);
         model.WorkspaceChanged += async (_, _) => { if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
         window.Closed += async (_, _) => { advancedWindow = null; if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
         window.Show(this);
@@ -109,10 +220,11 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         if (advancedWindow is not null) { vm.Notice = vm.L["AdvancedWait"]; return; }
         toolsWindow?.Close();
         if (toolsWindow is not null) { vm.Notice = vm.L["ToolsWait"]; return; }
-        var panel = terminalPanel = new TerminalPanel(terminalService);
+        var panel = terminalPanel = new TerminalPanel(terminalService, vm.L);
         var window = terminalWindow = new Window { Title = "GITGUI · Terminal", Width = 1040, Height = 680,
             MinWidth = 640, MinHeight = 400, Content = new Border { Padding = new Thickness(16), Child = panel } };
         AppearanceManager.StyleWindow(window);
+        window.Bind(TitleProperty, new Binding("[Terminal]") { Source = vm.L });
         panel.RunningChanged += (_, _) => vm.TerminalActive = panel.IsRunning;
         window.Closed += async (_, _) =>
         {
@@ -124,6 +236,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     }
     private void ViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(MainWindowViewModel.English) && viewModel is { } localized)
+            try { shortcuts.SetCulture(localized.English ? "en" : "zh-TW"); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { localized.Notice = localized.L["ShortcutSaveFailed"]; }
         if (toolsWindow is { } tools && viewModel is { } main && e.PropertyName is nameof(MainWindowViewModel.IsBusy) or nameof(MainWindowViewModel.TerminalActive))
             tools.ViewModel.IsBlocked = main.IsBusy || main.TerminalActive;
         if (e.PropertyName == nameof(MainWindowViewModel.SelectedCommit) && viewModel?.SelectedCommit is not null)
@@ -141,11 +255,12 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private void RepositoryOpened(object? sender, EventArgs args)
     {
         worktreeWatcher?.Dispose(); gitWatcher?.Dispose(); commonWatcher?.Dispose();
+        watchedGitDirectory = watchedCommonDirectory = null;
         if (viewModel is null || !Directory.Exists(viewModel.Root)) return;
         try
         {
-            worktreeWatcher = Watch(viewModel.Root);
             var dotGit = Path.Combine(viewModel.Root, ".git");
+            if (Directory.Exists(dotGit)) watchedGitDirectory = watchedCommonDirectory = dotGit;
             if (File.Exists(dotGit))
             {
                 var pointer = File.ReadAllText(dotGit).Trim();
@@ -154,28 +269,37 @@ public partial class MainWindow : Window, IWorkspaceInteraction
                     var directory = Path.GetFullPath(Path.Combine(viewModel.Root, pointer[8..]));
                     if (Directory.Exists(directory))
                     {
+                        watchedGitDirectory = directory;
                         gitWatcher = Watch(directory);
                         var commonPointer = Path.Combine(directory, "commondir");
                         if (File.Exists(commonPointer))
                         {
                             var common = Path.GetFullPath(Path.Combine(directory, File.ReadAllText(commonPointer).Trim()));
-                            if (Directory.Exists(common)) commonWatcher = Watch(common);
+                            if (Directory.Exists(common)) { watchedCommonDirectory = common; commonWatcher = Watch(common); }
                         }
                     }
                 }
             }
+            worktreeWatcher = Watch(viewModel.Root);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { viewModel.Notice += " · " + ex.Message; }
     }
     private FileSystemWatcher Watch(string root)
     {
         var watcher = new FileSystemWatcher(root) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size };
-        FileSystemEventHandler changed = (_, _) => ScheduleRefresh();
-        watcher.Changed += changed; watcher.Created += changed; watcher.Deleted += changed; watcher.Renamed += (_, _) => ScheduleRefresh();
-        watcher.Error += (_, _) => ScheduleRefresh(); watcher.EnableRaisingEvents = true;
+        FileSystemEventHandler changed = (_, e) => ScheduleRefresh(e.FullPath);
+        watcher.Changed += changed; watcher.Created += changed; watcher.Deleted += changed;
+        watcher.Renamed += (_, e) => { ScheduleRefresh(e.OldFullPath); ScheduleRefresh(e.FullPath); };
+        watcher.Error += (_, _) => ScheduleRefresh(null); watcher.EnableRaisingEvents = true;
         return watcher;
     }
-    private void ScheduleRefresh() => Dispatcher.UIThread.Post(() => { if (closed || viewModel?.IsBusy != false) return; debounce.Stop(); debounce.Start(); });
+    private void ScheduleRefresh(string? path)
+    {
+        var kind = path is null || viewModel is null ? RepositoryRefreshKind.All :
+            RepositoryRefreshQueue.Classify(viewModel.Root, watchedGitDirectory, watchedCommonDirectory, path);
+        if (!refreshQueue.Add(kind, Environment.TickCount64)) return;
+        Dispatcher.UIThread.Post(() => { if (closed) return; debounce.Stop(); debounce.Interval = TimeSpan.FromMilliseconds(300); debounce.Start(); });
+    }
     private async void BrowseClick(object? sender, RoutedEventArgs args)
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new() { Title = viewModel?.L["RepositoryPath"], AllowMultiple = false });
@@ -265,7 +389,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         var dialog = CreateDialog(confirmation.Title, 660);
         var panel = new StackPanel { Spacing = 14, Margin = new Thickness(24) };
         panel.Children.Add(Heading(confirmation.Title));
-        var risk = new TextBlock { Text = $"{l["Safety"]}: {confirmation.Risk}", FontSize = 12 };
+        var risk = new TextBlock { Text = $"{l["Safety"]}: {l["Risk" + confirmation.Risk]}", FontSize = 12 };
         AppearanceManager.Bind(risk, TextBlock.ForegroundProperty, "WarningBrush"); panel.Children.Add(risk);
         panel.Children.Add(new ScrollViewer { MaxHeight = 360, Content = new TextBlock { Text = confirmation.Details, TextWrapping = TextWrapping.Wrap } });
         TextBox? typed = null;
@@ -332,28 +456,4 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         AppearanceManager.Bind(label, TextBlock.ForegroundProperty, "MutedBrush"); return label;
     }
 
-    private async Task OpenCommandPaletteAsync()
-    {
-        if (viewModel is null) return;
-        var vm = viewModel;
-        var dialog = CreateDialog(vm.L["Commands"], 560);
-        var search = new TextBox { Watermark = vm.L["CommandSearch"] };
-        string[] actions = ["Refresh", "Stage", "StageAll", "Unstage", "UnstageAll", "StagePatch", "UnstagePatch", "Discard", "Commit", "CreateBranch", "SwitchBranch", "RenameBranch", "DeleteBranch", "Merge", "Fetch", "Pull", "Push", "AbortMerge", "ResolveOurs", "ResolveTheirs", "MarkResolved", "ExternalMergeTool", "RestoreSnapshot", "Undo", "Redo"];
-        var entries = actions.Select(a => new PaletteEntry(a, vm.L[a switch { "ResolveOurs" => "Ours", "ResolveTheirs" => "Theirs", "ExternalMergeTool" => "MergeTool", "RestoreSnapshot" => "Restore", _ => a }])).ToArray();
-        var list = new ListBox { ItemsSource = entries, Height = 340 };
-        search.TextChanged += (_, _) => { list.ItemsSource = entries.Where(e => e.ToString().Contains(search.Text ?? "", StringComparison.OrdinalIgnoreCase)).ToArray(); list.SelectedIndex = 0; };
-        var execute = new Button { Content = vm.L["Continue"], HorizontalAlignment = HorizontalAlignment.Right };
-        execute.Click += (_, _) => { if (list.SelectedItem is PaletteEntry entry) dialog.Close(entry.Action); };
-        list.DoubleTapped += (_, _) => { if (list.SelectedItem is PaletteEntry entry) dialog.Close(entry.Action); };
-        dialog.KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.Escape), Command = new RelayCommand(() => dialog.Close(null)) });
-        dialog.KeyBindings.Add(new KeyBinding { Gesture = new KeyGesture(Key.Enter), Command = new RelayCommand(() => { if (list.SelectedItem is PaletteEntry entry) dialog.Close(entry.Action); }) });
-        var panel = new StackPanel { Margin = new Thickness(20), Spacing = 12 }; panel.Children.Add(Heading(vm.L["Commands"])); panel.Children.Add(search); panel.Children.Add(list); panel.Children.Add(execute); dialog.Content = panel;
-        dialog.Opened += (_, _) => { search.Focus(); list.SelectedIndex = 0; };
-        var chosen = await dialog.ShowDialog<string?>(this);
-        if (chosen == "Refresh") await vm.RefreshCommand.ExecuteAsync(null);
-        else if (chosen == "Undo") await vm.UndoCommand.ExecuteAsync(null);
-        else if (chosen == "Redo") await vm.RedoCommand.ExecuteAsync(null);
-        else if (chosen is not null) await vm.ActionCommand.ExecuteAsync(chosen);
-    }
-    private sealed record PaletteEntry(string Action, string Label) { public override string ToString() => Label + "   ·   " + Action; }
 }

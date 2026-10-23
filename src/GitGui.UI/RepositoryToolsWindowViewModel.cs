@@ -15,6 +15,7 @@ public sealed partial class RepositoryToolsWindowViewModel : ObservableObject, I
     private bool disposed;
     public string Root { get; }
     public Localization L { get; }
+    public OperationFeedback Feedback { get; }
     public event EventHandler<OperationOutcome>? WorkspaceChanged;
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private bool isWriting;
@@ -57,6 +58,7 @@ public sealed partial class RepositoryToolsWindowViewModel : ObservableObject, I
     public RepositoryToolsWindowViewModel(IWorkspaceService workspace, IRepositoryToolsService tools, string root, Localization? localization = null)
     {
         this.workspace = workspace; this.tools = tools; Root = Path.GetFullPath(root); L = localization ?? new();
+        Feedback = new(L, () => CanOperate);
         Notice = L["ToolsHint"]; workspace.CommandExecuted += CommandExecuted;
         L.PropertyChanged += LocaleChanged;
     }
@@ -71,6 +73,7 @@ public sealed partial class RepositoryToolsWindowViewModel : ObservableObject, I
     partial void OnSelectedWorktreeChanged(WorktreeInfo? value) { if (value is not null) WorktreePath = value.Path; }
     private void NotifyAvailability()
     {
+        Feedback?.Notify();
         OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanUndo)); OnPropertyChanged(nameof(CanStartBisect));
         OnPropertyChanged(nameof(CanMarkBisect)); OnPropertyChanged(nameof(CanDisableSparse));
     }
@@ -143,6 +146,7 @@ public sealed partial class RepositoryToolsWindowViewModel : ObservableObject, I
         {
             var progress = new Progress<OperationProgress>(p => { if (!disposed && operationRequest == request) { ProgressText = p.Phase; CanCancel = p.CanCancel; } });
             var result = await execute(progress, request.Token);
+            Feedback.Record(result, () => CanOperate ? RunAsync(execute) : Task.CompletedTask);
             if (disposed) return;
             LastOutcome = result;
             try { await RefreshStateAsync(); Notice = result.Message; }
@@ -166,6 +170,8 @@ public sealed partial class RepositoryToolsWindowViewModel : ObservableObject, I
     public void Dispose()
     {
         if (disposed) return; disposed = true; workspace.CommandExecuted -= CommandExecuted; L.PropertyChanged -= LocaleChanged;
-        lifetime.Cancel(); lifetime.Dispose();
+        Feedback.Dispose(); lifetime.Cancel(); lifetime.Dispose();
     }
+    public Task ExecuteSuggestedAsync(GitAction action) => CanOperate && action is GitAction.Fetch or GitAction.Pull
+        ? RunAsync((progress, ct) => workspace.ExecuteAsync(Root, new(action), progress, ct)) : Task.CompletedTask;
 }

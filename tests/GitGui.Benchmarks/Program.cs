@@ -3,7 +3,16 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using GitGui.Engine.Cli;
 
-BenchmarkRunner.Run<StatusParserBenchmark>();
+if (args.FirstOrDefault() == "--prepare")
+{
+    await LargeRepositoryBenchmark.Prepare(args[1], args.Length > 2 ? int.Parse(args[2]) : 100_000,
+        args.Length > 3 ? int.Parse(args[3]) : 50_000); return;
+}
+if (args.FirstOrDefault() == "--measure")
+{
+    await LargeRepositoryBenchmark.Measure(args[1], args[2]); return;
+}
+BenchmarkSwitcher.FromAssembly(typeof(StatusParserBenchmark).Assembly).Run(args);
 
 [MemoryDiagnoser]
 public class StatusParserBenchmark

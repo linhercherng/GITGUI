@@ -1,13 +1,15 @@
 # Windows x64 免安裝發行
 
-從 [最新 Release](https://github.com/linhercherng/GITGUI/releases/latest)
-下載 `GITGUI-0.4.0-win-x64-portable.zip`，完整解壓縮後開啟
-`GitGui.App.exe`。適用 Windows 10/11 x64，不需系統管理員權限。
+從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.5.0)
+下載 `GITGUI-0.5.0-win-x64-portable.zip`，完整解壓縮後開啟
+`GitGui.App.exe`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+
+v0.5.0列為預覽版：功能與回歸測試通過，大型倉庫首屏及嚴格16ms回應目標仍未完整通過，不能視為M4正式驗收完成。詳見 [效能結果](M4-PERFORMANCE.md)。
 
 ## 封裝內容
 
-- .NET 8.0.32，自含執行環境，無 trimming／single-file extraction。
-- GITGUI M3 與 Avalonia、SQLite、libgit2 原生依賴。
+- .NET 10.0.13，自含執行環境，無 trimming／single-file extraction。
+- GITGUI M4 與 Avalonia、SQLite、libgit2 原生依賴。
 - 完整 PortableGit 2.56.0.3，保留 shell、SSH、helpers、原始授權與版本清單。
 - `START-HERE.txt`、繁體中文離線手冊 `USER-GUIDE.zh-TW.html`／`.md`、`THIRD-PARTY.txt`、`licenses/` 與 `build-info.json`。
 - Release 另附 SHA256SUMS、封裝驗證報告與 PortableGit copyleft 來源 ZIP。
@@ -18,14 +20,14 @@
 
 ## 重建與驗證
 
-需要 Windows、PowerShell 7、.NET 8 SDK，從指定版本乾淨 checkout 執行：
+需要 Windows、PowerShell 7、.NET 10 SDK，從指定版本乾淨 checkout 執行：
 
 ```powershell
-./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.4.0
-./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.4.0/GITGUI-0.4.0-win-x64-portable.zip -Desktop
+./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.5.0
+./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.5.0/GITGUI-0.5.0-win-x64-portable.zip -Desktop
 ./scripts/Collect-PortableGitSources.ps1 `
-  -PortableGit C:/Build/GITGUI-0.4.0/GITGUI-0.4.0-win-x64-portable/PortableGit `
-  -OutputDirectory C:/Build/GITGUI-0.4.0-sources
+  -PortableGit C:/Build/GITGUI-0.5.0/GITGUI-0.5.0-win-x64-portable/PortableGit `
+  -OutputDirectory C:/Build/GITGUI-0.5.0-sources
 ```
 
 輸出目錄必須尚不存在，避免覆寫已測試的 ZIP。NuGet 另用各專案的
@@ -46,10 +48,11 @@ M2 stash（中文 untracked）與堆疊復原、附註 tag、remote CRUD、rebas
 內附 shell/editor helper、blame/reflog，以及持續終端機使用同一套 Portable Git。
 M3 驗證工作樹管理、bisect reset、sparse undo、父倉庫 submodule undo 保留子資料、
 LFS 真實本地遠端物件傳輸／取出、內附 SSH signer 簽章標籤與 verify-tag，並確認離線手冊與截圖存在。
+M4增加實際Big5訊息位元組、無法編碼時HEAD與快照清單均未改變、語系／快捷鍵保存及舊資料表重新開啟。完整本機驗證另以 `-LegacyDatabase` 與 `-LegacyRepository` 傳入M3實際ZIP測試產生的資料；此選項嚴格限制為TEMP內既有的專用smoke fixture。資料庫使用副本，倉庫先完整備份並預建復原副本；在原路徑執行舊快照Undo/Redo，最後保留測試後目錄並恢復完整原始fixture，核對index、檔案、Git物件與原DB hash。快照綁定原根路徑，不能將此選項當成任意搬移快照的工具。一般CI不含該舊版本資料，不能把 `legacyCatalogCount=0` 稱為實測跨版本升級。
 另外啟動真正的 GitGui.App.exe，驗證 AskPass UTF-8 往返與桌面主視窗啟動／正常關閉。
 Windows CI 每次建置也重建 ZIP 並執行無桌面 smoke test，提供可下載的 CI artifact。
 
-v0.4.0 的六格 Git 相容性 CI 中，只有 Windows 最新 Git 格重建並驗證發行 ZIP；Windows 2.40 格保留其精確 PATH，執行相同完整測試。固定版本與格式覆蓋見 [M3 相容性](M3-COMPATIBILITY.md)。目前正式套件仍為 x64；ARM64 決策見 [說明](M3-ARM-DECISION.md)。
+v0.5.0 的六格 Git 相容性 CI 中，只有 Windows 最新 Git 格重建並驗證發行 ZIP；Windows 2.40 格保留其精確 PATH，執行相同完整測試。固定版本與格式覆蓋見 [M3 相容性](M3-COMPATIBILITY.md)。目前正式套件仍為 x64；ARM64 決策見 [說明](M3-ARM-DECISION.md)。
 
 本機初次完整回歸測試在大量來源下載同時執行時，佇列測試的 15 秒同步等待與
 失敗清理出現問題；獨立重跑通過。測試改為 60 秒等候，並以 finally 排空暫停中的

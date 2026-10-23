@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -15,6 +16,10 @@ namespace GitGui.Controls;
 /// <summary>Draws only the graph rows intersecting the viewport; no per-commit visual tree.</summary>
 public sealed class CommitGraphControl : Control
 {
+    public static readonly StyledProperty<string> AccessibleNameProperty = AvaloniaProperty.Register<CommitGraphControl, string>(nameof(AccessibleName), "Commit history");
+    public static readonly StyledProperty<string> EmptyTextProperty = AvaloniaProperty.Register<CommitGraphControl, string>(nameof(EmptyText), "No commits to display");
+    public string AccessibleName { get => GetValue(AccessibleNameProperty); set => SetValue(AccessibleNameProperty, value); }
+    public string EmptyText { get => GetValue(EmptyTextProperty); set => SetValue(EmptyTextProperty, value); }
     public static readonly StyledProperty<IBrush> GraphBackgroundProperty = AvaloniaProperty.Register<CommitGraphControl, IBrush>("GraphBackground", Brush.Parse("#151A22"));
     public static readonly StyledProperty<IBrush> GraphForegroundProperty = AvaloniaProperty.Register<CommitGraphControl, IBrush>("GraphForeground", Brush.Parse("#E4EAF3"));
     public static readonly StyledProperty<IBrush> GraphMutedProperty = AvaloniaProperty.Register<CommitGraphControl, IBrush>("GraphMuted", Brush.Parse("#A5B1C3"));
@@ -42,7 +47,7 @@ public sealed class CommitGraphControl : Control
     {
         Focusable = true;
         ClipToBounds = true;
-        AutomationProperties.SetName(this, "Commit history graph. Use Up and Down to select commits.");
+        AutomationProperties.SetName(this, AccessibleName);
         MinHeight = 120;
         this.Bind(GraphBackgroundProperty, new DynamicResourceExtension("EditorBrush"));
         this.Bind(GraphForegroundProperty, new DynamicResourceExtension("TextBrush"));
@@ -62,9 +67,11 @@ public sealed class CommitGraphControl : Control
         }
         if (change.Property == SelectedCommitProperty)
         {
-            AutomationProperties.SetName(this, SelectedCommit is { } c ? $"{c.Subject}; {c.Author}; {c.Hash}" : "Commit history graph");
+            (ControlAutomationPeer.FromElement(this) as GraphPeer)?.Changed(change.OldValue as CommitInfo);
             InvalidateVisual();
         }
+        if (change.Property == AccessibleNameProperty) AutomationProperties.SetName(this, AccessibleName);
+        if (change.Property == IsKeyboardFocusWithinProperty || change.Property == EmptyTextProperty) InvalidateVisual();
     }
 
     private void CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -84,6 +91,7 @@ public sealed class CommitGraphControl : Control
         graphWidth = Math.Max(50, rows.Select(r => r.Lane).DefaultIfEmpty().Max() * 16 + 30);
         MinWidth = Math.Max(420, graphWidth + 390);
         offset = Math.Clamp(offset, 0, Math.Max(0, rows.Count - 1));
+        (ControlAutomationPeer.FromElement(this) as GraphPeer)?.Changed(null);
         InvalidateVisual();
     }
 
@@ -108,7 +116,8 @@ public sealed class CommitGraphControl : Control
             DrawText(context, row.Commit.Subject, graphWidth + 70, y + 4, Normal, GetValue(GraphForegroundProperty), Math.Max(30, Bounds.Width - graphWidth - 200));
             if (Bounds.Width > 470) DrawText(context, row.Commit.Author, Bounds.Width - 120, y + 4, Normal, GetValue(GraphMutedProperty), 110);
         }
-        if (rows.Count == 0) DrawText(context, "No commits to display", 16, 24, Normal, GetValue(GraphMutedProperty), Bounds.Width - 30);
+        if (rows.Count == 0) DrawText(context, EmptyText, 16, 24, Normal, GetValue(GraphMutedProperty), Bounds.Width - 30);
+        if (IsKeyboardFocusWithin) context.DrawRectangle(new Pen(GetValue(GraphForegroundProperty), 2), new Rect(1, 1, Math.Max(0, Bounds.Width - 2), Math.Max(0, Bounds.Height - 2)));
     }
 
     private IBrush LaneBrush(int lane) => this.FindResource("GraphLane" + lane % Palette.Length) as IBrush ?? Palette[lane % Palette.Length];
@@ -118,6 +127,12 @@ public sealed class CommitGraphControl : Control
         var formatted = new FormattedText(text, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 12, brush) { MaxTextWidth = Math.Max(1, width), MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
         context.DrawText(formatted, new Point(x, y));
     }
+    private int IndexOf(string? hash)
+    {
+        if (hash is null) return -1;
+        for (var i = 0; i < rows.Count; i++) if (rows[i].Commit.Hash == hash) return i;
+        return -1;
+    }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
@@ -125,6 +140,7 @@ public sealed class CommitGraphControl : Control
         if (e.Delta.X != 0 || e.KeyModifiers.HasFlag(KeyModifiers.Shift)) return;
         offset = Math.Clamp(offset - (int)(e.Delta.Y * 3), 0, Math.Max(0, rows.Count - Math.Max(1, (int)(Bounds.Height / RowHeight))));
         InvalidateVisual(); e.Handled = true;
+        (ControlAutomationPeer.FromElement(this) as GraphPeer)?.Changed(null);
     }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -137,7 +153,7 @@ public sealed class CommitGraphControl : Control
     {
         base.OnKeyDown(e);
         if (rows.Count == 0) return;
-        var current = rows.ToList().FindIndex(r => r.Commit == SelectedCommit);
+        var current = IndexOf(SelectedCommit?.Hash);
         var index = e.Key switch { Key.Down => current + 1, Key.Up => current - 1, Key.PageDown => current + 20, Key.PageUp => current - 20, Key.Home => 0, Key.End => rows.Count - 1, _ => current };
         if (e.Key is not (Key.Down or Key.Up or Key.PageDown or Key.PageUp or Key.Home or Key.End)) return;
         index = Math.Clamp(index, 0, rows.Count - 1);
@@ -147,5 +163,82 @@ public sealed class CommitGraphControl : Control
         if (index >= offset + visible) offset = index - visible + 1;
         InvalidateVisual(); e.Handled = true;
     }
-    protected override AutomationPeer OnCreateAutomationPeer() => new ControlAutomationPeer(this);
+    protected override AutomationPeer OnCreateAutomationPeer() => new GraphPeer(this);
+
+    private sealed class GraphPeer(CommitGraphControl graph) : ControlAutomationPeer(graph), ISelectionProvider, IScrollProvider
+    {
+        private readonly Dictionary<string, RowPeer> peers = new(StringComparer.Ordinal);
+        private int Visible => Math.Max(1, (int)Math.Ceiling(graph.Bounds.Height / RowHeight));
+        private RowPeer Row(GraphRow row) => peers.TryGetValue(row.Commit.Hash, out var peer) ? peer : peers[row.Commit.Hash] = new(graph, this, row.Commit);
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.List;
+        protected override string GetClassNameCore() => nameof(CommitGraphControl);
+        protected override IReadOnlyList<AutomationPeer> GetChildrenCore()
+        {
+            var visible = graph.rows.Skip(graph.offset).Take(Visible).Select(Row).ToArray();
+            var retained = visible.Select(p => p.Commit.Hash).Append(graph.SelectedCommit?.Hash ?? "").ToHashSet(StringComparer.Ordinal);
+            foreach (var key in peers.Keys.Where(k => !retained.Contains(k)).ToArray()) peers.Remove(key);
+            return visible;
+        }
+        protected override object? GetProviderCore(Type type) => type == typeof(ISelectionProvider) || type == typeof(IScrollProvider) ? this : base.GetProviderCore(type);
+        public bool CanSelectMultiple => false;
+        public bool IsSelectionRequired => false;
+        public IReadOnlyList<AutomationPeer> GetSelection() => graph.IndexOf(graph.SelectedCommit?.Hash) is >= 0 and var index ? [Row(graph.rows[index])] : [];
+        public void Changed(CommitInfo? previous)
+        {
+            foreach (var row in peers.Values.ToArray()) row.SelectionChanged(previous);
+            InvalidateChildren();
+            RaisePropertyChangedEvent(SelectionPatternIdentifiers.SelectionProperty, previous is null ? Array.Empty<AutomationPeer>() : peers.Values.Where(p => p.Commit == previous).Cast<AutomationPeer>().ToArray(), GetSelection());
+        }
+        public void RefreshChildren() => InvalidateChildren();
+        public bool HorizontallyScrollable => false;
+        public double HorizontalScrollPercent => -1;
+        public double HorizontalViewSize => 100;
+        public bool VerticallyScrollable => graph.rows.Count > Visible;
+        public double VerticalScrollPercent => VerticallyScrollable ? 100d * graph.offset / Math.Max(1, graph.rows.Count - Visible) : 0;
+        public double VerticalViewSize => Math.Min(100, 100d * Visible / Math.Max(1, graph.rows.Count));
+        public void Scroll(ScrollAmount horizontalAmount, ScrollAmount verticalAmount)
+        {
+            var delta = verticalAmount switch { ScrollAmount.SmallDecrement => -1, ScrollAmount.SmallIncrement => 1, ScrollAmount.LargeDecrement => -Visible, ScrollAmount.LargeIncrement => Visible, _ => 0 };
+            graph.offset = Math.Clamp(graph.offset + delta, 0, Math.Max(0, graph.rows.Count - Visible)); graph.InvalidateVisual(); InvalidateChildren();
+        }
+        public void SetScrollPercent(double horizontalPercent, double verticalPercent)
+        {
+            if (!double.IsFinite(verticalPercent) || verticalPercent is < 0 or > 100) return;
+            graph.offset = (int)Math.Round(verticalPercent / 100 * Math.Max(0, graph.rows.Count - Visible)); graph.InvalidateVisual(); InvalidateChildren();
+        }
+    }
+    private sealed class RowPeer(CommitGraphControl graph, GraphPeer parent, CommitInfo commit) : ControlAutomationPeer(graph), ISelectionItemProvider
+    {
+        private int Index => graph.IndexOf(commit.Hash);
+        public CommitInfo Commit => Index is >= 0 and var index ? graph.rows[index].Commit : commit;
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.ListItem;
+        protected override string GetNameCore() => $"{Commit.Subject}; {Commit.Author}; {Commit.Hash}; {Commit.Date:yyyy-MM-dd}";
+        protected override string GetAutomationIdCore() => "commit-" + commit.Hash;
+        protected override string GetClassNameCore() => "Commit";
+        protected override AutomationPeer GetParentCore() => parent;
+        protected override IReadOnlyList<AutomationPeer> GetChildrenCore() => [];
+        protected override bool IsOffscreenCore() { var index = Index; return index < 0 || index < graph.offset || index >= graph.offset + Math.Ceiling(graph.Bounds.Height / RowHeight); }
+        protected override Rect GetBoundingRectangleCore()
+        {
+            var index = Index; if (index < 0) return default;
+            var p = graph.PointToScreen(new Point(0, (index - graph.offset) * RowHeight));
+            return new(p.X, p.Y, graph.Bounds.Width, RowHeight);
+        }
+        protected override bool HasKeyboardFocusCore() => graph.IsKeyboardFocusWithin && IsSelected;
+        protected override void SetFocusCore() { if (Index < 0) return; Select(); graph.Focus(); }
+        protected override object? GetProviderCore(Type type) => type == typeof(ISelectionItemProvider) ? this : base.GetProviderCore(type);
+        public bool IsSelected => Index >= 0 && graph.SelectedCommit?.Hash == commit.Hash;
+        public ISelectionProvider SelectionContainer => parent;
+        public void Select()
+        {
+            var index = Index; if (index < 0) return;
+            graph.SetCurrentValue(SelectedCommitProperty, graph.rows[index].Commit);
+            var visible = Math.Max(1, (int)(graph.Bounds.Height / RowHeight));
+            if (index < graph.offset) graph.offset = index; else if (index >= graph.offset + visible) graph.offset = index - visible + 1;
+            graph.InvalidateVisual(); parent.RefreshChildren();
+        }
+        public void AddToSelection() => Select();
+        public void RemoveFromSelection() { if (IsSelected) graph.SetCurrentValue(SelectedCommitProperty, null); }
+        public void SelectionChanged(CommitInfo? previous) => RaisePropertyChangedEvent(SelectionItemPatternIdentifiers.IsSelectedProperty, previous?.Hash == commit.Hash, IsSelected);
+    }
 }

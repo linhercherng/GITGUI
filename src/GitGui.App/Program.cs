@@ -15,6 +15,7 @@ namespace GitGui.App;
 
 internal static class Program
 {
+    internal static DesktopPerformanceProbe? Performance { get; private set; }
     [STAThread]
     public static void Main(string[] args)
     {
@@ -36,9 +37,18 @@ internal static class Program
             catch (Exception) { Environment.ExitCode = 1; }
             return;
         }
+        try { Performance = DesktopPerformanceProbe.Parse(args); }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException) { Environment.ExitCode = 2; return; }
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<DesktopApp>().UsePlatformDetect();
+    public static AppBuilder BuildAvaloniaApp()
+    {
+        var builder = AppBuilder.Configure<DesktopApp>().UsePlatformDetect();
+        // An explicit probe-only experiment; normal desktop sessions retain platform defaults.
+        if (Performance?.SoftwareRendering == true)
+            builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
+        return builder;
+    }
 }
 
 public sealed class DesktopApp : Application
@@ -49,16 +59,16 @@ public sealed class DesktopApp : Application
         RequestedThemeVariant = ThemeVariant.Dark;
         Styles.Add(new FluentTheme());
         appearance = new AppearanceManager(new AppearancePreferences(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui", "appearance.json")));
+            Program.Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui"), "appearance.json")));
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
+            var directory = Program.Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
             var log = AppLogging.Create(directory);
-            log.Information("GITGUI M3 started; repository content and credential logging are disabled");
+            log.Information("GITGUI M4 started; repository content and credential logging are disabled");
             var services = new ServiceCollection();
             services.AddSingleton<GitProcessRunner>();
             services.AddSingleton<IGitPathStore>(sp => sp.GetRequiredService<WorkspaceStorage>());
@@ -80,6 +90,7 @@ public sealed class DesktopApp : Application
             services.AddSingleton<WorkspaceService>();
             services.AddSingleton<IWorkspaceService>(sp => sp.GetRequiredService<WorkspaceService>());
             services.AddSingleton<IRepositoryToolsService, RepositoryToolsService>();
+            services.AddSingleton(new ShortcutManager(new UiPreferencesStore(Path.Combine(directory, "ui.json"))));
             services.AddSingleton<ITerminalService>(sp => new TerminalService(sp.GetRequiredService<GitRuntime>(),
                 sp.GetRequiredService<IRepositorySettings>(), sp.GetRequiredService<WorkspaceService>().TrustAsync,
                 sp.GetRequiredService<WorkspaceService>().AcquireTerminalLeaseAsync, sp.GetRequiredService<GitProcessRunner>()));
@@ -88,10 +99,16 @@ public sealed class DesktopApp : Application
             var graph = new CommitGraphControl();
             graph.Bind(CommitGraphControl.CommitsProperty, new Binding("Commits"));
             graph.Bind(CommitGraphControl.SelectedCommitProperty, new Binding("SelectedCommit") { Mode = BindingMode.TwoWay });
-            desktop.MainWindow = new MainWindow(provider.GetRequiredService<MainWindowViewModel>(), graph,
-                provider.GetRequiredService<IGitRuntimeSettings>(), appearance, provider.GetRequiredService<IWorkspaceService>(), provider.GetRequiredService<ITerminalService>(), provider.GetRequiredService<IRepositoryToolsService>());
+            graph.Bind(CommitGraphControl.AccessibleNameProperty, new Binding("L[GraphName]"));
+            graph.Bind(CommitGraphControl.EmptyTextProperty, new Binding("L[GraphEmpty]"));
+            var mainModel = provider.GetRequiredService<MainWindowViewModel>();
+            desktop.MainWindow = new MainWindow(mainModel, graph,
+                provider.GetRequiredService<IGitRuntimeSettings>(), appearance, provider.GetRequiredService<IWorkspaceService>(), provider.GetRequiredService<ITerminalService>(), provider.GetRequiredService<IRepositoryToolsService>(), provider.GetRequiredService<ShortcutManager>());
+            Program.Performance?.Attach(desktop, (MainWindow)desktop.MainWindow, mainModel, graph,
+                provider.GetRequiredService<GitProcessRunner>(), provider.GetRequiredService<WorkspaceStorage>(), provider.GetRequiredService<IGitRuntimeSettings>());
             var bridge = new AskPassBridge(provider.GetRequiredService<IWorkspaceInteraction>());
             var runner = provider.GetRequiredService<GitProcessRunner>();
+            runner.CommandExecuted += (_, entry) => AppLogging.Command(log, entry);
             var executable = Environment.ProcessPath!;
             static string Quote(string value) => OperatingSystem.IsWindows()
                 ? "\"" + value.Replace("\"", "\\\"", StringComparison.Ordinal) + "\""

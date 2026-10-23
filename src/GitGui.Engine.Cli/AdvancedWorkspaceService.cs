@@ -54,7 +54,11 @@ public sealed partial class WorkspaceService
         var commits = await git.Text(root, ct, "rev-list", "--reverse", onto + "..HEAD", "--");
         var plan = new List<RebaseStep>();
         foreach (var hash in commits.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.TrimEnd('\r')))
-            plan.Add(new(hash, Message: await git.Text(root, ct, "show", "-s", "--format=%B", hash)));
+        {
+            var message = await new CommitTextReader(runner).ReadAsync(root, hash, ct);
+            if (message.Encoding.IsLossy) throw new InvalidOperationException("A rebase message has an unknown or invalid encoding. Correct its encoding with a byte-aware Git tool before editing this plan.");
+            plan.Add(new(hash, Message: message.Message));
+        }
         return (IReadOnlyList<RebaseStep>)plan;
     }, ct);
 
@@ -63,11 +67,16 @@ public sealed partial class WorkspaceService
         root = await git.Root(root, ct); GitAccess.FullPath(root, path);
         if (fileHistory is not null && ReadBackendPolicy.CanUseLibrary(await new CliRepoReader(runner).GetFormatAsync(root, ct)))
         {
-            try { return await fileHistory.ReadAsync(root, path, ct); }
+            try { return await Enrich(await fileHistory.ReadAsync(root, path, ct)); }
             catch (OperationCanceledException) { throw; }
             catch (Exception) { /* Unsupported library reads repeat the same query with Git CLI. */ }
         }
-        return await new CliFileHistoryReader(runner).ReadAsync(root, path, ct);
+        return await Enrich(await new CliFileHistoryReader(runner).ReadAsync(root, path, ct));
+        async Task<FileHistoryResult> Enrich(FileHistoryResult result)
+        {
+            var commits = await new CommitTextReader(runner).EnrichAsync(root, result.History.Select(h => h.Commit).ToArray(), ct);
+            return result with { History = result.History.Select((entry, i) => entry with { Commit = commits[i] }).ToArray() };
+        }
     }, ct);
 
     private async Task PreflightAdvanced(string root, WorkspaceState state, GitOperation op, CancellationToken ct)
@@ -317,7 +326,7 @@ public sealed partial class WorkspaceService
         return paths;
     }
 
-    private async Task ExecuteAdvanced(string root, WorkspaceState state, GitOperation op, CancellationToken ct, IProgress<OperationProgress>? progress)
+    private async Task ExecuteAdvanced(string root, WorkspaceState state, GitOperation op, OperationMessageBytes messages, CancellationToken ct, IProgress<OperationProgress>? progress)
     {
         // Stash internally constructs its own clean pathspecs. Forcing Git's global literal
         // mode breaks removal of non-ASCII untracked names. These commands accept no user paths.
@@ -345,7 +354,7 @@ public sealed partial class WorkspaceService
             case GitAction.SetRemoteUrl:
                 await Run(["remote", "set-url", .. (op.PushUrl ? new[] { "--push" } : []), op.Remote ?? op.Name!, op.Url!]); break;
             case GitAction.RebaseInteractive:
-                await PrepareRebase(root, op, ct);
+                await PrepareRebase(root, op, messages, ct);
                 await RunWithEditor(root, ["rebase", "--interactive", "--no-autostash", "--no-autosquash", "--no-update-refs", "--no-rebase-merges", "--no-fork-point", "--reapply-cherry-picks", "--keep-empty", "--empty=keep", await reader.Resolve(root, revision, ct)], ct, progress); break;
             case GitAction.ContinueOperation: case GitAction.SkipOperation: case GitAction.AbortOperation:
                 var action = op.Action == GitAction.ContinueOperation ? "--continue" : op.Action == GitAction.SkipOperation ? "--skip" : "--abort";
@@ -358,38 +367,35 @@ public sealed partial class WorkspaceService
     private async Task<string> RebaseDirectory(string root, CancellationToken ct)
         => Path.Combine(await git.Text(root, ct, "rev-parse", "--absolute-git-dir"), "gitgui-rebase");
 
-    private async Task PrepareRebase(string root, GitOperation op, CancellationToken ct)
+    private async Task PrepareRebase(string root, GitOperation op, OperationMessageBytes messages, CancellationToken ct)
     {
         var dir = await RebaseDirectory(root, ct);
         if (Directory.Exists(dir) && (File.GetAttributes(dir) & FileAttributes.ReparsePoint) != 0) throw new InvalidOperationException("Unsafe rebase helper directory.");
         Directory.CreateDirectory(dir);
-        async Task Write(string name, string content)
+        async Task WriteBytes(string name, byte[] content)
         {
             var path = Path.Combine(dir, name);
             if (File.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new InvalidOperationException("Unsafe rebase helper file.");
             var temporary = Path.Combine(dir, ".write-" + Guid.NewGuid().ToString("N"));
             try
             {
-                await File.WriteAllTextAsync(temporary, content, new UTF8Encoding(false), ct);
+                await File.WriteAllBytesAsync(temporary, content, ct);
                 File.Move(temporary, path, true);
             }
             finally { File.Delete(temporary); }
         }
+        Task Write(string name, string content) => WriteBytes(name, Encoding.UTF8.GetBytes(content));
+        await Write("message-encoding", messages.Encoding);
         await Write("todo", string.Join("\n", op.RebasePlan.Select(s => s.Action.ToString().ToLowerInvariant() + " " + s.Commit)) + "\n");
         await Write("sequence.sh", "#!/bin/sh\ncat -- " + ShellQuote(Path.Combine(dir, "todo").Replace('\\', '/')) + " > \"$1\"\n");
         var editor = "#!/bin/sh\n";
         // Git's done file identifies the original commit, including after a restart/conflict.
         var done = Path.Combine(Path.GetDirectoryName(dir)!, "rebase-merge", "done").Replace('\\', '/');
         editor += "step=$(tail -n 1 -- " + ShellQuote(done) + " 2>/dev/null)\ncase \"$step\" in\n";
-        string? squashMessage = null;
         foreach (var step in op.RebasePlan)
         {
-            if (step.Action == RebaseStepKind.Drop) continue;
-            if (step.Action == RebaseStepKind.Squash && !string.IsNullOrWhiteSpace(step.Message)) squashMessage = step.Message;
-            else if (step.Action is not (RebaseStepKind.Fixup or RebaseStepKind.Squash)) squashMessage = null;
-            var message = step.Action == RebaseStepKind.Reword ? step.Message : squashMessage;
-            if (string.IsNullOrWhiteSpace(message)) continue;
-            await Write("message-" + step.Commit, message.TrimEnd() + "\n");
+            if (!messages.Rebase.TryGetValue(step.Commit, out var message)) continue;
+            await WriteBytes("message-" + step.Commit, message);
             editor += step.Action.ToString().ToLowerInvariant() + "\\ " + step.Commit + "*) cat -- " + ShellQuote(Path.Combine(dir, "message-" + step.Commit).Replace('\\', '/')) + " > \"$1\" ;;\n";
         }
         editor += "esac\nexit 0\n";

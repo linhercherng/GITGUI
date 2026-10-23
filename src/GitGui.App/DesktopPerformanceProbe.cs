@@ -1,0 +1,349 @@
+using System.Diagnostics;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Json;
+using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using GitGui.Controls;
+using GitGui.Core;
+using GitGui.Engine.Cli;
+using GitGui.Infrastructure;
+using GitGui.UI;
+
+namespace GitGui.App;
+
+/// <summary>Opt-in, visible native desktop measurement. Never opens user settings or an arbitrary repository.</summary>
+internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath, string? repository)
+{
+    private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
+    private readonly DateTime processStarted = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+    public string DataPath { get; } = dataPath;
+    public bool SoftwareRendering { get; private init; }
+
+    public static DesktopPerformanceProbe? Parse(string[] args)
+    {
+        if (!args.Any(a => a.StartsWith("--performance-", StringComparison.Ordinal))) return null;
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (var i = 0; i < args.Length; i += 2)
+        {
+            if (i + 1 >= args.Length || args[i] is not ("--performance-report" or "--performance-data" or "--performance-repository") || !values.TryAdd(args[i], args[i + 1]))
+                throw new ArgumentException("Performance arguments must be unique named path/value pairs.");
+        }
+        if (!values.TryGetValue("--performance-report", out var report) || !values.TryGetValue("--performance-data", out var data))
+            throw new ArgumentException("Performance probes require a NEW report file and NEW isolated data directory.");
+        report = Path.GetFullPath(report); data = Path.GetFullPath(data);
+        var repo = values.TryGetValue("--performance-repository", out var supplied) ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(supplied)) : null;
+        if (File.Exists(report) || Directory.Exists(report) || File.Exists(data) || Directory.Exists(data))
+            throw new ArgumentException("Performance report and data paths must not already exist.");
+        if (repo is not null && (Within(report, repo) || Within(data, repo)))
+            throw new ArgumentException("Probe output and isolated settings must be outside the fixture.");
+        if (Within(report, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui")) || Within(data, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui")))
+            throw new ArgumentException("Performance probes cannot use normal application settings storage.");
+        var renderer = Environment.GetEnvironmentVariable("GITGUI_BENCH_RENDERER");
+        if (renderer is not (null or "" or "default" or "software")) throw new ArgumentException("Probe renderer must be default or software.");
+        Directory.CreateDirectory(data);
+        // Probe child Git commands have no user/system configuration. Fixture-local settings are validated before trust.
+        foreach (var key in Environment.GetEnvironmentVariables().Keys.Cast<string>().Where(k => k.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase)).ToArray())
+            Environment.SetEnvironmentVariable(key, null);
+        var emptyConfig = Path.Combine(data, "empty.gitconfig"); File.WriteAllText(emptyConfig, "");
+        Environment.SetEnvironmentVariable("GIT_CONFIG_NOSYSTEM", "1"); Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", emptyConfig);
+        return new(report, data, repo) { SoftwareRendering = renderer == "software" && OperatingSystem.IsWindows() };
+    }
+
+    private static bool Within(string path, string directory)
+    {
+        var prefix = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
+        return path.Equals(prefix, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ||
+            path.StartsWith(prefix + Path.DirectorySeparatorChar, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
+    public void Attach(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, MainWindowViewModel vm,
+        CommitGraphControl graph, GitProcessRunner runner, WorkspaceStorage storage, IGitRuntimeSettings runtime)
+    {
+        window.Opened += async (_, _) => await RunAsync(desktop, window, vm, graph, runner, storage, runtime);
+    }
+
+    private async Task RunAsync(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, MainWindowViewModel vm,
+        CommitGraphControl graph, GitProcessRunner runner, WorkspaceStorage storage, IGitRuntimeSettings runtime)
+    {
+        using var trace = new ProbeTrace(vm);
+        var values = new Dictionary<string, object?>
+        {
+            ["schema"] = 1, ["recordedAt"] = DateTimeOffset.UtcNow,
+            ["timelineOriginUtc"] = trace.OriginUtc,
+            ["renderingModeRequested"] = SoftwareRendering ? "Windows Software framebuffer" : "Platform default (Windows ANGLE EGL with Software fallback)",
+            ["host"] = new { os = RuntimeInformation.OSDescription, framework = RuntimeInformation.FrameworkDescription,
+                architecture = RuntimeInformation.ProcessArchitecture.ToString(), processors = Environment.ProcessorCount,
+                configuration = typeof(DesktopApp).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration,
+                debuggerAttached = Debugger.IsAttached },
+            ["measurementBoundary"] = new
+            {
+                startup = "OS Process.StartTime to first native Avalonia RequestAnimationFrame callback after main-window Opened; includes runtime, DI and layout startup. This callback precedes compositor presentation and does not prove pixels reached the monitor.",
+                graph = "Repository-path assignment through the first500 Commits publication, queued graph rebuild/LayoutReady and visible History tab layout, then a native animation-frame callback. Full refresh completion (diff/preview/snapshots) is reported separately. Setup/validation excluded. RAF is before compositor presentation.",
+                status = "RefreshStatusAsync invocation through Changes.Reset, visible working-tree list layout and next native RAF; total status+selected-file diff/conflict completion is retained separately.",
+                diff = "Selecting generated big.txt after clearing the previous selection, through IsDiffLoading=false, active inline editor document equality, window layout and next native RAF. Includes Git read, projection, bindings and editor layout; source file has10000lines, displayed patch line count is recorded.",
+                frames = "Actual native RequestAnimationFrame callback intervals while automation ScrollProvider changes the visible commit graph once per callback; not headless, synthetic frame scheduling or GPU presentation timing.",
+                heartbeat = "Worker timer to UI Dispatcher callback delay during product open/status/diff/scroll or idle sampling, including OS scheduling and dispatcher backlog. Excludes probe runtime/fixture validation/trust setup and startup. This estimates responsiveness, not exact duration of every UI callback.",
+                instrumentation = "Ordered heartbeat timestamps/phase, worker16ms timer elapsed and GC deltas are retained. Bound-property spans measure VM PropertyChanging through PropertyChanged observers registered after normal bindings; they include synchronous setter/earlier-subscriber work, exclude deferred layout and are not a full UI callback profiler. Explicit UpdateLayout spans are separate. Instrumentation does not change renderer/GC/thread-pool settings.",
+                memory = "Process.WorkingSet64 sampled after opening fixture, loading 1500 commits and five seconds of visible native graph scrolling; no forced GC."
+            }
+        };
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        using var heartbeatCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        var heartbeats = new List<HeartbeatSample>();
+        Task heartbeat = Task.CompletedTask; var exitCode = 0;
+        try
+        {
+            await FrameAsync(window, timeout.Token);
+            values["startupFirstNativeFrameCallbackMs"] = (DateTime.UtcNow - processStarted).TotalMilliseconds;
+            if (vm.InitializeCommand.ExecutionTask is { } initialization) await initialization;
+            values["startupInteractiveAfterInitializationMs"] = (DateTime.UtcNow - processStarted).TotalMilliseconds;
+            trace.SetPhase("probe-setup"); var setup = Stopwatch.StartNew();
+            var git = await Task.Run(() => runtime.SaveAsync(Environment.GetEnvironmentVariable("GITGUI_BENCH_GIT"), timeout.Token), timeout.Token);
+            values["gitRuntime"] = git;
+            if (repository is not null)
+            {
+                var fixture = await Task.Run(async () =>
+                {
+                    var validated = await ValidateFixtureAsync(repository, runner, git.Version, timeout.Token);
+                    await storage.TrustAsync(repository, timeout.Token); return validated;
+                }, timeout.Token);
+                values["fixture"] = fixture;
+                values["probeSetupValidationMs"] = setup.Elapsed.TotalMilliseconds;
+                heartbeat = HeartbeatAsync(heartbeats, trace, heartbeatCancellation.Token);
+                var opening = await CollectionFrameAsync(window, vm.Commits, () =>
+                    {
+                        vm.RepositoryPath = repository; window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 1;
+                        return vm.RefreshCommand.ExecuteAsync(null);
+                    },
+                    async () => await graph.LayoutReady, () => vm.Commits.Count == 500, trace, "open500", timeout.Token);
+                if (!vm.HasRepository || vm.Commits.Count != 500) throw new InvalidOperationException("The real GUI did not open exactly the first 500 commits: " + vm.Notice);
+                values["openFirst500GraphFrameCallbackMs"] = opening.FrameCallbackMs; values["openTotalReadyMs"] = opening.TotalReadyMs; values["openPhases"] = opening;
+                trace.SetPhase("show-status-tab"); window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 0;
+                var status = new List<UiPhase>();
+                for (var i = 0; i < 3; i++) status.Add(await CollectionFrameAsync(window, vm.Changes, vm.RefreshStatusAsync, null, () => true, trace, "status" + (i + 1), timeout.Token));
+                values["statusListFrameCallbackMs"] = Statistics(status.Select(s => s.FrameCallbackMs));
+                values["statusRefreshMs"] = Statistics(status.Select(s => s.TotalReadyMs)); values["statusPhases"] = status;
+                window.FindControl<TabControl>("DetailTabs")!.SelectedIndex = 0; vm.SplitDiff = false;
+                var diff = new List<double>();
+                for (var i = 0; i < 3; i++) diff.Add(await DiffFrameAsync(window, vm, trace, "diff" + (i + 1), timeout.Token));
+                values["diffSelectionFrameCallbackMs"] = Statistics(diff);
+                values["diffSourceFileLines"] = fixture.GetProperty("diffLines").GetInt32(); values["diffDisplayedPatchLines"] = vm.Diff.Count(c => c == '\n');
+                trace.SetPhase("load-more"); window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 1;
+                await vm.LoadMoreCommand.ExecuteAsync(null);
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, timeout.Token);
+                await graph.LayoutReady; values["loadedCommitsDuringScroll"] = vm.Commits.Count;
+                var scroll = ControlAutomationPeer.CreatePeerForElement(graph)!.GetProvider<IScrollProvider>()!;
+                trace.SetPhase("graph-scroll");
+                values["scrollNativeFrameIntervalsMs"] = await SampleFramesAsync(window, () => scroll.SetScrollPercent(-1, (Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency * 27) % 100), TimeSpan.FromSeconds(5), timeout.Token);
+            }
+            else
+            {
+                values["probeSetupValidationMs"] = setup.Elapsed.TotalMilliseconds;
+                trace.SetPhase("idle"); heartbeat = HeartbeatAsync(heartbeats, trace, heartbeatCancellation.Token);
+                values["idleNativeFrameIntervalsMs"] = await SampleFramesAsync(window, () => window.InvalidateVisual(), TimeSpan.FromSeconds(2), timeout.Token);
+            }
+            using var process = Process.GetCurrentProcess(); process.Refresh(); values["workingSetBytes"] = process.WorkingSet64; values["privateBytes"] = process.PrivateMemorySize64;
+        }
+        catch (Exception ex) { exitCode = 1; values["failure"] = ex.GetType().Name + ": " + ex.Message; }
+        finally
+        {
+            heartbeatCancellation.Cancel(); try { await heartbeat; } catch (OperationCanceledException) { }
+            values["uiDispatcherHeartbeatDelayMs"] = Statistics(heartbeats.Select(s => s.QueueDelayMs));
+            values["heartbeatSamplesInOrder"] = heartbeats.ToArray();
+            values["phaseTimeline"] = trace.Phases.ToArray();
+            values["uiSynchronousSpans"] = trace.Spans.ToArray();
+            values["completed"] = exitCode == 0;
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+                await using var output = new FileStream(reportPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
+                await JsonSerializer.SerializeAsync(output, values, Json);
+            }
+            catch { exitCode = 2; }
+            desktop.Shutdown(exitCode);
+        }
+    }
+
+    private sealed record UiPhase(double PublishedMs, double FrameCallbackMs, double TotalReadyMs);
+    private static async Task<UiPhase> CollectionFrameAsync<T>(Window window, ObservableCollection<T> collection, Func<Task> start,
+        Func<Task>? waitLayout, Func<bool> acceptsPublication, ProbeTrace trace, string phase, CancellationToken ct)
+    {
+        trace.SetPhase(phase + ".wait-publication");
+        var clock = Stopwatch.StartNew(); var publication = new TaskCompletionSource<double>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Published(object? sender, NotifyCollectionChangedEventArgs e) { if (acceptsPublication()) publication.TrySetResult(clock.Elapsed.TotalMilliseconds); }
+        collection.CollectionChanged += Published;
+        try
+        {
+            var operation = start(); await Task.WhenAny(publication.Task, operation).WaitAsync(ct);
+            if (!publication.Task.IsCompleted) { await operation; throw new InvalidOperationException("The GUI operation finished without the expected collection publication."); }
+            var publishedMs = await publication.Task;
+            trace.SetPhase(phase + ".published-await-bindings");
+            // A collection observer can run before the graph's queued rebuild; wait for that UI turn, then its actual layout task.
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, ct);
+            if (waitLayout is not null) await waitLayout().WaitAsync(ct);
+            trace.SetPhase(phase + ".layout"); trace.Measure("Window.UpdateLayout", window.UpdateLayout);
+            trace.SetPhase(phase + ".await-native-frame"); await FrameAsync(window, ct); var frame = clock.Elapsed.TotalMilliseconds;
+            trace.SetPhase(phase + ".remainder"); await operation.WaitAsync(ct);
+            trace.SetPhase(phase + ".complete"); return new(publishedMs, frame, clock.Elapsed.TotalMilliseconds);
+        }
+        finally { collection.CollectionChanged -= Published; }
+    }
+
+    private static async Task<double> DiffFrameAsync(Window window, MainWindowViewModel vm, ProbeTrace trace, string phase, CancellationToken ct)
+    {
+        trace.SetPhase(phase + ".clear-selection");
+        var target = vm.Changes.Single(f => f.Path == "big.txt"); vm.SelectedChange = null;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Loaded(object? sender, PropertyChangedEventArgs e)
+        { if (e.PropertyName == nameof(vm.IsDiffLoading) && !vm.IsDiffLoading && vm.SelectedChange?.Path == target.Path) completion.TrySetResult(); }
+        vm.PropertyChanged += Loaded; var clock = Stopwatch.StartNew();
+        try
+        {
+            trace.SetPhase(phase + ".read"); trace.Measure("Select diff file", () => vm.SelectedChange = target);
+            if (!vm.IsDiffLoading) completion.TrySetResult();
+            await completion.Task.WaitAsync(ct); trace.SetPhase(phase + ".data-ready-await-bindings");
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, ct);
+            var editor = window.FindControl<DiffEditor>("DiffViewer")!;
+            if (vm.IsLargeDiff || !vm.Diff.Contains("changed line", StringComparison.Ordinal) || editor.Source != vm.Diff ||
+                !editor.GetVisualDescendants().OfType<CodeEditor>().Any(e => e.IsEffectivelyVisible && e.CodeText == vm.Diff))
+                throw new InvalidOperationException("The generated file diff did not reach the visible inline editor.");
+            trace.SetPhase(phase + ".layout"); trace.Measure("Window.UpdateLayout", window.UpdateLayout);
+            trace.SetPhase(phase + ".await-native-frame"); await FrameAsync(window, ct);
+            trace.SetPhase(phase + ".complete"); return clock.Elapsed.TotalMilliseconds;
+        }
+        finally { vm.PropertyChanged -= Loaded; }
+    }
+
+    private static async Task<JsonElement> ValidateFixtureAsync(string root, GitProcessRunner runner, string version, CancellationToken ct)
+    {
+        if (!Directory.Exists(Path.Combine(root, ".git")) || (File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0 ||
+            (File.GetAttributes(Path.Combine(root, ".git")) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidOperationException("Probe requires a standalone generated fixture, without a redirected root.");
+        var manifestPath = root + ".fixture.json";
+        if (!File.Exists(manifestPath) || new FileInfo(manifestPath).Length > 65_536) throw new InvalidOperationException("Generated fixture manifest missing or invalid.");
+        using var json = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath, ct)); var manifest = json.RootElement;
+        if (manifest.GetProperty("git").GetString() != version) throw new InvalidOperationException("Probe Git version differs from fixture manifest: " + version);
+        if (manifest.GetProperty("schema").GetInt32() != 1 || !Path.GetFullPath(manifest.GetProperty("root").GetString()!).Equals(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ||
+            manifest.GetProperty("commits").GetInt32() != 100_000 || manifest.GetProperty("files").GetInt32() != 50_000 || !Guid.TryParseExact(manifest.GetProperty("fingerprint").GetString(), "N", out _))
+            throw new InvalidOperationException("Probe requires the generated 100000-commit / 50000-file fixture manifest.");
+        async Task<byte[]> Git(params string[] args)
+        {
+            var result = await runner.RunAsync(root, args, ct, new() { HideOutput = true });
+            if (result.ExitCode != 0) throw new InvalidOperationException("Fixture validation failed: " + result.Error); return result.Output;
+        }
+        var config = Encoding.UTF8.GetString(await Git("config", "--local", "--null", "--list"));
+        foreach (var item in config.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pair = item.Split('\n', 2); var name = pair[0]; var value = pair.ElementAtOrDefault(1) ?? "";
+            if (name.StartsWith("include", StringComparison.OrdinalIgnoreCase) || name.StartsWith("filter.", StringComparison.OrdinalIgnoreCase) ||
+                name.StartsWith("diff.", StringComparison.OrdinalIgnoreCase) || name.StartsWith("credential.", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("core.fsmonitor", StringComparison.OrdinalIgnoreCase) && value is not ("true" or "false") ||
+                name.Equals("core.hooksPath", StringComparison.OrdinalIgnoreCase) && !Path.GetFullPath(value, root).Equals(Path.Combine(root, ".git", "hooks"), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                throw new InvalidOperationException("Fixture-local executable configuration is not permitted for unattended probes.");
+        }
+        if (File.Exists(Path.Combine(root, ".git", "config.worktree"))) throw new InvalidOperationException("Fixture worktree configuration is not permitted.");
+        var hooks = Path.Combine(root, ".git", "hooks");
+        if (Directory.Exists(hooks) && Directory.EnumerateFiles(hooks).Any(p => !p.EndsWith(".sample", StringComparison.Ordinal))) throw new InvalidOperationException("Fixture hooks are not permitted.");
+        if (Encoding.UTF8.GetString(await Git("rev-parse", "HEAD")).Trim() != manifest.GetProperty("head").GetString() ||
+            Encoding.UTF8.GetString(await Git("rev-list", "--count", "HEAD")).Trim() != "100000" ||
+            (await Git("ls-files", "-z")).Count(b => b == 0) != 50_000)
+            throw new InvalidOperationException("Actual Git HEAD/commit/index shape differs from generated manifest.");
+        return manifest.Clone();
+    }
+
+    private static Task FrameAsync(Window window, CancellationToken ct)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var registration = ct.Register(() => completion.TrySetCanceled(ct));
+        window.RequestAnimationFrame(_ => { registration.Dispose(); completion.TrySetResult(); }); window.InvalidateVisual(); return completion.Task;
+    }
+    private static async Task<object> SampleFramesAsync(Window window, Action scroll, TimeSpan duration, CancellationToken ct)
+    {
+        var intervals = new List<double>(); var callbackDurations = new List<double>(); var clock = Stopwatch.StartNew(); var previous = clock.Elapsed.TotalMilliseconds;
+        while (clock.Elapsed < duration)
+        {
+            var started = Stopwatch.GetTimestamp(); scroll(); callbackDurations.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            await FrameAsync(window, ct); var now = clock.Elapsed.TotalMilliseconds; intervals.Add(now - previous); previous = now;
+        }
+        return new { samples = intervals.Count, elapsedMs = clock.Elapsed.TotalMilliseconds, callbackFps = intervals.Count / clock.Elapsed.TotalSeconds,
+            intervals = Statistics(intervals), intervalsInOrder = intervals, scrollProviderCallbackDurationMs = Statistics(callbackDurations) };
+    }
+    private sealed record HeartbeatSample(double TimerElapsedMs, double PostedMs, double DeliveredMs, double QueueDelayMs,
+        string PostedPhase, string DeliveredPhase, double GcPauseDeltaMs, int Gen0Delta, int Gen1Delta, int Gen2Delta,
+        int WorkerThreadsAtPost, long PendingWorkAtPost);
+    private static async Task HeartbeatAsync(List<HeartbeatSample> samples, ProbeTrace trace, CancellationToken ct)
+    {
+        await Task.Run(async () =>
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var timerStarted = trace.ElapsedMs; await Task.Delay(16, ct).ConfigureAwait(false);
+                var posted = trace.ElapsedMs; var phase = trace.CurrentPhase; var pause = GC.GetTotalPauseDuration().TotalMilliseconds;
+                var gen0 = GC.CollectionCount(0); var gen1 = GC.CollectionCount(1); var gen2 = GC.CollectionCount(2);
+                var workers = ThreadPool.ThreadCount; var pending = ThreadPool.PendingWorkItemCount;
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    var delivered = trace.ElapsedMs;
+                    samples.Add(new(posted - timerStarted, posted, delivered, delivered - posted, phase, trace.CurrentPhase,
+                        GC.GetTotalPauseDuration().TotalMilliseconds - pause, GC.CollectionCount(0) - gen0, GC.CollectionCount(1) - gen1,
+                        GC.CollectionCount(2) - gen2, workers, pending));
+                }, DispatcherPriority.Normal, ct);
+            }
+        }, ct);
+    }
+
+    private sealed class ProbeTrace : IDisposable
+    {
+        private readonly MainWindowViewModel vm;
+        private readonly Stopwatch clock = Stopwatch.StartNew();
+        private string phase = "startup";
+        private readonly Dictionary<string, (double Start, double Pause, string Phase)> setters = [];
+        public DateTimeOffset OriginUtc { get; } = DateTimeOffset.UtcNow;
+        public double ElapsedMs => clock.Elapsed.TotalMilliseconds;
+        public string CurrentPhase => Volatile.Read(ref phase);
+        public List<object> Phases { get; } = [];
+        public List<object> Spans { get; } = [];
+        public ProbeTrace(MainWindowViewModel vm) { this.vm = vm; vm.PropertyChanging += Changing; vm.PropertyChanged += Changed; }
+        public void SetPhase(string value) { Volatile.Write(ref phase, value); Phases.Add(new { phase = value, elapsedMs = ElapsedMs }); }
+        public void Measure(string name, Action action)
+        {
+            var start = ElapsedMs; var pause = GC.GetTotalPauseDuration().TotalMilliseconds;
+            try { action(); }
+            finally { AddSpan("explicit synchronous call", name, CurrentPhase, start, pause, null); }
+        }
+        private void Changing(object? sender, PropertyChangingEventArgs e)
+        {
+            if (e.PropertyName is nameof(vm.Commands) or nameof(vm.Diff) or nameof(vm.LeftDiff) or nameof(vm.RightDiff))
+                setters[e.PropertyName] = (ElapsedMs, GC.GetTotalPauseDuration().TotalMilliseconds, CurrentPhase);
+        }
+        private void Changed(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is not { } name || !setters.Remove(name, out var started)) return;
+            var length = name switch { nameof(vm.Commands) => vm.Commands.Length, nameof(vm.Diff) => vm.Diff.Length,
+                nameof(vm.LeftDiff) => vm.LeftDiff.Length, nameof(vm.RightDiff) => vm.RightDiff.Length, _ => 0 };
+            AddSpan("bound property setter and earlier observers", name, started.Phase, started.Start, started.Pause, length);
+        }
+        private void AddSpan(string kind, string name, string spanPhase, double start, double pause, int? length)
+        {
+            var end = ElapsedMs;
+            Spans.Add(new { kind, name, phase = spanPhase, startedMs = start, completedMs = end, durationMs = end - start,
+                gcPauseDeltaMs = GC.GetTotalPauseDuration().TotalMilliseconds - pause, valueLength = length });
+        }
+        public void Dispose() { vm.PropertyChanging -= Changing; vm.PropertyChanged -= Changed; }
+    }
+    private static object Statistics(IEnumerable<double> samples)
+    {
+        var sorted = samples.Order().ToArray();
+        return new { samples = sorted.Length, min = sorted.FirstOrDefault(), median = sorted.Length == 0 ? 0 : sorted[sorted.Length / 2],
+            p95 = sorted.Length == 0 ? 0 : sorted[(int)Math.Floor((sorted.Length - 1) * .95)], max = sorted.LastOrDefault(), values = sorted };
+    }
+}

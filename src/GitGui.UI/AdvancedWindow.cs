@@ -18,7 +18,7 @@ public sealed class AdvancedWindow : Window
     public AdvancedWindowViewModel ViewModel { get; }
     private RebaseStepViewModel? draggedStep;
     private Border? dragHandle;
-    public AdvancedWindow(AdvancedWindowViewModel vm)
+    public AdvancedWindow(AdvancedWindowViewModel vm, ShortcutManager? shortcuts = null)
     {
         ViewModel = vm; DataContext = vm;
         Width = 1120; Height = 820; MinWidth = 900; MinHeight = 620;
@@ -53,17 +53,43 @@ public sealed class AdvancedWindow : Window
         tabs.Items.Add(Tab("AdvancedFileHistory", FileHistoryPanel()));
         Grid.SetRow(tabs, 2); root.Children.Add(tabs);
         var footer = new Grid { ColumnDefinitions = new("*,Auto,Auto"), ColumnSpacing = 8 };
-        var status = new StackPanel { Spacing = 6 };
+        var status = new StackPanel { Spacing = 6 }; status.Children.Add(new OperationFeedbackBar { Feedback = vm.Feedback });
         var progress = new ProgressBar { IsIndeterminate = true, Height = 3 }; progress.Bind(IsVisibleProperty, Bind(nameof(vm.IsBusy))); status.Children.Add(progress);
         var notice = new TextBlock { Name = "AdvancedNotice", TextWrapping = TextWrapping.Wrap }; notice.Bind(TextBlock.TextProperty, Bind(nameof(vm.Notice))); status.Children.Add(notice);
         var phase = new TextBlock { FontSize = 11 }; phase.Bind(TextBlock.TextProperty, Bind(nameof(vm.ProgressText))); AppearanceManager.Bind(phase, TextBlock.ForegroundProperty, "MutedBrush"); status.Children.Add(phase); footer.Children.Add(status);
         var undo = Button("AdvancedUndo", "Undo", enabled: nameof(vm.CanUndo), icon: "Undo"); undo.Command = vm.UndoCommand; Grid.SetColumn(undo, 1); footer.Children.Add(undo);
         var close = Button("Close", "Close", icon: "Close"); close.Command = null; close.Click += (_, _) => Close(); Grid.SetColumn(close, 2); footer.Children.Add(close);
         Grid.SetRow(footer, 3); root.Children.Add(footer); Content = root;
+        vm.Feedback.Navigate = async action =>
+        {
+            if (action is GitSuggestedAction.Fetch or GitSuggestedAction.Pull) await vm.ExecuteSuggestedAsync(action == GitSuggestedAction.Fetch ? GitAction.Fetch : GitAction.Pull);
+            else if (action == GitSuggestedAction.Stash) tabs.SelectedIndex = 0;
+            else if (action == GitSuggestedAction.ResolveConflicts && Owner is MainWindow main) await main.HandleSuggestedActionAsync(action);
+            else await OperationFeedback.ShowHelpAsync(this, vm.L, action);
+        };
         Opened += async (_, _) => await vm.RefreshCommand.ExecuteAsync(null);
         Closing += (_, args) => { if (vm.IsWriting) { args.Cancel = true; vm.Notice = vm.L["AdvancedWait"]; } };
         Closed += (_, _) => vm.Dispose();
-        KeyBindings.Add(new KeyBinding { Gesture = new(Key.F5), Command = vm.RefreshCommand });
+        shortcuts ??= new();
+        var manager = shortcuts;
+        manager.Attach(this, "Advanced", vm.L, ShortcutManager.Definitions.Where(d => d.Scope == "Advanced").Select(d =>
+        {
+            var action = d.Id[9..];
+            return new UiCommand(action, async () =>
+            {
+                switch (action)
+                {
+                    case "Palette": await manager.ShowPaletteAsync(this); break;
+                    case "Refresh": await vm.RefreshCommand.ExecuteAsync(null); break;
+                    case "Undo": await vm.UndoCommand.ExecuteAsync(null); break;
+                    case "LoadPlan": await vm.LoadPlanCommand.ExecuteAsync(null); break;
+                    case "LoadFile": await vm.LoadFileCommand.ExecuteAsync(null); break;
+                    case "MoveUp": vm.MoveUpCommand.Execute(null); break;
+                    case "MoveDown": vm.MoveDownCommand.Execute(null); break;
+                    default: await vm.ExecuteCommand.ExecuteAsync(action); break;
+                }
+            }, () => action == "Palette" || (action == "Undo" ? vm.CanUndo : vm.CanOperate));
+        }).ToArray());
         KeyBindings.Add(new KeyBinding { Gesture = new(Key.Escape), Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => Close()) });
     }
     private Binding Bind(string path, BindingMode mode = BindingMode.Default) => new(path) { Source = ViewModel, Mode = mode };
@@ -84,7 +110,7 @@ public sealed class AdvancedWindow : Window
     {
         var input = new TextBox { Name = "AdvancedInput_" + property, AcceptsReturn = multiline, MinHeight = multiline ? 68 : 32, TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap };
         input.Bind(TextBox.TextProperty, Bind(property, BindingMode.TwoWay)); input.Bind(TextBox.WatermarkProperty, Bind("L[" + label + "]"));
-        input.Bind(IsEnabledProperty, Bind(nameof(ViewModel.CanOperate))); AutomationProperties.SetName(input, ViewModel.L[label]); return input;
+        input.Bind(IsEnabledProperty, Bind(nameof(ViewModel.CanOperate))); ViewModel.L.Bind(input, AutomationProperties.NameProperty, label); return input;
     }
     private CheckBox Check(string property, string label)
     {
@@ -144,7 +170,7 @@ public sealed class AdvancedWindow : Window
     {
         var row = new Grid { ColumnDefinitions = new("28,100,120,*"), ColumnSpacing = 9, Margin = new Thickness(3, 7) };
         var handle = new Border { Name = "AdvancedDrag_" + step.ShortCommit, Cursor = new Cursor(StandardCursorType.SizeAll), Padding = new Thickness(5), Child = new ActionIcon { Kind = "Settings", Width = 18, Height = 18 } };
-        ToolTip.SetTip(handle, ViewModel.L["AdvancedDrag"]); AppearanceManager.Bind(handle, Border.BackgroundProperty, "RaisedBrush");
+        ViewModel.L.Bind(handle, ToolTip.TipProperty, "AdvancedDrag"); AppearanceManager.Bind(handle, Border.BackgroundProperty, "RaisedBrush");
         handle.PointerPressed += (_, args) =>
         {
             if (ViewModel.IsBusy || !args.GetCurrentPoint(handle).Properties.IsLeftButtonPressed) return;
@@ -155,8 +181,11 @@ public sealed class AdvancedWindow : Window
         row.Children.Add(handle);
         var hash = Text(step.ShortCommit, 12); hash.VerticalAlignment = VerticalAlignment.Center; hash.FontFamily = new("Cascadia Code,Consolas,Menlo,monospace"); Grid.SetColumn(hash, 1); row.Children.Add(hash);
         var choice = new ComboBox { ItemsSource = ViewModel.StepKinds, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Center };
+        choice.ItemTemplate = new FuncDataTemplate<RebaseStepKind>((kind, _) => Label("Rebase" + kind));
+        ViewModel.L.Bind(choice, AutomationProperties.NameProperty, "RebaseAction"); AutomationProperties.SetHelpText(choice, step.Commit);
         choice.Bind(Avalonia.Controls.Primitives.SelectingItemsControl.SelectedItemProperty, new Binding(nameof(step.Action)) { Source = step, Mode = BindingMode.TwoWay }); Grid.SetColumn(choice, 2); row.Children.Add(choice);
         var message = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 56, MaxHeight = 90, Watermark = ViewModel.L["AdvancedStepMessage"] };
+        ViewModel.L.Bind(message, TextBox.WatermarkProperty, "AdvancedStepMessage"); ViewModel.L.Bind(message, AutomationProperties.NameProperty, "RebaseMessage"); AutomationProperties.SetHelpText(message, step.Commit);
         message.Bind(TextBox.TextProperty, new Binding(nameof(step.Message)) { Source = step, Mode = BindingMode.TwoWay }); Grid.SetColumn(message, 3); row.Children.Add(message); return row;
     }
     private Control HistoryActionsPanel()
@@ -164,14 +193,14 @@ public sealed class AdvancedWindow : Window
         var panel = Stack(); panel.Margin = new Thickness(8, 14); panel.Children.Add(Label("AdvancedHistoryHint")); panel.Children.Add(Label("AdvancedRevision")); panel.Children.Add(Input(nameof(ViewModel.Revision), "AdvancedRevision"));
         var apply = new WrapPanel(); apply.Children.Add(Button("AdvancedCherryPick", "CherryPick", icon: "Plus")); apply.Children.Add(Button("AdvancedRevert", "Revert", icon: "Undo")); panel.Children.Add(apply);
         panel.Children.Add(Label("AdvancedResetHint"));
-        var modes = new ComboBox { ItemsSource = ViewModel.ResetModes, HorizontalAlignment = HorizontalAlignment.Stretch }; modes.Bind(Avalonia.Controls.Primitives.SelectingItemsControl.SelectedItemProperty, Bind(nameof(ViewModel.ResetMode), BindingMode.TwoWay)); modes.Bind(IsEnabledProperty, Bind(nameof(ViewModel.CanOperate))); panel.Children.Add(modes);
+        var modes = new ComboBox { ItemsSource = ViewModel.ResetModes, HorizontalAlignment = HorizontalAlignment.Stretch, ItemTemplate = new FuncDataTemplate<ResetMode>((mode, _) => Label("Reset" + mode)) }; ViewModel.L.Bind(modes, AutomationProperties.NameProperty, "AdvancedReset"); modes.Bind(Avalonia.Controls.Primitives.SelectingItemsControl.SelectedItemProperty, Bind(nameof(ViewModel.ResetMode), BindingMode.TwoWay)); modes.Bind(IsEnabledProperty, Bind(nameof(ViewModel.CanOperate))); panel.Children.Add(modes);
         panel.Children.Add(Button("AdvancedReset", "Reset", icon: "Shield")); return new ScrollViewer { Content = panel };
     }
     private Control TagsPanel()
     {
         var grid = new Grid { ColumnDefinitions = new("*,*"), ColumnSpacing = 18, Margin = new Thickness(8, 14) };
         var tags = new Grid { RowDefinitions = new("Auto,*,Auto"), RowSpacing = 9 }; tags.Children.Add(Label("AdvancedTags", 15, true));
-        var list = List<TagInfo>(nameof(ViewModel.Tags), nameof(ViewModel.SelectedTag), tag => Text(tag.Name + (tag.Annotated ? " · annotated" : " · lightweight") + "\n" + tag.Target, 12)); Grid.SetRow(list, 1); tags.Children.Add(list);
+        var list = List<TagInfo>(nameof(ViewModel.Tags), nameof(ViewModel.SelectedTag), tag => { var row = Stack(); row.Children.Add(Text(tag.Name + "\n" + tag.Target)); row.Children.Add(Label(tag.Annotated ? "AnnotatedTagType" : "LightweightTagType")); return row; }); Grid.SetRow(list, 1); tags.Children.Add(list);
         var form = Stack(); form.Children.Add(Input(nameof(ViewModel.TagName), "AdvancedTagName")); form.Children.Add(Input(nameof(ViewModel.Revision), "AdvancedRevision")); form.Children.Add(Check(nameof(ViewModel.AnnotatedTag), "AdvancedAnnotated")); form.Children.Add(Check(nameof(ViewModel.SignTag), "ToolsSignTag")); form.Children.Add(Input(nameof(ViewModel.TagMessage), "AdvancedTagMessage", true));
         var actions = new WrapPanel(); actions.Children.Add(Button("AdvancedCreateTag", "CreateTag", icon: "Plus")); actions.Children.Add(Button("AdvancedDeleteTag", "DeleteTag", icon: "Trash")); form.Children.Add(actions); Grid.SetRow(form, 2); tags.Children.Add(form); grid.Children.Add(tags);
         var reflog = new Grid { RowDefinitions = new("Auto,Auto,*"), RowSpacing = 8 }; reflog.Children.Add(Label("AdvancedReflog", 15, true)); var hint = Label("AdvancedReflogHint"); Grid.SetRow(hint, 1); reflog.Children.Add(hint);
@@ -185,7 +214,7 @@ public sealed class AdvancedWindow : Window
         var urls = new TextBox { IsReadOnly = true, AcceptsReturn = true, MinHeight = 80 }; urls.Bind(TextBox.TextProperty, Bind(nameof(ViewModel.SelectedRemoteUrls))); form.Children.Add(urls);
         form.Children.Add(Input(nameof(ViewModel.RemoteName), "AdvancedRemoteName")); form.Children.Add(Input(nameof(ViewModel.RemoteUrl), "Url")); form.Children.Add(Check(nameof(ViewModel.PushUrl), "AdvancedPushUrl"));
         var save = new WrapPanel(); save.Children.Add(Button("AdvancedAddRemote", "AddRemote", icon: "Plus")); save.Children.Add(Button("AdvancedSetUrl", "SetRemoteUrl", icon: "Save")); form.Children.Add(save);
-        form.Children.Add(Input(nameof(ViewModel.NewRemoteName), "AdvancedNewRemoteName")); var actions = new WrapPanel(); actions.Children.Add(Button("RenameBranch", "RenameRemote", icon: "Rename")); actions.Children.Add(Button("AdvancedRemoveRemote", "RemoveRemote", icon: "Trash")); form.Children.Add(actions);
+        form.Children.Add(Input(nameof(ViewModel.NewRemoteName), "AdvancedNewRemoteName")); var actions = new WrapPanel(); actions.Children.Add(Button("AdvancedRenameRemote", "RenameRemote", icon: "Rename")); actions.Children.Add(Button("AdvancedRemoveRemote", "RemoveRemote", icon: "Trash")); form.Children.Add(actions);
         var scroll = new ScrollViewer { Content = form }; Grid.SetColumn(scroll, 1); grid.Children.Add(scroll); return grid;
     }
     private Control FileHistoryPanel()

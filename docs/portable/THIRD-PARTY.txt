@@ -21,8 +21,8 @@ packages, with upstream locations and SHA-256 values in their source manifest.
 Download those source assets from the same GITGUI release page as this ZIP:
 https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0
 
-.NET runtime 8.0.32: MIT and third-party notices in licenses/DOTNET-*.txt.
-https://github.com/dotnet/runtime/tree/v8.0.32
+.NET runtime 10.0.13: MIT and third-party notices in licenses/DOTNET-*.txt.
+https://github.com/dotnet/runtime/tree/v10.0.13
 Runtime/native library licenses and NuGet author/copyright/repository metadata
 are preserved in licenses/, alongside nuget-inventory.json (versions/content hashes).
 MIT.txt contains the MIT terms for packages identified as MIT in that inventory;
@@ -35,5 +35,6 @@ the native NuGet package includes the exception and third-party notices).
 SkiaSharp: https://github.com/mono/SkiaSharp (MIT and third-party notices)
 SQLite: https://sqlite.org/copyright.html (public domain)
 
-GITGUI's public source currently has no general redistribution license.
+GITGUI is distributed under the MIT License. The application's copyright and
+license text are preserved in the top-level LICENSE file.
 Third-party software remains available under its respective licenses.

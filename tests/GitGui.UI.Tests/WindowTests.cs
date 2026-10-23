@@ -28,6 +28,54 @@ public class TestApplication : Application
 public sealed class WindowTests
 {
     [AvaloniaFact]
+    public async Task Rejected_commit_hook_offers_explicit_one_time_bypass_with_confirmation_and_scope_guards()
+    {
+        var backend = new SampleWorkspace { NextOutcome = new(false, "pre-commit hook failed", GitErrorKind.HookRejected) };
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath, CommitMessage = "Reviewed commit" };
+        var window = new MainWindow(vm); window.Show(); if (vm.InitializeCommand.ExecutionTask is { } initialization) await initialization;
+        await vm.RefreshCommand.ExecuteAsync(null); await vm.ActionCommand.ExecuteAsync("Commit");
+        Assert.Equal(vm.L["RetryWithoutHooks"], vm.Feedback.ActionLabel);
+        var declined = vm.Feedback.RemedyCommand.ExecuteAsync(null);
+        var dialog = Assert.Single(window.OwnedWindows);
+        dialog.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ConfirmationCancelButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await declined; Assert.Single(backend.Executed); Assert.False(vm.SkipHooks);
+        backend.NextOutcome = new(true, "committed");
+        var accepted = vm.Feedback.RemedyCommand.ExecuteAsync(null); dialog = Assert.Single(window.OwnedWindows);
+        dialog.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ConfirmationAcceptButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await accepted; Assert.Equal(2, backend.Executed.Count); Assert.True(backend.Executed[^1].SkipHooks); Assert.False(vm.SkipHooks);
+        vm.CommitMessage = "another"; backend.NextOutcome = new(false, "hook failed", GitErrorKind.HookRejected); await vm.ActionCommand.ExecuteAsync("Commit");
+        vm.CommitMessage = "newer draft"; await vm.Feedback.RemedyCommand.ExecuteAsync(null); Assert.Empty(window.OwnedWindows); Assert.Equal(3, backend.Executed.Count);
+        backend.NextOutcome = new(false, "pre-push hook failed", GitErrorKind.HookRejected); await vm.ActionCommand.ExecuteAsync("Push");
+        Assert.Equal(vm.L["RemedyShowOutput"], vm.Feedback.ActionLabel); window.Close();
+    }
+    [AvaloniaFact]
+    public async Task Keyboard_routes_stage_commit_and_cancel_palette_restore_focus_and_name_full_files()
+    {
+        var filename = "src/" + new string('長', 80) + ".cs";
+        var backend = new SampleWorkspace { FilesOverride = [new(filename, "M", "M", [])] };
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var shortcuts = new ShortcutManager(); shortcuts.SetGesture("Main.FocusFiles", "Ctrl+1"); shortcuts.SetGesture("Main.Stage", "Ctrl+T"); shortcuts.SetGesture("Main.FocusCommit", "Ctrl+2");
+        var window = new MainWindow(vm, shortcuts: shortcuts); window.Show(); if (vm.InitializeCommand.ExecutionTask is { } initialization) await initialization; await vm.RefreshCommand.ExecuteAsync(null); window.UpdateLayout();
+        try
+        {
+            void Press(PhysicalKey key, RawInputModifiers modifiers) { window.KeyPressQwerty(key, modifiers); window.KeyReleaseQwerty(key, modifiers); Dispatcher.UIThread.RunJobs(); }
+            Press(PhysicalKey.Digit1, RawInputModifiers.Control); Press(PhysicalKey.ArrowDown, RawInputModifiers.None);
+            var files = window.FindControl<ListBox>("ChangesList")!; Assert.True(files.IsKeyboardFocusWithin, $"repository={vm.HasRepository},busy={vm.IsBusy},staged={vm.ShowStaged},focus={window.FocusManager?.GetFocusedElement()},visible={files.IsEffectivelyVisible},keys={string.Join(',', window.KeyBindings.Select(b => b.Gesture))}");
+            var item = Assert.Single(files.GetRealizedContainers());
+            Assert.Equal(filename, Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(item)!.GetName());
+            Press(PhysicalKey.T, RawInputModifiers.Control); Assert.Equal(GitAction.Stage, Assert.Single(backend.Executed).Action);
+            Press(PhysicalKey.Digit2, RawInputModifiers.Control); var input = window.FindControl<TextBox>("CommitMessageInput")!; Assert.True(input.IsKeyboardFocusWithin);
+            window.KeyTextInput("Keyboard commit"); Assert.Equal("Keyboard commit", vm.CommitMessage);
+            Press(PhysicalKey.P, RawInputModifiers.Control | RawInputModifiers.Shift); var dialog = Assert.Single(window.OwnedWindows);
+            var paletteTask = ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)window.KeyBindings.Single(b => b.Gesture!.ToString() == "Ctrl+Shift+P").Command!).ExecutionTask;
+            dialog.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None); if (paletteTask is not null) await paletteTask; Dispatcher.UIThread.RunJobs();
+            Assert.True(input.IsKeyboardFocusWithin, $"After palette focus={window.FocusManager?.GetFocusedElement()}, busy={vm.IsBusy},enabled={input.IsEffectivelyEnabled}, owned={window.OwnedWindows.Count}");
+            Press(PhysicalKey.Enter, RawInputModifiers.Control); Assert.Equal(GitAction.Commit, backend.Executed[^1].Action);
+            Assert.Equal("Keyboard commit", backend.Executed[^1].Message);
+        }
+        finally { window.Close(); }
+    }
+    [AvaloniaFact]
     public void Appearance_toolbar_and_palette_buttons_work_through_actual_pointer_input()
     {
         using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());
@@ -238,8 +286,8 @@ public sealed class WindowTests
         await vm.OpenRecentCommand.ExecuteAsync(SampleWorkspace.RootPath);
         Assert.Equal(SampleWorkspace.RootPath, vm.RepositoryPath); Assert.True(vm.HasRepository);
         await vm.SearchHistoryCommand.ExecuteAsync(null);
-        Assert.Equal(new LogFilter("graph", "Lin", "src/", "2026-01-01", "2026-10-23", Take: 1000), backend.LastFilter);
-        await vm.LoadMoreCommand.ExecuteAsync(null); Assert.Equal(2000, backend.LastFilter!.Take);
+        Assert.Equal(new LogFilter("graph", "Lin", "src/", "2026-01-01", "2026-10-23", Take: 500), backend.LastFilter);
+        await vm.LoadMoreCommand.ExecuteAsync(null); Assert.Equal(1000, backend.LastFilter!.Take); Assert.Equal(4, backend.LastFilter.Skip);
         vm.RepositoryPath = ""; await vm.RefreshCommand.ExecuteAsync(null);
         Assert.False(vm.HasRepository); Assert.Empty(vm.Changes); Assert.Empty(vm.Commits); Assert.Empty(vm.Diff); Assert.False(vm.IsBusy);
     }
@@ -251,7 +299,7 @@ public sealed class WindowTests
         using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
         await vm.RefreshCommand.ExecuteAsync(null);
         Assert.True(vm.IsLargeDiff); Assert.True(vm.Diff.Length < 1000); Assert.Empty(vm.PatchRows);
-        vm.LoadLargeDiffCommand.Execute(null); Assert.False(vm.IsLargeDiff); Assert.True(vm.Diff.Length > 1024 * 1024);
+        await vm.LoadLargeDiffCommand.ExecuteAsync(null); Assert.False(vm.IsLargeDiff); Assert.True(vm.Diff.Length > 1024 * 1024);
         backend.DiffText = "Binary files a/image.png and b/image.png differ";
         vm.SelectedChange = vm.Changes[1]; Assert.Empty(vm.PatchRows); Assert.Contains("Binary files", vm.Diff);
     }
@@ -299,6 +347,7 @@ public sealed class WindowTests
         var backend = new SampleWorkspace();
         var vm = new MainWindowViewModel(backend, new MemoryRecent());
         Assert.Equal("開啟", vm.L["Open"]); vm.English = true; Assert.Equal("Open", vm.L["Open"]);
+        Assert.Equal("Open a repository to begin.", vm.Notice);
         backend.Emit(new(DateTimeOffset.Now, "git status", "clean", 0, TimeSpan.Zero));
         Assert.Contains("git status", vm.Commands);
         await Task.Run(() => backend.Emit(new(DateTimeOffset.Now, "git log", "history", 0, TimeSpan.Zero)));
@@ -518,6 +567,7 @@ public sealed class WindowTests
         public bool AllowCancellation { get; set; }
         public CancellationToken ActiveToken { get; private set; }
         public bool HasConflict { get; set; }
+        public FileChange[]? FilesOverride { get; set; }
         public ConflictContent Conflict { get; set; } = new("base\n", "ours one\nours two\n", "theirs one\ntheirs two\n", "before\n<<<<<<< HEAD\nours one\n=======\ntheirs one\n>>>>>>> topic\nbetween\n<<<<<<< HEAD\nours two\n=======\ntheirs two\n>>>>>>> topic\nafter\n", false);
         public FilePreview Preview { get; set; } = new(80, 96, null, null, null);
         public Dictionary<string, TaskCompletionSource<string>> DeferredDiffs { get; } = [];
@@ -528,7 +578,7 @@ public sealed class WindowTests
         public Task<WorkspaceState> OpenAsync(string path, LogFilter filter, CancellationToken ct)
         {
             LastFilter = filter;
-            FileChange[] files = [new("src/Workspace.cs", "M", "M", []), new("docs/README.md", ".", "M", []), new("src/Graph.cs", "A", ".", []), new("notes/new.txt", "?", "?", [])];
+            FileChange[] files = FilesOverride ?? [new("src/Workspace.cs", "M", "M", []), new("docs/README.md", ".", "M", []), new("src/Graph.cs", "A", ".", []), new("notes/new.txt", "?", "?", [])];
             if (HasConflict) files[0] = new(files[0].Path, "U", "U", []);
             CommitInfo[] commits = [new("a1b2c3d4e5", "Complete safe workspace operations", "Will Lin", DateTimeOffset.Now, ["f2a3b4c5", "b3c4d5e6"]), new("f2a3b4c5", "Build virtualized commit graph", "Will Lin", DateTimeOffset.Now.AddHours(-1), ["c4d5e6f7"]), new("b3c4d5e6", "Protect work with reversible snapshots", "Alex Chen", DateTimeOffset.Now.AddHours(-2), ["c4d5e6f7"]), new("c4d5e6f7", "Initialize cross-platform Git workspace", "Will Lin", DateTimeOffset.Now.AddDays(-1), [])];
             RefInfo[] refs = [new("main", "refs/heads/main", commits[0].Hash, "origin/main", "↑ 2  ↓ 0", true), new("feature/graph", "refs/heads/feature/graph", commits[1].Hash), new("origin/main", "refs/remotes/origin/main", commits[2].Hash)];

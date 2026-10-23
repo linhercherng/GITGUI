@@ -26,6 +26,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
     private bool disposed;
     public string Root { get; }
     public Localization L { get; }
+    public OperationFeedback Feedback { get; }
     public event EventHandler<OperationOutcome>? WorkspaceChanged;
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private bool isWriting;
@@ -77,10 +78,14 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
         string? path = null, string? revision = null, Localization? localization = null)
     {
         this.workspace = workspace; this.advanced = advanced; Root = Path.GetFullPath(root); L = localization ?? new();
+        Feedback = new(L, () => CanOperate);
         FilePath = path ?? ""; Revision = revision ?? "HEAD"; Notice = L["AdvancedHint"];
+        L.PropertyChanged += LocaleChanged;
     }
+    private void LocaleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { OnPropertyChanged(nameof(ActiveOperationText)); OnPropertyChanged(nameof(SelectedRemoteUrls)); }
     partial void OnIsBusyChanged(bool value)
     {
+        Feedback?.Notify();
         OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanContinue)); OnPropertyChanged(nameof(CanSkip)); OnPropertyChanged(nameof(CanAbort)); OnPropertyChanged(nameof(CanUndo));
     }
     partial void OnInProgressChanged(InProgressState value)
@@ -213,6 +218,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
         {
             var progress = new Progress<OperationProgress>(p => { if (!disposed && IsWriting) ProgressText = p.Phase; });
             var result = await workspace.ExecuteAsync(Root, operation, progress, lifetime.Token);
+            Feedback.Record(result, () => CanOperate ? RunAsync(operation with { SkipHooks = false, Force = false }) : Task.CompletedTask);
             if (disposed) return;
             LastOutcome = result;
             try { await RefreshStateAsync(); }
@@ -229,6 +235,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
     public void Dispose()
     {
         if (disposed) return;
-        disposed = true; lifetime.Cancel(); fileRequest?.Cancel(); fileRequest?.Dispose(); lifetime.Dispose();
+        disposed = true; Feedback.Dispose(); L.PropertyChanged -= LocaleChanged; lifetime.Cancel(); fileRequest?.Cancel(); fileRequest?.Dispose(); lifetime.Dispose();
     }
+    public Task ExecuteSuggestedAsync(GitAction action) => CanOperate && action is GitAction.Fetch or GitAction.Pull ? RunAsync(new(action)) : Task.CompletedTask;
 }

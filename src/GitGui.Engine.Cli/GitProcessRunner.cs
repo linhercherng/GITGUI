@@ -35,6 +35,29 @@ public sealed class GitProcessRunner(GitRuntime? runtime = null)
     public async Task<GitResult> RunAsync(string repository, IReadOnlyList<string> args, CancellationToken ct,
         GitRunOptions? options = null, IProgress<OperationProgress>? progress = null)
     {
+        var watch = Stopwatch.StartNew();
+        try { return await RunCoreAsync(repository, args, ct, options, progress); }
+        catch (Exception ex)
+        {
+            var reason = ex is OperationCanceledException ? "Cancelled" : "Process failure: " + ex.GetType().Name;
+            Notify(new(DateTimeOffset.Now, "[Git command attempt] " + string.Join(' ', GitLogSanitizer.Arguments(args)), reason, -1, watch.Elapsed)
+            { WorkingDirectory = repository, Arguments = args.ToArray(), StandardError = reason });
+            throw;
+        }
+    }
+
+    private void Notify(CommandEntry entry)
+    {
+        foreach (var listener in CommandExecuted?.GetInvocationList() ?? [])
+        {
+            try { ((EventHandler<CommandEntry>)listener)(this, entry); }
+            catch (Exception) { /* Observers must never turn a completed Git mutation into failure. */ }
+        }
+    }
+
+    private async Task<GitResult> RunCoreAsync(string repository, IReadOnlyList<string> args, CancellationToken ct,
+        GitRunOptions? options, IProgress<OperationProgress>? progress)
+    {
         options ??= new();
         ct.ThrowIfCancellationRequested();
         var watch = Stopwatch.StartNew();
@@ -145,11 +168,13 @@ public sealed class GitProcessRunner(GitRuntime? runtime = null)
             var output = await stdout;
             var error = await stderr;
             var text = options.HideOutput || options.OutputStream is not null || options.OutputConsumer is not null
-                ? "[object/binary output omitted]" : Redact(Encoding.UTF8.GetString(output));
-            if (text.Length > 16000) text = text[..16000] + "\n[output truncated]";
-            CommandExecuted?.Invoke(this, new(DateTimeOffset.Now,
+                ? "[object/binary output omitted]" : Redact(Encoding.UTF8.GetString(output.AsSpan(0, Math.Min(output.Length, 16000))));
+            if (output.Length > 16000 && !options.HideOutput && options.OutputStream is null && options.OutputConsumer is null)
+                text += "\n[output truncated]";
+            Notify(new(DateTimeOffset.Now,
                 FormatCommand(start.FileName, prefix.Concat(args)),
-                text + (error.Length > 0 ? "\n" + error : ""), process.ExitCode, watch.Elapsed));
+                text + (error.Length > 0 ? "\n" + error : ""), process.ExitCode, watch.Elapsed)
+            { WorkingDirectory = start.WorkingDirectory, Arguments = args.ToArray(), StandardError = error });
             return new(process.ExitCode, output, error);
         }
         catch
@@ -160,15 +185,11 @@ public sealed class GitProcessRunner(GitRuntime? runtime = null)
         }
     }
 
-    public static string Redact(string text)
-    {
-        text = Regex.Replace(text, @"(https?://)[^\s/@]+@", "$1***@", RegexOptions.IgnoreCase);
-        text = Regex.Replace(text, @"(Authorization\s*[:=]\s*)[^\r\n]+", "$1***", RegexOptions.IgnoreCase);
-        return Regex.Replace(text, @"((?:access_token|token|password|passwd|secret)\s*[=:]\s*)[^\s&]+", "$1***", RegexOptions.IgnoreCase);
-    }
+    public static string Redact(string text) => GitLogSanitizer.Text(text);
 
     internal static string FormatCommand(string executable, IEnumerable<string> arguments)
-        => (OperatingSystem.IsWindows() ? "& " : "") + ShellQuote(Redact(executable)) + " " + string.Join(" ", arguments.Select(QuoteDisplay));
+        => (OperatingSystem.IsWindows() ? "& " : "") + ShellQuote(Redact(executable)) + " " +
+            string.Join(" ", GitLogSanitizer.DisplayArguments(arguments.ToArray()).Select(QuoteDisplay));
 
     private static string QuoteDisplay(string value)
     {
@@ -186,5 +207,5 @@ public sealed class GitProcessRunner(GitRuntime? runtime = null)
         catch (InvalidOperationException) { }
     }
 
-    internal void Record(CommandEntry entry) => CommandExecuted?.Invoke(this, entry);
+    internal void Record(CommandEntry entry) => Notify(entry);
 }

@@ -154,7 +154,9 @@ public sealed class AdvancedWindowTests
     public async Task Main_toolbar_opens_advanced_window_through_pointer_and_refreshes_after_advanced_write_and_close()
     {
         var backend = new Backend(); using var main = new MainWindowViewModel(backend, new Recent()) { RepositoryPath = Path.Combine(Path.GetTempPath(), "gitgui-m2-fixture") };
-        var window = new MainWindow(main, workspace: backend); window.Show(); await main.RefreshCommand.ExecuteAsync(null);
+        var window = new MainWindow(main, workspace: backend); window.Show();
+        if (main.InitializeCommand.ExecutionTask is { } initialization) await initialization;
+        await main.RefreshCommand.ExecuteAsync(null);
         var before = backend.MainRefreshCount;
         var button = window.FindControl<Button>("AdvancedButton")!;
         window.UpdateLayout();
@@ -162,8 +164,11 @@ public sealed class AdvancedWindowTests
         window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); Dispatcher.UIThread.RunJobs();
         var advanced = Assert.IsType<AdvancedWindow>(Assert.Single(window.OwnedWindows));
         await advanced.ViewModel.ExecuteCommand.ExecuteAsync("StashPush");
+        if (main.RefreshCommand.ExecutionTask is { } refresh) await refresh;
         Assert.True(backend.MainRefreshCount > before); var after = backend.MainRefreshCount;
-        advanced.Close(); Dispatcher.UIThread.RunJobs(); Assert.True(backend.MainRefreshCount > after);
+        advanced.Close(); Dispatcher.UIThread.RunJobs();
+        if (main.RefreshCommand.ExecutionTask is { } closingRefresh) await closingRefresh;
+        Assert.True(backend.MainRefreshCount > after);
         window.Close();
     }
 
