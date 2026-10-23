@@ -28,9 +28,11 @@
 
 ## 審查與修復
 
-分別執行後端安全／規格與 UI 規格／品質審查。已處理：index/ref 鎖取得順序、Windows symlink placeholder、信任設定傳遞、pull.ff 與 rebase 策略確認、FETCH_HEAD 競態、批次物件串流管線阻塞、Windows 無主控台 AskPass、Unix executable mode、遲到 Diff／commit 回應、載入／儲存時的衝突草稿遺失。
+分別執行後端安全／規格與 UI 規格／品質審查。已處理：index/ref 鎖取得順序、Windows symlink placeholder、信任設定傳遞、pull.ff 與 rebase 策略確認、FETCH_HEAD 競態、批次物件串流管線阻塞、Unix AskPass 重新接聽競態、Windows 無主控台 AskPass、Unix executable mode、遲到 Diff／commit 回應、載入／儲存時的衝突草稿遺失。
 
 延遲 backend 測試驗證回應過期時不套用舊 patch、不切回舊 commit，且儲存期間較新的草稿不被清除。UI 審查修復後核准；後端未發現剩餘阻擋問題。
+
+首次 Linux CI 發現無效 AskPass 請求結束時重建 listener 會重設已排隊連線；已改為重用 listener 並 Disconnect，回歸案例連續混合 10 次無效／有效請求及 5 個並行正常請求。本機 InfrastructureTests 3 項重跑通過。
 
 ## GitHub 與未驗證範圍
 

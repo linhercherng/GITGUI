@@ -16,12 +16,13 @@ public sealed class AskPassBridge : IDisposable
 
     private async Task Serve(IWorkspaceInteraction interaction)
     {
+        // Reuse the listening instance: disposing it between clients drops queued Unix connections.
+        await using var server = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         try
         {
             while (!lifetime.IsCancellationRequested)
             {
-                await using var server = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await server.WaitForConnectionAsync(lifetime.Token);
                 try
                 {
@@ -35,6 +36,7 @@ public sealed class AskPassBridge : IDisposable
                 }
                 catch (IOException) { /* A cancelled Git client must not disable later prompts. */ }
                 catch (JsonException) { /* Ignore malformed requests without retaining their contents. */ }
+                finally { if (server.IsConnected) server.Disconnect(); }
             }
         }
         catch (OperationCanceledException) { }

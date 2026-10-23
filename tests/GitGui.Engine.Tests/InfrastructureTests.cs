@@ -37,14 +37,20 @@ public class InfrastructureTests
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         using var server = new AskPassBridge(new Credentials());
-        await using (var client = new System.IO.Pipes.NamedPipeClientStream(".", server.PipeName,
-            System.IO.Pipes.PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous))
+        for (var attempt = 0; attempt < 10; attempt++)
         {
-            await client.ConnectAsync(timeout.Token);
-            await client.WriteAsync(System.Text.Encoding.UTF8.GetBytes("{invalid-json}\n"), timeout.Token);
-            await client.FlushAsync(timeout.Token);
+            await using (var client = new System.IO.Pipes.NamedPipeClientStream(".", server.PipeName,
+                System.IO.Pipes.PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous))
+            {
+                await client.ConnectAsync(timeout.Token);
+                await client.WriteAsync(System.Text.Encoding.UTF8.GetBytes("{invalid-json}\n"), timeout.Token);
+                await client.FlushAsync(timeout.Token);
+            }
+            Assert.Equal("dummy-密碼-for-test", await AskPassBridge.RequestAsync(server.PipeName, "Password", timeout.Token));
         }
-        Assert.Equal("dummy-密碼-for-test", await AskPassBridge.RequestAsync(server.PipeName, "Password", timeout.Token));
+        var simultaneous = await Task.WhenAll(Enumerable.Range(0, 5)
+            .Select(_ => AskPassBridge.RequestAsync(server.PipeName, "Password", timeout.Token)));
+        Assert.All(simultaneous, answer => Assert.Equal("dummy-密碼-for-test", answer));
         server.Dispose();
     }
 
