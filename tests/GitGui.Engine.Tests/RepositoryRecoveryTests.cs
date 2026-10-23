@@ -133,6 +133,9 @@ public sealed class RepositoryRecoveryTests
         await repo.Git("worktree", "add", "-b", "sibling", sibling);
         try
         {
+            var commonDirectory = await repo.Git("rev-parse", "--path-format=absolute", "--git-common-dir");
+            var siblingHead = await repo.Git("-C", sibling, "rev-parse", "HEAD");
+            Assert.Equal(commonDirectory, await repo.Git("-C", sibling, "rev-parse", "--path-format=absolute", "--git-common-dir"));
             var (tools, workspace, _) = Services();
             var change = await tools.ExecuteAsync(repo.Root, new(RepositoryToolAction.SparseSet) { Patterns = ["one"] }, null, default);
             Assert.True(change.Success, change.Message);
@@ -143,9 +146,40 @@ public sealed class RepositoryRecoveryTests
             Assert.Equal("two\n", await File.ReadAllTextAsync(Path.Combine(repo.Root, "two", "file.txt")));
             Assert.Equal("two\n", await File.ReadAllTextAsync(Path.Combine(sibling, "two", "file.txt")));
             Assert.Empty((await repo.Git("-C", sibling, "status", "--porcelain")).Trim());
-            Assert.Equal(Path.GetFullPath(sibling), Path.GetFullPath((await repo.Git("-C", sibling, "rev-parse", "--show-toplevel")).Trim()));
+            Assert.Equal(commonDirectory, await repo.Git("-C", sibling, "rev-parse", "--path-format=absolute", "--git-common-dir"));
+            Assert.Equal(siblingHead, await repo.Git("-C", sibling, "rev-parse", "HEAD"));
         }
         finally { await repo.Git("worktree", "remove", "--force", sibling); }
+    }
+
+    [Fact]
+    public async Task Mac_standard_tmp_source_alias_works_without_permitting_arbitrary_destination_symlinks()
+    {
+        if (!OperatingSystem.IsMacOS()) return;
+        using var source = new TemporaryRepository(); await source.Init();
+        using var parent = new TemporaryRepository(); await parent.Init();
+        var alias = Path.Combine("/tmp", "gitgui-system-alias-" + Guid.NewGuid().ToString("N"));
+        var destinationLink = Path.Combine(parent.Root, "jump");
+        try
+        {
+            await source.Git("clone", source.Root, alias);
+            Assert.StartsWith("/private/tmp/", (await source.Git("-C", alias, "rev-parse", "--show-toplevel")).Trim());
+            var tools = Services().Tools;
+            var add = await tools.ExecuteAsync(parent.Root, new(RepositoryToolAction.SubmoduleAdd) { Path = "module", Url = alias }, null, default);
+            Assert.True(add.Success, add.Message); Assert.NotNull(add.Snapshot);
+            Assert.Equal((await source.Git("rev-parse", "HEAD")).Trim(), (await parent.Git("-C", "module", "rev-parse", "HEAD")).Trim());
+            Directory.CreateSymbolicLink(destinationLink, alias);
+            var unsafeAdd = await tools.ExecuteAsync(parent.Root, new(RepositoryToolAction.SubmoduleAdd) { Path = "jump/escape", Url = alias }, null, default);
+            Assert.False(unsafeAdd.Success); Assert.Null(unsafeAdd.Snapshot);
+            Assert.False(Directory.Exists(Path.Combine(alias, "escape")));
+            var unsafeSource = await tools.ExecuteAsync(parent.Root, new(RepositoryToolAction.SubmoduleAdd) { Path = "othermodule", Url = destinationLink }, null, default);
+            Assert.False(unsafeSource.Success); Assert.Null(unsafeSource.Snapshot);
+        }
+        finally
+        {
+            if (new DirectoryInfo(destinationLink).LinkTarget is not null) Directory.Delete(destinationLink);
+            if (Directory.Exists(alias)) Directory.Delete(alias, recursive: true);
+        }
     }
 
     [Fact]

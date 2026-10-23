@@ -56,8 +56,24 @@ internal sealed class GitAccess(GitProcessRunner runner)
         return full;
     }
 
+    internal static string NormalizeSystemPath(string path)
+    {
+        var full = Path.GetFullPath(path);
+        if (!OperatingSystem.IsMacOS()) return full;
+        // These are macOS system aliases, not repository-controlled symlinks.
+        // Leave every other link untouched so mutation preflight still rejects it.
+        foreach (var name in new[] { "var", "tmp", "etc" })
+        {
+            var alias = "/" + name; var physical = "/private/" + name;
+            if ((full == alias || full.StartsWith(alias + "/", StringComparison.Ordinal)) &&
+                new DirectoryInfo(alias).ResolveLinkTarget(true)?.FullName == physical)
+                return physical + full[alias.Length..];
+        }
+        return full;
+    }
+
     public static bool SamePath(string left, string right) => string.Equals(
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)), Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
+        Path.TrimEndingDirectorySeparator(NormalizeSystemPath(left)), Path.TrimEndingDirectorySeparator(NormalizeSystemPath(right)),
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     internal static IReadOnlyList<string> OverwriteCollisions(string root, IEnumerable<string> targetPaths)
     {

@@ -56,7 +56,7 @@ public sealed record SnapshotInfo(string Id, string Repository, string Title, Da
     public string Label => $"{CreatedAt:MM-dd HH:mm:ss}  {Title}";
 }
 public enum GitErrorKind { None, NonFastForward, StaleLease, Conflict, AuthFailed, LockExists,
-    HookRejected, Network, DirtyWorktree, Unknown }
+    HookRejected, Network, DirtyWorktree, Unknown, WorktreeCleanupIncomplete }
 public sealed record OperationProgress(string Phase, int? Percent = null, bool CanCancel = false);
 public sealed record CommandEntry(DateTimeOffset Time, string Command, string Output, int ExitCode,
     TimeSpan Duration);

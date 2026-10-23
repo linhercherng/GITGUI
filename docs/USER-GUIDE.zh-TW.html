@@ -111,6 +111,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>「清理過期紀錄」對應 prune，只清理 Git 判定已失效且未鎖定的紀錄。</li>
 </ol>
 <p>工作樹操作沒有快照 Undo。不能從目前正在開啟的工作樹移除自己；先改開另一個工作樹。共用同一個 Git common directory 的 GUI 操作會序列化。</p>
+<p>Windows 使用 reftable 格式時，Git 在部分 Windows 版本可能已移除工作樹資料夾，卻因檔案仍被 Git 映射而無法刪除管理紀錄。程式會明確顯示此狀態，不會自動清理。請先確認外接磁碟與其他工作樹仍可存取，再按「清理過期紀錄」並確認；這會清理所有已失效且未鎖定的紀錄，不只剛移除的項目。原分支會保留。</p>
 <h2 id="section-10">11. Git LFS</h2>
 <p>在「倉庫工具」→「Git LFS」查看版本與狀態。</p>
 <ol>

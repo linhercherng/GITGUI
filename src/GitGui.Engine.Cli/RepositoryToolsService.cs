@@ -97,6 +97,7 @@ public sealed partial class RepositoryToolsService : IRepositoryToolsService
             return new(true, op.Action + " completed" + (snapshot is null ? "" : " · 父倉庫可復原 / Parent snapshot available"), Snapshot: snapshot);
         }
         catch (OperationCanceledException) { return new(false, "Cancelled", Snapshot: snapshot, Cancelled: true); }
+        catch (WorktreeCleanupException ex) { return new(false, ex.Message, GitErrorKind.WorktreeCleanupIncomplete); }
         catch (Exception ex)
         {
             var message = ex is GitCommandException failure ? failure.Result.Error + Encoding.UTF8.GetString(failure.Result.Output) : ex.Message;
@@ -147,7 +148,7 @@ public sealed partial class RepositoryToolsService : IRepositoryToolsService
         if (op.Action is >= RepositoryToolAction.WorktreeAdd and <= RepositoryToolAction.WorktreeUnlock)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(op.Path);
-            var target = Path.GetFullPath(op.Path);
+            var target = GitAccess.NormalizeSystemPath(op.Path);
             for (var part = target; part is not null; part = Path.GetDirectoryName(part))
                 if ((File.Exists(part) || Directory.Exists(part)) && (File.GetAttributes(part) & FileAttributes.ReparsePoint) != 0)
                     throw new InvalidOperationException("Worktree path traverses a symbolic link.");
@@ -229,10 +230,10 @@ public sealed partial class RepositoryToolsService : IRepositoryToolsService
         switch (op.Action)
         {
             case RepositoryToolAction.WorktreeAdd:
-                await Run(root, ["worktree", "add", .. op.Name.Length == 0 ? new[] { "--detach" } : new[] { "-b", op.Name }, "--", Path.GetFullPath(op.Path), await Resolve(root, op.Revision, ct)], ct, progress); break;
-            case RepositoryToolAction.WorktreeRemove: await Run(root, ["worktree", "remove", "--", Path.GetFullPath(op.Path)], ct, progress); break;
-            case RepositoryToolAction.WorktreeLock: await Run(root, ["worktree", "lock", "--reason", op.Reason, "--", Path.GetFullPath(op.Path)], ct, progress); break;
-            case RepositoryToolAction.WorktreeUnlock: await Run(root, ["worktree", "unlock", "--", Path.GetFullPath(op.Path)], ct, progress); break;
+                await Run(root, ["worktree", "add", .. op.Name.Length == 0 ? new[] { "--detach" } : new[] { "-b", op.Name }, "--", GitAccess.NormalizeSystemPath(op.Path), await Resolve(root, op.Revision, ct)], ct, progress); break;
+            case RepositoryToolAction.WorktreeRemove: await RemoveWorktree(root, op.Path, ct, progress); break;
+            case RepositoryToolAction.WorktreeLock: await Run(root, ["worktree", "lock", "--reason", op.Reason, "--", GitAccess.NormalizeSystemPath(op.Path)], ct, progress); break;
+            case RepositoryToolAction.WorktreeUnlock: await Run(root, ["worktree", "unlock", "--", GitAccess.NormalizeSystemPath(op.Path)], ct, progress); break;
             case RepositoryToolAction.WorktreePrune: await Run(root, ["worktree", "prune", "--verbose", "--expire=now"], ct, progress); break;
             case RepositoryToolAction.LfsInstall: await Run(root, ["lfs", "install", "--local"], ct, progress); break;
             case RepositoryToolAction.LfsTrack: case RepositoryToolAction.LfsUntrack:
@@ -244,6 +245,27 @@ public sealed partial class RepositoryToolsService : IRepositoryToolsService
             case RepositoryToolAction.BisectGood: case RepositoryToolAction.BisectBad: case RepositoryToolAction.BisectSkip: case RepositoryToolAction.BisectReset:
                 await Run(root, ["bisect", op.Action switch { RepositoryToolAction.BisectGood => "good", RepositoryToolAction.BisectBad => "bad", RepositoryToolAction.BisectSkip => "skip", _ => "reset" }], ct, progress); break;
             default: throw new ArgumentOutOfRangeException(nameof(op));
+        }
+    }
+
+    private sealed class WorktreeCleanupException(string message) : Exception(message);
+
+    private async Task RemoveWorktree(string root, string path, CancellationToken ct, IProgress<OperationProgress>? progress)
+    {
+        var target = GitAccess.NormalizeSystemPath(path);
+        var admin = await git.Text(target, ct, "rev-parse", "--absolute-git-dir");
+        try { await Run(root, ["worktree", "remove", "--", target], ct, progress); }
+        catch (GitCommandException ex) when (OperatingSystem.IsWindows() &&
+            ex.Result.Error.Contains("failed to delete", StringComparison.Ordinal) &&
+            !Directory.Exists(target) && Directory.Exists(admin) && !File.Exists(Path.Combine(admin, "gitdir")))
+        {
+            // Git for Windows may keep reftable mappings open during removal on
+            // legacy Windows deletion semantics. Do not silently prune other entries.
+            if (await git.TryText(root, ct, "config", "extensions.refStorage") != "reftable") throw;
+            var preview = await runner.ReadAsync(root, ["worktree", "prune", "--dry-run", "--verbose", "--expire=now"], ct);
+            var entry = "Removing worktrees/" + Path.GetFileName(admin) + ": ";
+            if (preview.ExitCode != 0 || !preview.Error.Split('\n').Any(line => line.StartsWith(entry, StringComparison.Ordinal))) throw;
+            throw new WorktreeCleanupException("工作樹資料夾已移除，但 Git 未能刪除管理紀錄。請確認其他磁碟上的工作樹仍可存取，再按「清理過期紀錄」；該操作會清理所有已失效且未鎖定的紀錄。 / The worktree directory was removed, but Git could not delete its administrative record. Check that other worktree drives are connected, then choose Prune stale records; prune affects all stale unlocked records.\n" + GitProcessRunner.Redact(ex.Result.Error.Trim()));
         }
     }
 }

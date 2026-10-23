@@ -98,12 +98,12 @@ public sealed class CompatibilityMatrixTests
         await Success(service, clone.Root, new(GitAction.Clone) { Url = remote.Root });
         Assert.Equal(objectFormat, (await new CliRepoReader(runner).GetFormatAsync(clone.Root, default)).ObjectFormat);
         Assert.Equal(binary, await File.ReadAllBytesAsync(Path.Combine(clone.Root, "中文 空白.bin")));
-        await M3Workflow(repo, runner, service, snapshots);
+        await M3Workflow(repo, runner, service, snapshots, refFormat);
     }
 
-    private static async Task M3Workflow(TemporaryRepository repo, GitProcessRunner runner, WorkspaceService service, SnapshotManager snapshots)
+    private static async Task M3Workflow(TemporaryRepository repo, GitProcessRunner runner, WorkspaceService service, SnapshotManager snapshots, string refFormat)
     {
-        var tools = new RepositoryToolsService(runner, service, snapshots, new TestInteraction());
+        var prompt = new TestInteraction(); var tools = new RepositoryToolsService(runner, service, snapshots, prompt);
         async Task<OperationOutcome> Tool(RepositoryToolOperation operation)
         {
             var result = await tools.ExecuteAsync(repo.Root, operation, null, default);
@@ -115,8 +115,26 @@ public sealed class CompatibilityMatrixTests
             await Tool(new(RepositoryToolAction.WorktreeAdd) { Path = linked.Root });
             var worktrees = await repo.Git("worktree", "list", "--porcelain");
             Assert.Contains(Path.GetFileName(linked.Root), worktrees); Assert.Contains("detached", worktrees);
-            await Tool(new(RepositoryToolAction.WorktreeRemove) { Path = linked.Root });
+            var admin = (await repo.Git("-C", linked.Root, "rev-parse", "--absolute-git-dir")).Trim();
+            var beforeHead = await repo.Git("rev-parse", "HEAD");
+            var beforeRefs = await repo.Git("for-each-ref", "--format=%(refname) %(objectname)");
+            var removed = await tools.ExecuteAsync(repo.Root, new(RepositoryToolAction.WorktreeRemove) { Path = linked.Root }, null, default);
+            if (!removed.Success)
+            {
+                Assert.Equal(GitErrorKind.WorktreeCleanupIncomplete, removed.Error);
+                Assert.True(OperatingSystem.IsWindows(), removed.Message); Assert.Equal("reftable", refFormat);
+                Assert.False(Directory.Exists(linked.Root)); Assert.True(Directory.Exists(admin));
+                Assert.False(File.Exists(Path.Combine(admin, "gitdir")));
+                var dryRun = await runner.ReadAsync(repo.Root, ["worktree", "prune", "--dry-run", "--verbose", "--expire=now"], default);
+                Assert.Equal(0, dryRun.ExitCode);
+                Assert.Contains(dryRun.Error.Split('\n'), row => row.StartsWith($"Removing worktrees/{Path.GetFileName(admin)}: ", StringComparison.Ordinal));
+                await Tool(new(RepositoryToolAction.WorktreePrune));
+                Assert.Contains(prompt.Confirmations, confirmation => confirmation.Title == nameof(RepositoryToolAction.WorktreePrune));
+            }
             Assert.False(Directory.Exists(linked.Root));
+            Assert.False(Directory.Exists(admin));
+            Assert.Equal(beforeHead, await repo.Git("rev-parse", "HEAD"));
+            Assert.Equal(beforeRefs, await repo.Git("for-each-ref", "--format=%(refname) %(objectname)"));
         }
         finally { if (File.Exists(Path.Combine(linked.Root, ".git"))) await repo.Git("worktree", "remove", "--force", linked.Root); }
 

@@ -44,12 +44,22 @@ Windows 雜湊取自 [2.40.0 官方發行頁](https://github.com/git-for-windows
 
 | 工具 | 格式矩陣中的實際驗證 |
 | --- | --- |
-| Worktree | 建立 detached worktree、CLI 清單確認、以非 force 操作移除乾淨 worktree |
+| Worktree | 建立 detached worktree、CLI 清單確認、以非 force 操作移除乾淨 worktree；Windows legacy reftable 的明確部分失敗與手動清理路徑見下節 |
 | Sparse checkout | cone 選取 included 目錄、excluded 檔案消失、快照 Undo 還原檔案、index flags 與 sparse 設定 |
 | Bisect | 以額外空提交形成範圍、start 產生 BISECT_START、reset 回到原 HEAD 與 main 分支 |
 | LFS | repository-local install、驗證本地 filter 設定、track／untrack pattern 與 .gitattributes |
 
 這些代表操作不等同所有 P2 動作都做過四格式驗收。真正子模組的 clone／initialize／update／deinitialize 生命週期，以及 LFS 物件的 fetch／pull／實體內容往返，仍由獨立 SHA-1/files 測試涵蓋；不延伸宣稱已對 SHA-256／reftable 完成這兩類資料傳輸測試。
+
+### Windows legacy 刪除語意與 reftable 工作樹的已知邊界
+
+固定的 Git for Windows `2.56.0.windows.3` 在 Windows Server 2022 CI 的 SHA-1／SHA-256 reftable 倉庫，可能已移除工作目錄，卻因管理目錄的 reftable 映射檔仍開啟而回報 `failed to delete '.git/worktrees/<id>': Invalid argument`。這是純 Git CLI 也可重現的非原子部分失敗；再次執行非 force remove 會回報該路徑不是 worktree，不能當成可靠重試。
+
+本機 Windows 11 同版 Git 的一般刪除可成功；以 Git 官方的 `GIT_TEST_LEGACY_DELETE=1` 測試開關可確定性重現較舊 Windows 的行為。原因對照官方 [Windows 刪除實作](https://github.com/git-for-windows/git/blob/v2.56.0.windows.3/compat/mingw.c#L557)、[worktree remove](https://github.com/git-for-windows/git/blob/v2.56.0.windows.3/builtin/worktree.c#L1425) 與 [reftable 檔案關閉需求](https://github.com/git-for-windows/git/blob/v2.56.0.windows.3/refs/reftable-backend.c#L515)。測試開關只用於隔離驗證，不是建議使用者改動的設定。
+
+GITGUI 對符合條件的原生失敗回傳 `Success=false`、`WorktreeCleanupIncomplete`，顯示工作目錄已移除、管理資料清理未完成及後續操作，不假裝完整成功，也不自動 prune 或 force。先檢查 `git worktree prune --dry-run --verbose --expire=now`，確認列出的過期管理資料，再由使用者明確執行「Prune」。Prune 會處理倉庫中所有符合條件的過期項目，應先檢查清單。
+
+格式矩陣只接受此結構化錯誤，且必須同時滿足 Windows／reftable、目標工作目錄已不存在、移除前捕獲的管理目錄仍存在、其 gitdir 檔已不存在、dry-run 列出該精確管理項目。測試在隔離 fixture 中另外明確確認並呼叫 Prune，再驗證管理資料已清除、HEAD 與全部 refs 完全相同，繼續測試其他 P2 操作。這些斷言通過表示部分失敗與使用者主動復原處理正確，不代表原生 remove 在 legacy Windows 已成功；其他錯誤或格式不會因此略過。
 
 新矩陣用 `git init -h` 探測 `--ref-format`，以兩項獨立的 xUnit Fact Skip 呈現不可用的兩格；不把不支援格式算成成功。舊有 reftable 專項測試也只在 Git 回報不支援初始化選項時停止，並非略過可用格式的失敗。files 初始化不傳較新才加入的 `--ref-format=files`，因此最低版本仍可執行完整套件。
 
