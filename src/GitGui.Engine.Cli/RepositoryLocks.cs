@@ -51,8 +51,7 @@ internal sealed class PreparedRefs : IAsyncDisposable
 
     public static async Task<PreparedRefs> Begin(string root, string commands, GitProcessRunner runner, CancellationToken ct)
     {
-        var start = new ProcessStartInfo("git") { WorkingDirectory = root, UseShellExecute = false,
-            RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+        var start = await runner.CreateStartInfoAsync(root, ct);
         foreach (var arg in new[] { "-c", "core.fsmonitor=false", "update-ref", "--stdin" }) start.ArgumentList.Add(arg);
         start.Environment["LC_ALL"] = "C";
         start.Environment["GIT_TERMINAL_PROMPT"] = "0";
@@ -90,7 +89,7 @@ internal sealed class PreparedRefs : IAsyncDisposable
         await process.WaitForExitAsync();
         var error = GitProcessRunner.Redact(await errors);
         completed = true;
-        runner.Record(new(DateTimeOffset.Now, "git update-ref --stdin",
+        runner.Record(new(DateTimeOffset.Now, GitProcessRunner.FormatCommand(process.StartInfo.FileName, ["update-ref", "--stdin"]),
             commands + "prepare\ncommit\n" + error, process.ExitCode, watch.Elapsed));
         if (response != "commit: ok" || process.ExitCode != 0) throw new InvalidOperationException("Ref restoration failed: " + error);
     }

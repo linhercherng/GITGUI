@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 
 namespace GitGui.Infrastructure;
 
-public sealed class WorkspaceStorage(string databasePath) : IRepositorySettings, ISnapshotCatalog
+public sealed class WorkspaceStorage(string databasePath) : IRepositorySettings, ISnapshotCatalog, IGitPathStore
 {
     private async Task<SqliteConnection> Open(CancellationToken ct)
     {
@@ -13,13 +13,30 @@ public sealed class WorkspaceStorage(string databasePath) : IRepositorySettings,
         {
             await connection.OpenAsync(ct);
             using var command = connection.CreateCommand();
-            command.CommandText = "CREATE TABLE IF NOT EXISTS trusted_repositories(root TEXT PRIMARY KEY);" +
+            command.CommandText = "CREATE TABLE IF NOT EXISTS application_settings(name TEXT PRIMARY KEY,value TEXT);" +
+                "CREATE TABLE IF NOT EXISTS trusted_repositories(root TEXT PRIMARY KEY);" +
                 "CREATE TABLE IF NOT EXISTS snapshots(id TEXT PRIMARY KEY, root TEXT NOT NULL, title TEXT NOT NULL," +
                 "created TEXT NOT NULL, state_ref TEXT NOT NULL, head TEXT, file_count INTEGER NOT NULL);";
             await command.ExecuteNonQueryAsync(ct);
             return connection;
         }
         catch { await connection.DisposeAsync(); throw; }
+    }
+
+    public async Task<string?> LoadGitPathAsync(CancellationToken ct)
+    {
+        await using var connection = await Open(ct);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT value FROM application_settings WHERE name='git_executable'";
+        return await command.ExecuteScalarAsync(ct) as string;
+    }
+    public async Task SaveGitPathAsync(string? path, CancellationToken ct)
+    {
+        await using var connection = await Open(ct);
+        using var command = connection.CreateCommand();
+        command.CommandText = "INSERT OR REPLACE INTO application_settings(name,value) VALUES('git_executable',$path)";
+        command.Parameters.AddWithValue("$path", (object?)path ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(ct);
     }
 
     public async Task<bool> IsTrustedAsync(string root, CancellationToken ct)

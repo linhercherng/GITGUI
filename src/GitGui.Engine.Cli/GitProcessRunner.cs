@@ -19,8 +19,11 @@ public sealed record GitRunOptions
     public int MaxOutputBytes { get; init; } = 32 * 1024 * 1024;
 }
 
-public sealed class GitProcessRunner
+public sealed class GitProcessRunner(GitRuntime? runtime = null)
 {
+    private readonly GitRuntime runtime = runtime ?? new();
+    internal Task<ProcessStartInfo> CreateStartInfoAsync(string directory, CancellationToken ct)
+        => runtime.CreateStartInfoAsync(directory, ct);
     public event EventHandler<CommandEntry>? CommandExecuted;
     public string? AskPassCommand { get; set; }
     public string? AskPassPipe { get; set; }
@@ -34,13 +37,7 @@ public sealed class GitProcessRunner
         options ??= new();
         ct.ThrowIfCancellationRequested();
         var watch = Stopwatch.StartNew();
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = Path.GetFullPath(repository), UseShellExecute = false,
-            RedirectStandardOutput = true, RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
-            RedirectStandardInput = true, CreateNoWindow = true
-        };
+        var start = await CreateStartInfoAsync(repository, ct);
         var prefix = new List<string> { "--literal-pathspecs", "-c", "core.quotepath=false",
             "-c", "color.ui=never", "-c", "core.pager=cat" };
         if (options.IsReadOnly) prefix.Insert(0, "--no-optional-locks");
@@ -149,7 +146,7 @@ public sealed class GitProcessRunner
                 ? "[object/binary output omitted]" : Redact(Encoding.UTF8.GetString(output));
             if (text.Length > 16000) text = text[..16000] + "\n[output truncated]";
             CommandExecuted?.Invoke(this, new(DateTimeOffset.Now,
-                "git " + string.Join(" ", prefix.Concat(args).Select(QuoteDisplay)),
+                FormatCommand(start.FileName, prefix.Concat(args)),
                 text + (error.Length > 0 ? "\n" + error : ""), process.ExitCode, watch.Elapsed));
             return new(process.ExitCode, output, error);
         }
@@ -168,12 +165,18 @@ public sealed class GitProcessRunner
         return Regex.Replace(text, @"((?:access_token|token|password|passwd|secret)\s*[=:]\s*)[^\s&]+", "$1***", RegexOptions.IgnoreCase);
     }
 
+    internal static string FormatCommand(string executable, IEnumerable<string> arguments)
+        => (OperatingSystem.IsWindows() ? "& " : "") + ShellQuote(Redact(executable)) + " " + string.Join(" ", arguments.Select(QuoteDisplay));
+
     private static string QuoteDisplay(string value)
     {
         value = Redact(value);
-        return value.Any(c => char.IsWhiteSpace(c) || c is '"' or '\'')
-            ? "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'" : value;
+        return value.Length == 0 || value.Any(c => char.IsWhiteSpace(c) || "\"'&;|$`()<>#*?[]{}!".Contains(c))
+            ? ShellQuote(value) : value;
     }
+
+    private static string ShellQuote(string value)
+        => "'" + value.Replace("'", OperatingSystem.IsWindows() ? "''" : "'\\''", StringComparison.Ordinal) + "'";
 
     private static void Kill(Process process)
     {
