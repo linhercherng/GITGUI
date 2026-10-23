@@ -1,13 +1,38 @@
 # M4 效能與重現
 
-原始規格第11.1節的目標保持不變。v0.5.0為M4預覽版，完整效能關卡尚未通過。驗證使用同一台MSI筆電、Intel Core i7-13620H（10實體核心／16邏輯處理器）、51,229,798,400bytes RAM、KINGSTON SNV2S1000G NVMe SSD、Windows11 build26300（API回報Windows10.0.26300）、x64；.NET工作處理器固定8。實體fixture含100,000筆提交、50,000個檔案、10,000行文字檔及100處修改，Git2.56.0.windows.3的內建fsmonitor已啟動。
+原始規格第 11.1 節的目標保持不變。0.6.0 為效能改善候選版，目前仍未通過完整 M4 正式驗收；尚未發布新版 Release。既有 v0.5.0 仍為預覽版，不以功能測試通過代替效能驗收。
 
-基準來源為M3標籤v0.4.0（`f1320bf47205f497be558902153acf4a7fd68ab5`），使用封存來源及原始.NET8.0.32；只套入相同量測驅動程式。M4使用.NET10.0.13。所有原始報告包含fixture fingerprint、HEAD、host、runtime、Git版本、二進位SHA-256、原始樣本與Git呼叫數，不能將不同電腦或不同fixture的結果用於10%比較。
+## 固定主機與資料
 
-## 重現指令
+主機為 MSI 筆電、Intel Core i7-13620H（10 實體核心／16 邏輯處理器）、51,229,798,400 bytes RAM、KINGSTON SNV2S1000G NVMe SSD、Windows 11 build 26300（API 回報 Windows 10.0.26300）、x64。.NET 工作處理器固定 8，電源計畫維持 Balanced；不更改系統安全設定、程序優先權或強制 GC。
+
+合成實體 fixture 含 100,000 筆提交、50,000 個檔案、10,000 行文字檔及 100 處修改，fingerprint 為 `997fa82c370d493f9f31971cbf922c35`。Git 2.56.0.windows.3 啟用該 fixture 的 fsmonitor、fscache，先建立 FSMN／UNTR 快取；產品唯讀查詢仍使用 no-optional-locks。這些設定只作用於專用 fixture，不修改使用者倉庫。
+
+另保留上游 git.git 的完整 master 祖先歷史，HEAD 為 `7e34d8174dcda3435d1404c9a30bef46afe6c13e`，包含 82,563 個可達提交及 4,857 個索引檔案。此為非 shallow 的 blob:none partial clone；必要 Diff 物件事先取得，量測子程序設定 `GIT_NO_LAZY_FETCH=1`，不得在計時期間網路補取。
+
+基準來源為 M3 標籤 v0.4.0（`f1320bf47205f497be558902153acf4a7fd68ab5`），保留原 .NET 8.0.32，只套入相同量測驅動程式。M4 使用 .NET 10.0.13。比較必須匹配 protocol、fixture、主機及 Git；原始樣本與離群值全部保留。
+
+## 目前驗收狀態
+
+2026-10-24 的 candidate7（來源 `f718280ab1aa8a8af6341f25c49d11b8fcf52fa5`）五組未注入追蹤工具的原生量測如下。這是診斷用程式，尚非最終 ZIP，也尚未包含其後的 macOS 等價路徑快取修正。
+
+| 原始目標 | 該組觀察 | 判定 |
+| --- | --- | --- |
+| 冷啟動 ≤1,500ms | 五次 surface 完成 928–1,061ms；此前同一新程式的首次啟動已使用 EventPipe 診斷 | 該組符合；不能取代新二進位首次啟動驗證 |
+| 大倉庫前 500 筆首屏 ≤1,000ms | 五次最大 907ms | 該組符合 |
+| status ≤300ms | 全部 15 次最大 209ms | 該組符合 |
+| 10k 行 Diff 顯示 ≤200ms | 全部 15 次最大 133ms | 該組符合 |
+| 常駐 ≤300,000,000 bytes | 捲動期間全部樣本最大 268,816,384 bytes | 該組符合 |
+| 持續捲動 60fps | 五組只有一組通過嚴格 cadence；其餘存在起始空檔或 26–30ms 內部長幀 | 未通過 |
+| Git 操作期間 UI 單次阻塞 ≤16ms | 外部 profiler 記錄一次 19.0565ms 的 dispatcher 工作 | 未通過，不能由平均值抵銷 |
+
+首次新二進位啟動的既有 5–14 秒離群值亦保留。candidate7 的首次 EventPipe 診斷為 6,285.7ms，沒有事件遺失；大部分已觀察時間位於同步 assembly loader 區間，JIT 只占較小部分。CLR 首個事件之前約 1,569ms 為追蹤盲區。Loader 區間可能包含其他底層工作，現有證據不能判定 Windows、安全軟體、磁碟或 GPU 是根因；追蹤本身會改變耗時，不能拿來代替未注入工具的正式量測。
+
+Read 路徑已加入設定批次查詢、保守失效快取、格式可用時的原生 refs／Diff／preview，以及獨立首批 history 發布；所有寫入仍走 CLI，重新取得完整狀態與安全前置檢查。SHA-256、reftable、特殊 attributes／encoding／Git 環境等不支援原生讀取的情況保留 CLI fallback。提交圖快取已成形的文字行，Diff 刷新保留相同文件與視窗幾何；這些功能測試結果不等於正式效能通過。
+
+## 重現引擎與回歸比較
 
 ```powershell
-# 使用完整PortableGit，設定只影響本shell。
 $env:GITGUI_BENCH_GIT = 'C:/Tools/PortableGit/cmd/git.exe'
 $env:DOTNET_PROCESSOR_COUNT = '8'
 dotnet run --project tests/GitGui.Benchmarks -c Release -- --prepare C:/Bench/new-fixture 100000 50000
@@ -16,49 +41,36 @@ dotnet run --project tests/GitGui.Benchmarks -c Release -- --measure C:/Bench/ne
 ./tests/Test-PerformanceComparison.ps1
 ```
 
-Prepare只接受全新目錄，不刪除既有資料；報告也使用CreateNew語意。先建置，再在無其他build/test/下載的時段啟動已編譯的驅動程式。開圖取首次呼叫，狀態與Diff先暖機一次再取五次中位數；小於1ms的Core圖形佈局先暖機2000次，再每樣本1000次取平均，避免將JIT與計時器誤差當退步。
+Prepare 只接受新目錄，報告也禁止覆寫。先建置，在沒有其他 build、test 或下載的時段執行。protocol2 的手動比較器對首次 Open 計時；status／Diff 暖機一次後取五次中位數，Core 圖形佈局按其固定重複協定計算。此統計協定只用於引擎回歸比較，不用來替代原生 UI 的逐樣本上限。任何主要指標退步超過 10% 就失敗；M3 基準原始值為 Open 1,945.38ms、status 2,834.31ms、Diff 307.93ms、Core layout 0.2625ms。最終來源需重新產生配對候選報告。
 
-protocol2在Windows fixture的本機設定中啟用core.fscache，啟動fsmonitor後由一般Git status一次建立FSMN／UNTR index快取，再寫入測試修改。產品唯讀查詢仍使用no-optional-locks。比較器要求protocol、快取預備狀態、Git、fixture與host相同；不能將未預備的protocol1與protocol2混比。設定只作用於專用fixture，不修改使用者倉庫。
+BenchmarkDotNet 同時使用合成與實際倉庫：
 
-原生桌面可對已解壓縮的程式執行：
+```powershell
+$env:GITGUI_BENCH_SYNTHETIC = 'C:/Bench/new-fixture'
+$env:GITGUI_BENCH_REAL = 'C:/Bench/git.git'
+$env:GITGUI_BENCH_SOURCE = 'exact-source-commit'
+dotnet run --project tests/GitGui.Benchmarks -c Release -- --filter '*RepositoryReadBenchmarks*' --artifacts C:/Bench/new-bdn-results
+```
+
+預設 1 launch、1 warmup、5 actual iterations，每 iteration 只呼叫一次，保留所有離群值且不更改電源計畫。每次建立全新 service／native reader／暫存資料庫。`CompleteOpenFirst500` 計完整 Open task，與 progressive 首屏不同；另外測 status、合成工作檔 Diff 及實際 HEAD 的歷史 Diff。完整協定見 儲存庫的 `tests/GitGui.Benchmarks/README.md`。BDN 必須確認所有 case 與實際樣本成功；程序 exit 0 本身不足以證明成功。
+
+## 原生視窗驗證
 
 ```powershell
 ./scripts/Measure-DesktopPerformance.ps1 -AppPath C:/Apps/GITGUI/GitGui.App.exe `
   -Fixture C:/Bench/new-fixture -GitExecutable C:/Apps/GITGUI/PortableGit/cmd/git.exe `
   -OutputDirectory C:/Bench/new-native-reports -Samples 5
+./tests/Test-DispatcherProfiler.ps1 -AppDirectory C:/Apps/GITGUI `
+  -Repository C:/Bench/new-fixture -GitPath C:/Apps/GITGUI/PortableGit/cmd/git.exe -NoCanary
+./tests/Test-DesktopPerformanceAcceptance.ps1
 ```
 
-此probe只接受自有產生器的100k／50k獨立fixture，使用新的TEMP設定／資料庫；不讀取一般使用者設定。它會顯示並關閉自己的測試視窗。不要把任意倉庫偽裝成fixture；停止專用fsmonitor時用該fixture的 `git fsmonitor--daemon stop`。
+Probe 只接受自有產生器的 100k／50k fixture，以新的 TEMP 設定／資料庫顯示及關閉自有視窗，不讀取一般使用者設定。請勿把任意倉庫偽裝為 fixture；停止專用 fsmonitor 時只對該 fixture 執行 `git fsmonitor--daemon stop`。
 
-## 量測狀態
+正式時間終點是實際 render scope 加上對應 `CompositionBatch.Rendered` 完成、drawing session／surface update 返回。這仍不能證明 GPU 執行完成、Windows compositor 或實體顯示器呈現；RAF callback、全域 DWM 計數與 heartbeat 不可冒充該證據。
 
-預發行protocol2的成對引擎報告（同fixture fingerprint `997fa82c370d493f9f31971cbf922c35`）如下。此表是功能來源完成、尚未提交時的診斷樣本；最終ZIP的二進位與原生報告另外記錄在同版Release的`verification.json`。
+捲動固定至少五秒，名義 60Hz 兼容 60000/1001Hz；逐一檢查完整 raw frame，內部或端點空檔達 25.025ms 就失敗，不以恢復後的平均 FPS 抵銷。記憶體每 100ms 由 worker 取樣，保留前後邊界與全部最大值；任一值超標、取樣缺口過大、render error 或身分不一致皆失敗。
 
-| 引擎指標 | M3 | M4 | 變化 |
-| --- | --- | --- | --- |
-| 初次讀取500筆 | 1945.38ms | 880.60ms | -54.73% |
-| status中位數 | 2834.31ms | 175.78ms | -93.80%，10次Git啟動減為1次 |
-| 10k行Diff讀取中位數 | 307.93ms | 157.96ms | -48.70% |
-| Core500筆圖形佈局 | 0.2625ms | 0.1947ms | -25.82% |
+獨立外部 profiler 記錄 dispatcher Execute、UI Action Send 與主視窗 WndProc 的實際進出；nested span 為 inclusive，依原始 QPC 的產品階段重疊時間判定 16ms。不以 heartbeat queue delay 代替工作耗時，不扣除猜測的 profiler 負擔。泛型 Invoke、其他 native／COM callback 不在其覆蓋範圍。正式 gate 必須核對 PID、報告 SHA-256、七個產品 DLL 的 MVID／hash 與 profiler hook；未提供或無法核對時保持未驗證。
 
-主要引擎指標的10%比較通過。引擎報告只涵蓋讀取與Core佈局，不代表完整Diff呈現、桌面冷啟動、螢幕實際60fps或UI執行緒阻塞。
-
-| 原始目標 | 預發行原生桌面觀察 | 驗收狀態 |
-| --- | --- | --- |
-| 冷啟動≤1.5s | 五次中位數894ms，最大1159ms | 該組程序冷啟動符合；不等於重開機／清空OS快取 |
-| 大倉庫首屏≤1s | 一次826ms，四次約5.5–6.0s | 未通過，保留所有離群值 |
-| status≤300ms | 五組中位數約185ms | 該組符合 |
-| Diff顯示≤200ms | 五組中位數約151ms | 該組符合 |
-| 常駐≤300MB | 該組最大277,475,328bytes | 該組符合，不強制GC |
-| 捲動60fps | 原生RAF callback約60/s；其他實驗有未節流callback | callback不等於實體顯示器呈現，未稱為完整60fps驗收 |
-| 單次UI阻塞≤16ms | 觀察到大於16ms的dispatcher延遲 | 未完整通過；延遲含OS排程與GC，不能等同每次callback CPU耗時 |
-
-上述原生組為修復同步讀取取消之前的診斷資料。該問題已以8個阻塞回呼案例驗證後改為CancelAsync；最終ZIP另重新量測，不以舊數據冒充修正後證據。ordered heartbeat保留階段、GC與ThreadPool資料，同步property／layout span只記錄耗時與長度，未記錄文件內容。
-
-修正後的0.5.0預提交五次重測：冷啟動中位883ms、首次新二進位離群9994ms；首屏中位5799ms（另兩次964／971ms）；status中位208ms；Diff中位199ms（部分組211／218ms）；常駐最大276,910,080bytes；dispatcher延遲最大124ms。RAF出現未節流callback，不能用其數字宣稱實體60fps。這些結果沒有抹去先前離群值，也沒有以中位數取代所有條件的嚴格上限；完整原生關卡仍未通過。
-
-另以實際OS行程生命週期及專用fixture的Git Trace2診斷，觀察到約5秒延遲發生在Git的Trace2時鐘啟動之前；目前不能確定是wrapper、Windows載入或Git初始化階段。Software renderer、直接Git binary及限制同時子行程兩個的實驗未可靠消除延遲；後者亦拉長Diff，故沒有帶入產品。正常程式保持原來renderer與使用者選定Git路徑，也不放寬安全設定。暫時的行程／Trace2追蹤程式碼已移除，正式日誌不啟用這些追蹤。
-
-最終來源、ZIP與所有原始樣本以同版Release的`verification.json`為準；固定主機以外的實體螢幕閱讀器、monitor呈現時間及其他桌面環境仍需另行驗收。M4正式版要在首屏、回應與實體呈現的驗證關卡完成後才能標記完成。
-
-比較器驗證schema、fixture/host完整一致、數值有限且大於零；任一主要指標超過10%退步即拋出錯誤。CI執行比較器的正反案例；正式效能樣本只在固定主機執行，不能以GitHub共用runner的變動硬體冒充固定規格量測。
+最終正式來源、六格 CI、同主機比較、實際 ZIP 的完整原生樣本、舊版快照復原與散佈雜湊都通過後，才會發布新版並在 Release 附上 `verification.json`／`SHA256SUMS.txt`。Headless 或固定主機測試不延伸為其他桌面環境、實體螢幕閱讀器或全新 VM 已通過。

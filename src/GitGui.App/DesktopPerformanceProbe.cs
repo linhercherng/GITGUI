@@ -493,19 +493,29 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         var drainedQpc = Stopwatch.GetTimestamp();
         var errorSnapshot = errors.Snapshot();
         if (!errors.IsStillInstalled) errorSnapshot = [.. errorSnapshot, new(drainedQpc, "Avalonia error observer was replaced during scroll.")];
-        var batchSnapshot = completions.OrderBy(c => c.CompletedQpc).ToArray();
-        var report = ScrollRenderEvidence.Evaluate(sampled.StartQpc, sampled.EndQpc, Stopwatch.Frequency,
-            nativeMetrics.Snapshot(), batchSnapshot, errorSnapshot.Select(e => e.Message));
+        var completedSnapshot = completions.ToArray();
+        var memorySnapshot = memory.ToArray();
+        // The measured scroll and batch drain have ended. Analyze immutable evidence on a worker,
+        // retaining the draining phase so unrelated UI work remains covered by the external profiler.
+        var analysis = await Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            var batches = completedSnapshot.OrderBy(c => c.CompletedQpc).ToArray();
+            var report = ScrollRenderEvidence.Evaluate(sampled.StartQpc, sampled.EndQpc, Stopwatch.Frequency,
+                nativeMetrics.Snapshot(), batches, errorSnapshot.Select(e => e.Message));
+            ct.ThrowIfCancellationRequested();
+            return (Report: report, Batches: batches, MaximumWorkingSetBytes: memorySnapshot.Max(sample => sample.WorkingSetBytes));
+        }, ct);
         trace.SetPhase("graph-scroll.complete");
         return (sampled.Report, new
         {
-            evidence = report, platformType = platform.GetType().FullName, selectedSurfaceTypes = surfaceTypes,
-            platformGraphicsType = graphicsType, batchCompletionsInOrder = batchSnapshot, drainedQpc,
+            evidence = analysis.Report, platformType = platform.GetType().FullName, selectedSurfaceTypes = surfaceTypes,
+            platformGraphicsType = graphicsType, batchCompletionsInOrder = analysis.Batches, drainedQpc,
             avaloniaErrors = errorSnapshot,
             activeGpuContextInspection = "Read-only, probe-only reflection of pinned Avalonia11.3.22 platform Surfaces and Server.RenderInterface.GpuContext; context is read on synchronous render-thread batch completion. Reference assemblies hide these internals, so unavailable members are explicitly reported. Compositor/batch lifetime is obtained through public ElementComposition APIs.",
             successBoundary = "Rendered tasks are completed from finally; their success alone does not prove successful rendering. Gate additionally requires genuine render histogram scopes and no observed Avalonia errors. Surface-update return does not prove GPU execution or Windows compositor/display completion."
         }, new { intervalMs = 100, startQpc = sampled.StartQpc, endQpc = sampled.EndQpc, timestampFrequency = Stopwatch.Frequency,
-            samplesInOrder = memory.ToArray(), maximumWorkingSetBytes = memory.Max(sample => sample.WorkingSetBytes) });
+            samplesInOrder = memorySnapshot, maximumWorkingSetBytes = analysis.MaximumWorkingSetBytes });
     }
 
     private sealed record RenderError(long RecordedQpc, string Message);
@@ -533,23 +543,32 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
     }
     private sealed record HeartbeatSample(double TimerElapsedMs, double PostedMs, double DeliveredMs, double QueueDelayMs,
         string PostedPhase, string DeliveredPhase, double GcPauseDeltaMs, int Gen0Delta, int Gen1Delta, int Gen2Delta,
-        int WorkerThreadsAtPost, long PendingWorkAtPost);
+        int WorkerThreadsAtPost, long PendingWorkAtPost, double? WorkerGcPauseDeltaMs,
+        int? WorkerGen0Delta, int? WorkerGen1Delta, int? WorkerGen2Delta);
     private static async Task HeartbeatAsync(List<HeartbeatSample> samples, ProbeTrace trace, CancellationToken ct)
     {
         await Task.Run(async () =>
         {
+            double? previousWorkerPause = null;
+            var previousGen0 = 0; var previousGen1 = 0; var previousGen2 = 0;
             while (!ct.IsCancellationRequested)
             {
                 var timerStarted = trace.ElapsedMs; await Task.Delay(16, ct).ConfigureAwait(false);
                 var posted = trace.ElapsedMs; var phase = trace.CurrentPhase; var pause = GC.GetTotalPauseDuration().TotalMilliseconds;
                 var gen0 = GC.CollectionCount(0); var gen1 = GC.CollectionCount(1); var gen2 = GC.CollectionCount(2);
                 var workers = ThreadPool.ThreadCount; var pending = ThreadPool.PendingWorkItemCount;
+                var hasPreviousPost = previousWorkerPause.HasValue;
+                double? workerPause = hasPreviousPost ? pause - previousWorkerPause!.Value : null;
+                int? workerGen0 = hasPreviousPost ? gen0 - previousGen0 : null;
+                int? workerGen1 = hasPreviousPost ? gen1 - previousGen1 : null;
+                int? workerGen2 = hasPreviousPost ? gen2 - previousGen2 : null;
+                previousWorkerPause = pause; previousGen0 = gen0; previousGen1 = gen1; previousGen2 = gen2;
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     var delivered = trace.ElapsedMs;
                     samples.Add(new(posted - timerStarted, posted, delivered, delivered - posted, phase, trace.CurrentPhase,
                         GC.GetTotalPauseDuration().TotalMilliseconds - pause, GC.CollectionCount(0) - gen0, GC.CollectionCount(1) - gen1,
-                        GC.CollectionCount(2) - gen2, workers, pending));
+                        GC.CollectionCount(2) - gen2, workers, pending, workerPause, workerGen0, workerGen1, workerGen2));
                 }, DispatcherPriority.Normal, ct);
             }
         }, ct);

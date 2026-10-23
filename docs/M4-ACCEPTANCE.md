@@ -1,6 +1,6 @@
 # M4 正式版驗收
 
-M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.5.0為M4預覽版；功能實作與回歸測試已完成，但首屏及嚴格16ms回應目標未完整通過，M4正式關卡仍未完成。完整測試、套件雜湊及發行狀態以同版 Release 的 `verification.json`、`SHA256SUMS.txt` 及對應來源 commit 的六格 CI 為準；原始規格保持不變。
+M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.5.0為M4預覽版；0.6.0效能改善候選版仍在驗收中。來源1f95807的Windows／macOS／Linux × Git2.40／2.56六格CI已通過，包含Windows免安裝包功能驗證；但首次新二進位啟動、持續捲動及嚴格16ms回應目標仍未完整通過，M4正式關卡仍未完成。完整測試、套件雜湊及發行狀態以同版 Release 的 `verification.json`、`SHA256SUMS.txt` 及對應來源 commit 的六格 CI 為準；原始規格保持不變。
 
 | 範圍 | 實作 | 驗證方式 |
 | --- | --- | --- |
