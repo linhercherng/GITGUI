@@ -24,6 +24,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private TerminalPanel? terminalPanel;
     private Window? terminalWindow;
     private AdvancedWindow? advancedWindow;
+    private IRepositoryToolsService? repositoryTools;
+    private RepositoryToolsWindow? toolsWindow;
     private FileSystemWatcher? worktreeWatcher;
     private FileSystemWatcher? gitWatcher;
     private FileSystemWatcher? commonWatcher;
@@ -37,12 +39,13 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         AvaloniaXamlLoader.Load(this);
     }
     public MainWindow(MainWindowViewModel vm, Control? graph = null, IGitRuntimeSettings? gitSettings = null, AppearanceManager? appearance = null,
-        IWorkspaceService? workspace = null, ITerminalService? terminalService = null) : this()
+        IWorkspaceService? workspace = null, ITerminalService? terminalService = null, IRepositoryToolsService? repositoryTools = null) : this()
     {
         viewModel = vm;
         this.gitSettings = gitSettings;
         this.appearance = appearance ?? new AppearanceManager();
         this.workspace = workspace; this.terminalService = terminalService;
+        this.repositoryTools = repositoryTools;
         DataContext = vm;
         if (graph is null)
         {
@@ -65,16 +68,31 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         vm.PropertyChanged += ViewModelChanged;
         Closing += (_, args) =>
         {
-            if (vm.IsBusy || advancedWindow?.ViewModel.IsWriting == true)
+            if (vm.IsBusy || advancedWindow?.ViewModel.IsWriting == true || toolsWindow?.ViewModel.IsWriting == true)
             { args.Cancel = true; vm.Notice = "操作進行中，請完成後再關閉 / Wait for the active operation before closing."; }
         };
         debounce.Tick += async (_, _) => { debounce.Stop(); if (vm.HasRepository && !vm.IsBusy && !closed) await vm.RefreshCommand.ExecuteAsync(null); };
     }
     private static AvaloniaProperty SelectingItemsControlSelectedItem() => Avalonia.Controls.Primitives.SelectingItemsControl.SelectedItemProperty;
+    private void RepositoryToolsClick(object? sender, RoutedEventArgs args)
+    {
+        if (toolsWindow is not null) { toolsWindow.Activate(); return; }
+        if (viewModel is not { CanOperate: true } vm || workspace is null || repositoryTools is null) return;
+        advancedWindow?.Close();
+        if (advancedWindow is not null) { vm.Notice = vm.L["AdvancedWait"]; return; }
+        var model = new RepositoryToolsWindowViewModel(workspace, repositoryTools, vm.Root, vm.L);
+        var window = toolsWindow = new RepositoryToolsWindow(model);
+        model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(model.IsWriting)) vm.ExternalWriteActive = model.IsWriting; };
+        model.WorkspaceChanged += async (_, _) => { if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
+        window.Closed += async (_, _) => { toolsWindow = null; vm.ExternalWriteActive = false; if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
+        window.Show(this);
+    }
     private void AdvancedClick(object? sender, RoutedEventArgs args)
     {
         if (viewModel is not { CanOperate: true } vm || workspace is not IAdvancedWorkspaceService advanced) return;
         if (advancedWindow is not null) { advancedWindow.Activate(); return; }
+        toolsWindow?.Close();
+        if (toolsWindow is not null) { vm.Notice = vm.L["ToolsWait"]; return; }
         var model = new AdvancedWindowViewModel(workspace, advanced, vm.Root,
             vm.SelectedCommitFile?.Path ?? vm.SelectedChange?.Path, vm.SelectedCommit?.Hash, vm.L);
         var window = advancedWindow = new AdvancedWindow(model);
@@ -89,6 +107,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         // Close the advanced writer before leasing this repository for a shell.
         advancedWindow?.Close();
         if (advancedWindow is not null) { vm.Notice = vm.L["AdvancedWait"]; return; }
+        toolsWindow?.Close();
+        if (toolsWindow is not null) { vm.Notice = vm.L["ToolsWait"]; return; }
         var panel = terminalPanel = new TerminalPanel(terminalService);
         var window = terminalWindow = new Window { Title = "GITGUI · Terminal", Width = 1040, Height = 680,
             MinWidth = 640, MinHeight = 400, Content = new Border { Padding = new Thickness(16), Child = panel } };
@@ -104,6 +124,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     }
     private void ViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (toolsWindow is { } tools && viewModel is { } main && e.PropertyName is nameof(MainWindowViewModel.IsBusy) or nameof(MainWindowViewModel.TerminalActive))
+            tools.ViewModel.IsBlocked = main.IsBusy || main.TerminalActive;
         if (e.PropertyName == nameof(MainWindowViewModel.SelectedCommit) && viewModel?.SelectedCommit is not null)
             this.FindControl<TabControl>("DetailTabs")!.SelectedIndex = 2;
         if (e.PropertyName == nameof(MainWindowViewModel.SelectedChange) && viewModel?.SelectedChange is not null)
@@ -216,7 +238,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
 
     private async void GitSettingsClick(object? sender, RoutedEventArgs args)
     {
-        if (viewModel is not { IsBusy: false } vm || gitSettings is null) return;
+        if (viewModel is not { CanConfigure: true } vm || gitSettings is null) return;
         vm.IsBusy = true; openDialogs++;
         try
         {

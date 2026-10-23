@@ -44,6 +44,8 @@ public sealed class AdvancedWindowTests
         vm.TagName = "v2.0.0"; vm.TagMessage = "Release note"; vm.AnnotatedTag = true;
         Assert.True(vm.CreateOperation("CreateTag").Annotated); Assert.Equal("Release note", vm.CreateOperation("CreateTag").Message);
         vm.AnnotatedTag = false; Assert.Null(vm.CreateOperation("CreateTag").Message);
+        vm.SignTag = true; Assert.True(vm.CreateOperation("CreateTag").Sign); Assert.True(vm.CreateOperation("CreateTag").Annotated);
+        vm.SignTag = false;
         vm.SelectedTag = vm.Tags[0]; vm.TagName = "v2.0.0"; Assert.Equal("v2.0.0", vm.CreateOperation("DeleteTag").Name);
         vm.SelectedReflog = vm.Reflog[0]; Assert.Equal(Sha('c'), vm.CreateOperation("CherryPick").Revision);
         vm.SelectedRemote = vm.Remotes[0]; vm.NewRemoteName = "upstream"; vm.PushUrl = true;

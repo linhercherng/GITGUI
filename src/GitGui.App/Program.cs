@@ -58,7 +58,7 @@ public sealed class DesktopApp : Application
         {
             var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
             var log = AppLogging.Create(directory);
-            log.Information("GITGUI M2 started; repository content and credential logging are disabled");
+            log.Information("GITGUI M3 started; repository content and credential logging are disabled");
             var services = new ServiceCollection();
             services.AddSingleton<GitProcessRunner>();
             services.AddSingleton<IGitPathStore>(sp => sp.GetRequiredService<WorkspaceStorage>());
@@ -79,6 +79,7 @@ public sealed class DesktopApp : Application
             services.AddSingleton<SnapshotManager>();
             services.AddSingleton<WorkspaceService>();
             services.AddSingleton<IWorkspaceService>(sp => sp.GetRequiredService<WorkspaceService>());
+            services.AddSingleton<IRepositoryToolsService, RepositoryToolsService>();
             services.AddSingleton<ITerminalService>(sp => new TerminalService(sp.GetRequiredService<GitRuntime>(),
                 sp.GetRequiredService<IRepositorySettings>(), sp.GetRequiredService<WorkspaceService>().TrustAsync,
                 sp.GetRequiredService<WorkspaceService>().AcquireTerminalLeaseAsync, sp.GetRequiredService<GitProcessRunner>()));
@@ -88,7 +89,7 @@ public sealed class DesktopApp : Application
             graph.Bind(CommitGraphControl.CommitsProperty, new Binding("Commits"));
             graph.Bind(CommitGraphControl.SelectedCommitProperty, new Binding("SelectedCommit") { Mode = BindingMode.TwoWay });
             desktop.MainWindow = new MainWindow(provider.GetRequiredService<MainWindowViewModel>(), graph,
-                provider.GetRequiredService<IGitRuntimeSettings>(), appearance, provider.GetRequiredService<IWorkspaceService>(), provider.GetRequiredService<ITerminalService>());
+                provider.GetRequiredService<IGitRuntimeSettings>(), appearance, provider.GetRequiredService<IWorkspaceService>(), provider.GetRequiredService<ITerminalService>(), provider.GetRequiredService<IRepositoryToolsService>());
             var bridge = new AskPassBridge(provider.GetRequiredService<IWorkspaceInteraction>());
             var runner = provider.GetRequiredService<GitProcessRunner>();
             var executable = Environment.ProcessPath!;

@@ -41,6 +41,7 @@ public sealed class ActionIcon : Control
         ["Folder"] = "M3 7V5H9L11 7H21V20H3Z M3 10H21",
         ["Open"] = "M14 4H21V11 M21 4L11 14 M10 4H4V20H20V14",
         ["Repository"] = "M4 4H20V20H4Z M8 4V20 M12 8H17 M12 12H17",
+        ["RepositoryTools"] = "M3 4H13V14H3Z M6 7H10 M6 10H10 M12 18L18 12 M16 4L20 8L17 11L13 7Z M10 20L13 17L15 19L12 22Z",
         ["Settings"] = "M4 7H20 M4 17H20 M8 4V10 M16 14V20",
         ["Palette"] = "M21 12A9 9 0 1 0 12 21H14A2 2 0 0 0 14 17H13A2 2 0 0 1 13 13H19Q21 13 21 12 M7 8h2 M13 6h2 M16 9h2 M5 13h2",
         ["Fetch"] = "M12 3V15 M7 10L12 15L17 10 M4 16V21H20V16",

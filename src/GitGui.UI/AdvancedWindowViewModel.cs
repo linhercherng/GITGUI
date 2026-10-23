@@ -41,6 +41,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
     [ObservableProperty] private string tagName = "";
     [ObservableProperty] private string tagMessage = "";
     [ObservableProperty] private bool annotatedTag = true;
+    [ObservableProperty] private bool signTag;
     [ObservableProperty] private TagInfo? selectedTag;
     [ObservableProperty] private ReflogInfo? selectedReflog;
     [ObservableProperty] private string remoteName = "";
@@ -182,7 +183,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
             "CherryPick" => new(GitAction.CherryPick) { Revision = Require(Revision, "AdvancedRevisionRequired") },
             "Revert" => new(GitAction.Revert) { Revision = Require(Revision, "AdvancedRevisionRequired") },
             "Reset" => new(GitAction.Reset) { Revision = Require(Revision, "AdvancedRevisionRequired"), ResetMode = ResetMode },
-            "CreateTag" => new(GitAction.CreateTag) { Name = Require(TagName, "AdvancedTagRequired"), Revision = Require(Revision, "AdvancedRevisionRequired"), Annotated = AnnotatedTag, Message = AnnotatedTag ? Require(TagMessage, "AdvancedTagMessageRequired") : null },
+            "CreateTag" => new(GitAction.CreateTag) { Name = Require(TagName, "AdvancedTagRequired"), Revision = Require(Revision, "AdvancedRevisionRequired"), Annotated = AnnotatedTag || SignTag, Sign = SignTag, Message = AnnotatedTag || SignTag ? Require(TagMessage, "AdvancedTagMessageRequired") : null },
             "DeleteTag" => new(GitAction.DeleteTag) { Name = Require(TagName, "AdvancedTagRequired") },
             "AddRemote" => new(GitAction.AddRemote) { Name = Require(RemoteName, "AdvancedRemoteRequired"), Url = Require(RemoteUrl, "UrlRequired") },
             "RenameRemote" => new(GitAction.RenameRemote) { Name = Require(RemoteName, "AdvancedRemoteRequired"), NewName = Require(NewRemoteName, "NewNameRequired") },

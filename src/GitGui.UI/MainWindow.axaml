@@ -26,12 +26,12 @@
       <vm:ActionButton Icon="Folder" Grid.Column="2" Content="{Binding L[Browse]}" Click="BrowseClick" VerticalAlignment="Center"/>
       <vm:ActionButton Icon="Open" Grid.Column="3" Name="OpenRepositoryButton" Content="{Binding L[Open]}" Command="{Binding RefreshCommand}" VerticalAlignment="Center"/>
       <vm:ActionButton Icon="Repository" Grid.Column="4" Content="{Binding L[RepositoryActions]}" Click="RepositoryActionsClick" VerticalAlignment="Center"/>
-      <vm:ActionButton Icon="Settings" Grid.Column="5" Name="GitSettingsButton" Content="{Binding L[GitSettings]}" Click="GitSettingsClick" IsEnabled="{Binding !IsBusy}" VerticalAlignment="Center"/>
+      <vm:ActionButton Icon="Settings" Grid.Column="5" Name="GitSettingsButton" Content="{Binding L[GitSettings]}" Click="GitSettingsClick" IsEnabled="{Binding CanConfigure}" VerticalAlignment="Center"/>
       <vm:ActionButton Grid.Column="6" Name="AppearanceButton" Icon="Palette" Content="{Binding L[Appearance]}" Click="AppearanceClick" VerticalAlignment="Center"/>
       <CheckBox Grid.Column="7" Content="EN" IsChecked="{Binding English}" VerticalAlignment="Center" Margin="8,0,0,0"/>
     </Grid>
     <Border Grid.Row="1" Classes="panel" Padding="12,6">
-      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="7">
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><vm:ActionIcon Kind="Branch" Width="16" Height="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/><TextBlock Text="{Binding Branch}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Tracking}" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding Summary}" Foreground="{DynamicResource MutedBrush}"/></StackPanel>
         <TextBox Grid.Column="1" Text="{Binding RemoteName}" Width="100" Watermark="{Binding L[Remote]}" ToolTip.Tip="{Binding L[Remote]}"/>
         <vm:ActionButton Icon="Fetch" Grid.Column="2" Content="{Binding L[Fetch]}" Command="{Binding ActionCommand}" CommandParameter="Fetch" IsEnabled="{Binding CanOperate}"/>
@@ -41,7 +41,8 @@
         <vm:ActionButton Icon="Undo" Margin="12,0,0,0" Grid.Column="6" Content="{Binding L[Undo]}" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}"/>
         <vm:ActionButton Icon="Redo" Grid.Column="7" Content="{Binding L[Redo]}" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}"/>
         <vm:ActionButton Icon="History" Grid.Column="8" Name="AdvancedButton" Content="{Binding L[AdvancedOpen]}" Click="AdvancedClick" IsEnabled="{Binding CanOperate}"/>
-        <vm:ActionButton Icon="Command" Grid.Column="9" Name="TerminalButton" Content="{Binding L[Terminal]}" Click="TerminalClick" IsEnabled="{Binding CanOperate}"/>
+        <vm:ActionButton Icon="RepositoryTools" Grid.Column="9" Name="RepositoryToolsButton" Content="{Binding L[ToolsOpen]}" Click="RepositoryToolsClick" IsEnabled="{Binding CanOperate}"/>
+        <vm:ActionButton Icon="Command" Grid.Column="10" Name="TerminalButton" Content="{Binding L[Terminal]}" Click="TerminalClick" IsEnabled="{Binding CanOperate}"/>
       </Grid>
     </Border>
     <Grid Grid.Row="2" ColumnDefinitions="224,6,*,6,1.05*" ColumnSpacing="6">

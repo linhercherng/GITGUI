@@ -85,7 +85,7 @@ public sealed class WindowTests
                 window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 0;
                 vm.English = english; window.Width = 1100; window.Height = 800;
                 window.UpdateLayout();
-                foreach (var name in new[] { "AppearanceButton", "GitSettingsButton", "OpenRepositoryButton", "CommitButton", "AdvancedButton", "TerminalButton" })
+                foreach (var name in new[] { "AppearanceButton", "GitSettingsButton", "OpenRepositoryButton", "CommitButton", "AdvancedButton", "TerminalButton", "RepositoryToolsButton" })
                 {
                     var button = window.FindControl<Button>(name)!;
                     var point = button.TranslatePoint(default, window)!.Value;

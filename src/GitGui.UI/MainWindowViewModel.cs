@@ -112,8 +112,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public string Root => state?.Root ?? RepositoryPath.Trim();
     public string Summary => $"{Changes.Count} {L["Changes"]}  ·  {Commits.Count} {L["Commits"]}";
     [ObservableProperty] private bool terminalActive;
-    partial void OnTerminalActiveChanged(bool value) { OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
-    public bool CanOperate => !IsBusy && !TerminalActive && HasRepository;
+    [ObservableProperty] private bool externalWriteActive;
+    partial void OnExternalWriteActiveChanged(bool value) { OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    partial void OnTerminalActiveChanged(bool value) { OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    public bool CanConfigure => !IsBusy && !TerminalActive && !ExternalWriteActive;
+    public bool CanOperate => CanConfigure && HasRepository;
     public bool CanApplyPatch => CanOperate && !IsDiffLoading && !IsHistoryDiff && !IsLargeDiff && sourceIdentity is not null && sourceIdentity == CurrentDiffIdentity();
     public bool CanSaveConflict => CanOperate && HasConflict && !ConflictLoading && !ConflictBinary;
     public bool HasImages => BeforeImage is not null || AfterImage is not null;
@@ -128,7 +131,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         workspace.CommandExecuted += CommandExecuted;
     }
     partial void OnEnglishChanged(bool value) { L.SetCulture(value ? "en" : "zh-TW"); OnPropertyChanged(nameof(Summary)); OnPropertyChanged(nameof(DiffTitle)); OnPropertyChanged(nameof(PreviewSummary)); }
-    partial void OnIsBusyChanged(bool value) { OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    partial void OnIsBusyChanged(bool value) { OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
     partial void OnHasRepositoryChanged(bool value) { OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
     partial void OnIsDiffLoadingChanged(bool value) => OnPropertyChanged(nameof(CanApplyPatch));
     partial void OnIsLargeDiffChanged(bool value) => OnPropertyChanged(nameof(CanApplyPatch));
@@ -260,7 +263,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task ActionAsync(string? action)
     {
-        if (action is null || IsBusy || TerminalActive || disposed) return;
+        if (action is null || IsBusy || TerminalActive || ExternalWriteActive || disposed) return;
         try
         {
             if (action == "Trust")
@@ -328,7 +331,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task RunAsync(GitOperation operation, bool isUndo = false, bool isRedo = false)
     {
-        if (IsBusy || TerminalActive) return;
+        if (IsBusy || TerminalActive || ExternalWriteActive) return;
         IsBusy = true; CanCancel = false; HasProgressPercent = false; ProgressText = operation.Action.ToString();
         using var request = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         operationRequest = request;
