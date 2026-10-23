@@ -16,7 +16,9 @@ public sealed class CodeEditor : TextEditor
     {
         IsReadOnly = true; ShowLineNumbers = true; WordWrap = false; FontSize = 12;
         FontFamily = new("Cascadia Code,Consolas,Menlo,Microsoft JhengHei,PingFang TC,Noto Sans TC,monospace");
-        Background = Brush.Parse("#151A22"); Foreground = Brush.Parse("#DCE5F2"); LineNumbersForeground = Brush.Parse("#9AABC3");
+        AppearanceManager.Bind(this, BackgroundProperty, "EditorBrush");
+        AppearanceManager.Bind(this, ForegroundProperty, "TextBrush");
+        AppearanceManager.Bind(this, LineNumbersForegroundProperty, "MutedBrush");
         HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
         VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
         TextChanged += (_, _) => { if (!updatingText && CodeText != Text) SetCurrentValue(CodeTextProperty, Text); };
@@ -38,7 +40,7 @@ public sealed class PreviewImage : Border
     public byte[]? Bytes { get => GetValue(BytesProperty); set => SetValue(BytesProperty, value); }
     private readonly Image image = new() { Stretch = Stretch.Uniform, MaxHeight = 560 };
     private Bitmap? bitmap;
-    public PreviewImage() { Child = image; Background = Brush.Parse("#11151C"); Padding = new Thickness(8); }
+    public PreviewImage() { Child = image; AppearanceManager.Bind(this, BackgroundProperty, "EditorBrush"); Padding = new Thickness(8); }
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);

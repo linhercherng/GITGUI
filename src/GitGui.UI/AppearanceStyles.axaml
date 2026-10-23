@@ -1,0 +1,24 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Window"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
+  <Style Selector="Button">
+    <Setter Property="Padding" Value="11,7"/><Setter Property="MinHeight" Value="34"/>
+    <Setter Property="CornerRadius" Value="5"/><Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontWeight" Value="Medium"/><Setter Property="Background" Value="{DynamicResource RaisedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SelectionBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+  </Style>
+  <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource BorderBrush}"/></Style>
+  <Style Selector="Button.primary"><Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/></Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/></Style>
+  <Style Selector="Button.danger"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
+  <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/></Style>
+  <Style Selector="Button.destructive"><Setter Property="Background" Value="{DynamicResource DestructiveBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="{DynamicResource DestructiveBrush}"/></Style>
+  <Style Selector="Button.destructive:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource DestructiveBrush}"/><Setter Property="Foreground" Value="White"/></Style>
+  <Style Selector="Button.selectedTheme"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="Background" Value="{DynamicResource SelectionBrush}"/></Style>
+  <Style Selector="TextBox"><Setter Property="FontSize" Value="12"/><Setter Property="MinHeight" Value="34"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Background" Value="{DynamicResource EditorBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/></Style>
+  <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource SelectionBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
+  <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource SelectionBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
+</Styles>

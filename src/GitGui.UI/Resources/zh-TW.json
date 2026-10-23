@@ -124,5 +124,16 @@
   "GitChooseFile": "選取 Git 執行檔",
   "GitChooseFolder": "選取 Portable Git 資料夾",
   "GitCheck": "測試版本與路徑",
-  "GitSave": "儲存並套用"
+  "GitSave": "儲存並套用",
+  "AppearanceSaveFailed": "無法儲存，已保留原配色。",
+  "AppearanceSaved": "已套用並儲存配色。",
+  "ThemeMidnight": "午夜藍",
+  "ThemeForest": "森林綠",
+  "SelectedTheme": "使用中",
+  "AppearanceHint": "選取配色立即套用，會自動記住，下次啟動仍會保留。",
+  "ThemePorcelain": "霧白",
+  "ThemeGraphite": "石墨深色",
+  "Appearance": "外觀配色",
+  "CreateShort": "建立",
+  "SwitchShort": "切換"
 }

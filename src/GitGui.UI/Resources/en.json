@@ -124,5 +124,16 @@
   "GitChooseFile": "Choose Git executable",
   "GitChooseFolder": "Choose Portable Git folder",
   "GitCheck": "Check version and path",
-  "GitSave": "Save and apply"
+  "GitSave": "Save and apply",
+  "AppearanceSaveFailed": "Could not save. The previous palette is unchanged.",
+  "AppearanceSaved": "Palette applied and saved.",
+  "ThemeMidnight": "Midnight",
+  "ThemeForest": "Forest",
+  "SelectedTheme": "Selected",
+  "AppearanceHint": "Choose a palette to apply it immediately. Your selection is saved for the next launch.",
+  "ThemePorcelain": "Porcelain",
+  "ThemeGraphite": "Graphite",
+  "Appearance": "Appearance",
+  "CreateShort": "Create",
+  "SwitchShort": "Switch"
 }

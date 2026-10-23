@@ -18,6 +18,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
 {
     private MainWindowViewModel? viewModel;
     private IGitRuntimeSettings? gitSettings;
+    private AppearanceManager? appearance;
     private FileSystemWatcher? worktreeWatcher;
     private FileSystemWatcher? gitWatcher;
     private FileSystemWatcher? commonWatcher;
@@ -25,11 +26,16 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private bool closed;
     private int openDialogs;
     private bool skipNextActivationRefresh;
-    public MainWindow() => AvaloniaXamlLoader.Load(this);
-    public MainWindow(MainWindowViewModel vm, Control? graph = null, IGitRuntimeSettings? gitSettings = null) : this()
+    public MainWindow()
+    {
+        if (!Application.Current!.Resources.ContainsKey("CanvasBrush")) _ = new AppearanceManager();
+        AvaloniaXamlLoader.Load(this);
+    }
+    public MainWindow(MainWindowViewModel vm, Control? graph = null, IGitRuntimeSettings? gitSettings = null, AppearanceManager? appearance = null) : this()
     {
         viewModel = vm;
         this.gitSettings = gitSettings;
+        this.appearance = appearance ?? new AppearanceManager();
         DataContext = vm;
         if (graph is null)
         {
@@ -154,9 +160,9 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         var stack = new StackPanel { Spacing = 12, Margin = new Thickness(24) };
         stack.Children.Add(Heading(vm.L["RepositoryActions"])); stack.Children.Add(Label(vm.L["Destination"])); stack.Children.Add(path); stack.Children.Add(Label(vm.L["Url"])); stack.Children.Add(url);
         var buttons = new WrapPanel { Orientation = Orientation.Horizontal };
-        var init = new Button { Content = vm.L["Init"], Margin = new Thickness(0, 0, 8, 0) };
-        var clone = new Button { Content = vm.L["Clone"], Margin = new Thickness(0, 0, 8, 0) };
-        var cancel = new Button { Content = vm.L["Cancel"] };
+        var init = new ActionButton { Icon = "Plus", Content = vm.L["Init"], Margin = new Thickness(0, 0, 8, 0) };
+        var clone = new ActionButton { Icon = "Repository", Content = vm.L["Clone"], Margin = new Thickness(0, 0, 8, 0) };
+        var cancel = new ActionButton { Icon = "Close", Content = vm.L["Cancel"] };
         init.Click += (_, _) => dialog.Close("Init"); clone.Click += (_, _) => dialog.Close("Clone"); cancel.Click += (_, _) => dialog.Close(null);
         buttons.Children.Add(init); buttons.Children.Add(clone); buttons.Children.Add(cancel); stack.Children.Add(buttons); dialog.Content = stack;
         var action = await dialog.ShowDialog<string?>(this);
@@ -177,6 +183,14 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         finally { vm.IsBusy = false; openDialogs--; skipNextActivationRefresh = true; }
     }
 
+    private async void AppearanceClick(object? sender, RoutedEventArgs args)
+    {
+        if (appearance is null || viewModel is null) return;
+        openDialogs++;
+        try { await new AppearanceWindow(appearance, viewModel.L).ShowDialog(this); }
+        finally { openDialogs--; skipNextActivationRefresh = true; }
+    }
+
     public Task<ConfirmationAnswer> ConfirmAsync(Confirmation confirmation, CancellationToken ct)
         => OnUiAsync(() => ShowConfirmationAsync(confirmation, ct));
     private async Task<ConfirmationAnswer> ShowConfirmationAsync(Confirmation confirmation, CancellationToken ct)
@@ -186,7 +200,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         var dialog = CreateDialog(confirmation.Title, 660);
         var panel = new StackPanel { Spacing = 14, Margin = new Thickness(24) };
         panel.Children.Add(Heading(confirmation.Title));
-        panel.Children.Add(new TextBlock { Text = $"{l["Safety"]}: {confirmation.Risk}", Foreground = Brush.Parse("#F0C28A"), FontSize = 12 });
+        var risk = new TextBlock { Text = $"{l["Safety"]}: {confirmation.Risk}", FontSize = 12 };
+        AppearanceManager.Bind(risk, TextBlock.ForegroundProperty, "WarningBrush"); panel.Children.Add(risk);
         panel.Children.Add(new ScrollViewer { MaxHeight = 360, Content = new TextBlock { Text = confirmation.Details, TextWrapping = TextWrapping.Wrap } });
         TextBox? typed = null;
         if (confirmation.RequiredText is { } required)
@@ -196,8 +211,9 @@ public partial class MainWindow : Window, IWorkspaceInteraction
             panel.Children.Add(typed);
         }
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right };
-        var reject = new Button { Content = l["Cancel"], Name = "ConfirmationCancelButton" };
-        var accept = new Button { Content = l["Confirm"], Name = "ConfirmationAcceptButton", IsEnabled = confirmation.RequiredText is null, Background = Brush.Parse("#A63A46"), Foreground = Brushes.White };
+        var reject = new ActionButton { Icon = "Close", Content = l["Cancel"], Name = "ConfirmationCancelButton" };
+        var accept = new ActionButton { Icon = "Shield", Content = l["Confirm"], Name = "ConfirmationAcceptButton", IsEnabled = confirmation.RequiredText is null };
+        accept.Classes.Add("destructive");
         reject.Click += (_, _) => dialog.Close(new ConfirmationAnswer(false));
         accept.Click += (_, _) => { if (confirmation.RequiredText is null || typed?.Text == confirmation.RequiredText) dialog.Close(new ConfirmationAnswer(true, typed?.Text)); };
         if (typed is not null) typed.TextChanged += (_, _) => accept.IsEnabled = typed.Text == confirmation.RequiredText;
@@ -216,9 +232,10 @@ public partial class MainWindow : Window, IWorkspaceInteraction
             var input = new TextBox { PasswordChar = '●', Name = "CredentialInput" };
             var panel = new StackPanel { Spacing = 14, Margin = new Thickness(24) };
             panel.Children.Add(Heading(l["Credential"])); panel.Children.Add(new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap }); panel.Children.Add(input);
-            panel.Children.Add(new TextBlock { Text = l["CredentialHint"], Foreground = Brush.Parse("#A5B1C3"), TextWrapping = TextWrapping.Wrap, FontSize = 12 });
+            panel.Children.Add(Label(l["CredentialHint"]));
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 10 };
-            var cancel = new Button { Content = l["Cancel"] }; var accept = new Button { Content = l["Continue"], Name = "CredentialAcceptButton" };
+            var cancel = new ActionButton { Icon = "Close", Content = l["Cancel"] }; var accept = new ActionButton { Icon = "Check", Content = l["Continue"], Name = "CredentialAcceptButton" };
+            accept.Classes.Add("primary");
             cancel.Click += (_, _) => dialog.Close(null); accept.Click += (_, _) => dialog.Close(input.Text);
             buttons.Children.Add(cancel); buttons.Children.Add(accept); panel.Children.Add(buttons); dialog.Content = panel;
             dialog.Opened += (_, _) => input.Focus();
@@ -236,15 +253,19 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         {
             Title = title, Width = width, SizeToContent = SizeToContent.Height, MaxHeight = 760,
             CanResize = false, WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = Brush.Parse("#191F29"), Foreground = Brush.Parse("#E4EAF3"),
             FontFamily = new("Segoe UI,Microsoft JhengHei,PingFang TC,Noto Sans TC,sans-serif"), FontSize = 13
         };
+        AppearanceManager.StyleWindow(dialog);
         dialog.Opened += (_, _) => openDialogs++;
         dialog.Closed += (_, _) => { openDialogs--; skipNextActivationRefresh = true; };
         return dialog;
     }
     private static TextBlock Heading(string title) => new() { Text = title, FontSize = 20, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap };
-    private static TextBlock Label(string text) => new() { Text = text, FontSize = 12, Foreground = Brush.Parse("#A5B1C3"), TextWrapping = TextWrapping.Wrap };
+    private static TextBlock Label(string text)
+    {
+        var label = new TextBlock { Text = text, FontSize = 12, TextWrapping = TextWrapping.Wrap };
+        AppearanceManager.Bind(label, TextBlock.ForegroundProperty, "MutedBrush"); return label;
+    }
 
     private async Task OpenCommandPaletteAsync()
     {

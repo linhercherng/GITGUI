@@ -1,7 +1,7 @@
 # Windows x64 免安裝發行
 
-從 [Release v0.1.0](https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0)
-下載 `GITGUI-0.1.0-win-x64-portable.zip`，完整解壓縮後開啟
+從 [最新 Release](https://github.com/linhercherng/GITGUI/releases/latest)
+下載 `GITGUI-0.2.0-win-x64-portable.zip`，完整解壓縮後開啟
 `GitGui.App.exe`。適用 Windows 10/11 x64，不需系統管理員權限。
 
 ## 封裝內容
@@ -21,11 +21,11 @@
 需要 Windows、PowerShell 7、.NET 8 SDK，從指定版本乾淨 checkout 執行：
 
 ```powershell
-./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.1.0
-./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.1.0/GITGUI-0.1.0-win-x64-portable.zip -Desktop
+./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.2.0
+./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.2.0/GITGUI-0.2.0-win-x64-portable.zip -Desktop
 ./scripts/Collect-PortableGitSources.ps1 `
-  -PortableGit C:/Build/GITGUI-0.1.0/GITGUI-0.1.0-win-x64-portable/PortableGit `
-  -OutputDirectory C:/Build/GITGUI-0.1.0-sources
+  -PortableGit C:/Build/GITGUI-0.2.0/GITGUI-0.2.0-win-x64-portable/PortableGit `
+  -OutputDirectory C:/Build/GITGUI-0.2.0-sources
 ```
 
 輸出目錄必須尚不存在，避免覆寫已測試的 ZIP。NuGet 另用各專案的

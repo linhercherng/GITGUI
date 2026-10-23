@@ -28,7 +28,8 @@ public sealed class DiffEditor : Grid
     public DiffEditor()
     {
         split.Children.Add(left);
-        var divider = new GridSplitter { ResizeDirection = GridResizeDirection.Columns, Background = Brush.Parse("#303A49") };
+        var divider = new GridSplitter { ResizeDirection = GridResizeDirection.Columns };
+        AppearanceManager.Bind(divider, BackgroundProperty, "BorderBrush");
         SetColumn(divider, 1); split.Children.Add(divider);
         SetColumn(right, 2); split.Children.Add(right);
         Children.Add(inline); Children.Add(split);
@@ -58,24 +59,26 @@ public sealed class DiffEditor : Grid
         {
             IsReadOnly = true, ShowLineNumbers = true, WordWrap = false,
             FontSize = 12, FontFamily = new("Cascadia Code,Consolas,Menlo,Microsoft JhengHei,PingFang TC,Noto Sans TC,monospace"),
-            Background = Brush.Parse("#151A22"), Foreground = Brush.Parse("#DCE5F2"),
-            LineNumbersForeground = Brush.Parse("#9AABC3"),
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
         };
-        editor.TextArea.TextView.LineTransformers.Add(new DiffColorizer());
+        AppearanceManager.Bind(editor, TextEditor.BackgroundProperty, "EditorBrush");
+        AppearanceManager.Bind(editor, TextEditor.ForegroundProperty, "TextBrush");
+        AppearanceManager.Bind(editor, TextEditor.LineNumbersForegroundProperty, "MutedBrush");
+        editor.PropertyChanged += (_, e) => { if (e.Property == TextEditor.ForegroundProperty) editor.TextArea.TextView.Redraw(); };
+        editor.TextArea.TextView.LineTransformers.Add(new DiffColorizer(editor));
         return editor;
     }
-    private sealed class DiffColorizer : DocumentColorizingTransformer
+    private sealed class DiffColorizer(TextEditor editor) : DocumentColorizingTransformer
     {
         protected override void ColorizeLine(DocumentLine line)
         {
             var text = CurrentContext.Document.GetText(line);
-            var color = text.StartsWith("@@", StringComparison.Ordinal) ? "#98BFFF"
-                : text.StartsWith('+') && !text.StartsWith("+++", StringComparison.Ordinal) ? "#8CE4AF"
-                : text.StartsWith('-') && !text.StartsWith("---", StringComparison.Ordinal) ? "#FFABAC" : null;
-            if (color is null) return;
-            ChangeLinePart(line.Offset, line.EndOffset, element => element.TextRunProperties.SetForegroundBrush(Brush.Parse(color)));
+            var key = text.StartsWith("@@", StringComparison.Ordinal) ? "AccentBrush"
+                : text.StartsWith('+') && !text.StartsWith("+++", StringComparison.Ordinal) ? "SuccessBrush"
+                : text.StartsWith('-') && !text.StartsWith("---", StringComparison.Ordinal) ? "DangerBrush" : null;
+            if (key is null || editor.FindResource(key) is not IBrush brush) return;
+            ChangeLinePart(line.Offset, line.EndOffset, element => element.TextRunProperties.SetForegroundBrush(brush));
         }
     }
 }

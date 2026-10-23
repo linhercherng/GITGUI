@@ -4,6 +4,7 @@ using Avalonia.Data;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
@@ -26,6 +27,82 @@ public class TestApplication : Application
 
 public sealed class WindowTests
 {
+    [AvaloniaFact]
+    public void Appearance_toolbar_and_palette_buttons_work_through_actual_pointer_input()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());
+        var appearance = new AppearanceManager();
+        var window = new MainWindow(vm, appearance: appearance); window.Show();
+        try
+        {
+            Click(window, window.FindControl<Button>("AppearanceButton")!);
+            var picker = Assert.IsType<AppearanceWindow>(Assert.Single(window.OwnedWindows));
+            Click(picker, picker.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "Theme_forest"));
+            Assert.Equal("forest", appearance.Current.Id);
+            picker.Close();
+        }
+        finally { window.Close(); new AppearanceManager(); }
+        static void Click(Window owner, Button button)
+        {
+            owner.UpdateLayout(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), owner)!.Value;
+            owner.MouseDown(point, MouseButton.Left); owner.MouseUp(point, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Four_palettes_preserve_actions_labels_and_layout_at_supported_window_sizes()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var appearance = new AppearanceManager(); var graph = Graph();
+        var window = new MainWindow(vm, graph, appearance: appearance); window.Show();
+        try
+        {
+            await vm.RefreshCommand.ExecuteAsync(null);
+            vm.SelectedChange = vm.Changes[0];
+            foreach (var palette in AppearanceManager.Palettes)
+            {
+                appearance.Select(palette.Id);
+                window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 0;
+                window.FindControl<TabControl>("DetailTabs")!.SelectedIndex = 0;
+                window.UpdateLayout();
+                Assert.NotNull(window.Icon);
+                Assert.NotNull(window.FindControl<Button>("AppearanceButton"));
+                Assert.All(window.GetVisualDescendants().OfType<ActionButton>(), button => Assert.False(string.IsNullOrWhiteSpace(button.Content?.ToString())));
+                Assert.NotEmpty(window.GetVisualDescendants().OfType<ActionIcon>());
+                if (Environment.GetEnvironmentVariable("GITGUI_APPEARANCE_SCREENSHOTS") is { } directory)
+                {
+                    await Capture(window, Path.Combine(directory, "appearance-" + palette.Id + ".png"));
+                    window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 1;
+                    graph.SelectedCommit = vm.Commits[0];
+                    await Capture(window, Path.Combine(directory, "appearance-" + palette.Id + "-history.png"));
+                    graph.SelectedCommit = null;
+                }
+            }
+            foreach (var english in new[] { false, true })
+            {
+                window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 0;
+                vm.English = english; window.Width = 1100; window.Height = 800;
+                window.UpdateLayout();
+                foreach (var name in new[] { "AppearanceButton", "GitSettingsButton", "OpenRepositoryButton", "CommitButton" })
+                {
+                    var button = window.FindControl<Button>(name)!;
+                    var point = button.TranslatePoint(default, window)!.Value;
+                    Assert.InRange(point.X + button.Bounds.Width, 0, window.Bounds.Width);
+                    Assert.True(button.Bounds.Height >= 34);
+                }
+            }
+            window.Width = 1480; window.Height = 940; vm.English = false;
+            appearance.Select("porcelain");
+            var picker = new AppearanceWindow(appearance, vm.L); picker.Show(window);
+            if (Environment.GetEnvironmentVariable("GITGUI_APPEARANCE_SCREENSHOTS") is { } folder)
+                await Capture(picker, Path.Combine(folder, "appearance-picker.png"));
+            picker.Close();
+        }
+        finally { window.Close(); new AppearanceManager(); }
+    }
+
     [AvaloniaFact]
     public async Task Workspace_binds_actions_diff_and_graph_and_can_capture_actual_frame()
     {

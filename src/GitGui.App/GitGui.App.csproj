@@ -12,5 +12,6 @@
   </ItemGroup>
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <ApplicationIcon>../GitGui.UI/Assets/gitgui.ico</ApplicationIcon>
   </PropertyGroup>
 </Project>

@@ -10,7 +10,7 @@
 
 ## Windows 免安裝版
 
-從 [GitHub Release v0.1.0](https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0) 下載 `GITGUI-0.1.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
+從 [GitHub 最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載 `GITGUI-0.2.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
 
 請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
 
@@ -36,6 +36,14 @@ dotnet run --project src/GitGui.App
 ![Portable Git 設定](docs/images/portable-git-settings.png)
 
 下載來源：[Git for Windows 官方發行頁](https://github.com/git-for-windows/git/releases/latest)。完整配置與測試證據見 [Portable Git 說明](docs/PORTABLE-GIT.md)。
+
+## 圖示與外觀配色
+
+v0.2.0 加入應用程式圖示、一致的線條操作圖示與按鈕層級。右上角「外觀配色」可選 **石墨深色、午夜藍、森林綠、霧白**；選取立即套用，重啟後保留。主視窗、Diff／衝突編輯器、提交圖、Git 設定與安全確認對話框同步換色。儲存失敗會提示並保留原配色。
+
+![配色選擇](docs/images/appearance-picker.png)
+
+四款實際 Avalonia 畫面：[石墨](docs/images/appearance-graphite.png)、[午夜藍](docs/images/appearance-midnight.png)、[森林綠](docs/images/appearance-forest.png)、[霧白](docs/images/appearance-porcelain.png)。截圖使用固定測試資料，另有行為與原生桌面啟動測試；詳細說明見 [外觀說明](docs/APPEARANCE.md)。
 
 ## M1 功能
 

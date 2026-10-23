@@ -6,6 +6,7 @@ using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Threading;
 using GitGui.Core;
 
@@ -14,6 +15,11 @@ namespace GitGui.Controls;
 /// <summary>Draws only the graph rows intersecting the viewport; no per-commit visual tree.</summary>
 public sealed class CommitGraphControl : Control
 {
+    public static readonly StyledProperty<IBrush> GraphBackgroundProperty = AvaloniaProperty.Register<CommitGraphControl, IBrush>("GraphBackground", Brush.Parse("#151A22"));
+    public static readonly StyledProperty<IBrush> GraphForegroundProperty = AvaloniaProperty.Register<CommitGraphControl, IBrush>("GraphForeground", Brush.Parse("#E4EAF3"));
+    public static readonly StyledProperty<IBrush> GraphMutedProperty = AvaloniaProperty.Register<CommitGraphControl, IBrush>("GraphMuted", Brush.Parse("#A5B1C3"));
+    public static readonly StyledProperty<IBrush> GraphSelectionProperty = AvaloniaProperty.Register<CommitGraphControl, IBrush>("GraphSelection", Brush.Parse("#223C60"));
+    static CommitGraphControl() => AffectsRender<CommitGraphControl>(GraphBackgroundProperty, GraphForegroundProperty, GraphMutedProperty, GraphSelectionProperty);
     public static readonly StyledProperty<IEnumerable?> CommitsProperty =
         AvaloniaProperty.Register<CommitGraphControl, IEnumerable?>(nameof(Commits));
     public static readonly StyledProperty<CommitInfo?> SelectedCommitProperty =
@@ -38,6 +44,10 @@ public sealed class CommitGraphControl : Control
         ClipToBounds = true;
         AutomationProperties.SetName(this, "Commit history graph. Use Up and Down to select commits.");
         MinHeight = 120;
+        this.Bind(GraphBackgroundProperty, new DynamicResourceExtension("EditorBrush"));
+        this.Bind(GraphForegroundProperty, new DynamicResourceExtension("TextBrush"));
+        this.Bind(GraphMutedProperty, new DynamicResourceExtension("MutedBrush"));
+        this.Bind(GraphSelectionProperty, new DynamicResourceExtension("SelectionBrush"));
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -80,25 +90,28 @@ public sealed class CommitGraphControl : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-        context.FillRectangle(Brush.Parse("#151A22"), Bounds.WithX(0).WithY(0));
+        var background = GetValue(GraphBackgroundProperty);
+        context.FillRectangle(background, Bounds.WithX(0).WithY(0));
         var visible = (int)Math.Ceiling(Bounds.Height / RowHeight);
         for (var i = offset; i < Math.Min(rows.Count, offset + visible); i++)
         {
             var row = rows[i];
             var y = (i - offset) * RowHeight;
-            if (row.Commit == SelectedCommit) context.FillRectangle(Brush.Parse("#223C60"), new Rect(0, y, Bounds.Width, RowHeight));
+            if (row.Commit == SelectedCommit) context.FillRectangle(GetValue(GraphSelectionProperty), new Rect(0, y, Bounds.Width, RowHeight));
             using (context.PushClip(new Rect(0, y, graphWidth - 4, RowHeight)))
             {
                 foreach (var edge in row.Segments)
-                    context.DrawLine(new Pen(Palette[edge.FromLane % Palette.Length], 1.5), new Point(12 + edge.FromLane * 16, y + edge.FromY * RowHeight), new Point(12 + edge.ToLane * 16, y + edge.ToY * RowHeight));
-                context.DrawEllipse(Palette[row.Lane % Palette.Length], new Pen(Brush.Parse("#151A22"), 2), new Point(12 + row.Lane * 16, y + RowHeight / 2), 4, 4);
+                    context.DrawLine(new Pen(LaneBrush(edge.FromLane), 1.5), new Point(12 + edge.FromLane * 16, y + edge.FromY * RowHeight), new Point(12 + edge.ToLane * 16, y + edge.ToY * RowHeight));
+                context.DrawEllipse(LaneBrush(row.Lane), new Pen(background, 2), new Point(12 + row.Lane * 16, y + RowHeight / 2), 4, 4);
             }
-            DrawText(context, row.Commit.Hash[..Math.Min(7, row.Commit.Hash.Length)], graphWidth, y + 4, Mono, Brush.Parse("#8EA4C4"), 65);
-            DrawText(context, row.Commit.Subject, graphWidth + 70, y + 4, Normal, Brush.Parse("#E4EAF3"), Math.Max(30, Bounds.Width - graphWidth - 200));
-            if (Bounds.Width > 470) DrawText(context, row.Commit.Author, Bounds.Width - 120, y + 4, Normal, Brush.Parse("#A5B1C3"), 110);
+            DrawText(context, row.Commit.Hash[..Math.Min(7, row.Commit.Hash.Length)], graphWidth, y + 4, Mono, GetValue(GraphMutedProperty), 65);
+            DrawText(context, row.Commit.Subject, graphWidth + 70, y + 4, Normal, GetValue(GraphForegroundProperty), Math.Max(30, Bounds.Width - graphWidth - 200));
+            if (Bounds.Width > 470) DrawText(context, row.Commit.Author, Bounds.Width - 120, y + 4, Normal, GetValue(GraphMutedProperty), 110);
         }
-        if (rows.Count == 0) DrawText(context, "No commits to display", 16, 24, Normal, Brush.Parse("#A5B1C3"), Bounds.Width - 30);
+        if (rows.Count == 0) DrawText(context, "No commits to display", 16, 24, Normal, GetValue(GraphMutedProperty), Bounds.Width - 30);
     }
+
+    private IBrush LaneBrush(int lane) => this.FindResource("GraphLane" + lane % Palette.Length) as IBrush ?? Palette[lane % Palette.Length];
 
     private static void DrawText(DrawingContext context, string text, double x, double y, Typeface typeface, IBrush brush, double width)
     {

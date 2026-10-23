@@ -1,5 +1,5 @@
 param(
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.1.0',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.2.0',
     [string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
@@ -21,8 +21,10 @@ try {
         -p:NuGetLockFilePath=packages.win-x64.lock.json -p:RestoreLockedMode=true -p:Version=$Version -o $app
     if ($LASTEXITCODE -ne 0) { throw 'Self-contained publish failed' }
     & "$repo/tests/PreparePortableGit.ps1" -Destination (Join-Path $app 'PortableGit')
-    Copy-Item -LiteralPath "$repo/docs/portable/START-HERE.txt" -Destination $app
-    Copy-Item -LiteralPath "$repo/docs/portable/THIRD-PARTY.txt" -Destination $app
+    foreach ($document in @('START-HERE.txt', 'THIRD-PARTY.txt')) {
+        (Get-Content -LiteralPath "$repo/docs/portable/$document" -Raw).Replace('0.1.0', $Version) |
+            Set-Content -LiteralPath (Join-Path $app $document) -Encoding utf8
+    }
     $licenses = Join-Path $app 'licenses'
     $null = New-Item -ItemType Directory -Path $licenses
     $assets = Get-Content "$repo/src/GitGui.App/obj/project.assets.json" -Raw | ConvertFrom-Json -AsHashtable

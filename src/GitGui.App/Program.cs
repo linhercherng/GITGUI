@@ -43,10 +43,13 @@ internal static class Program
 
 public sealed class DesktopApp : Application
 {
+    private AppearanceManager? appearance;
     public override void Initialize()
     {
         RequestedThemeVariant = ThemeVariant.Dark;
         Styles.Add(new FluentTheme());
+        appearance = new AppearanceManager(new AppearancePreferences(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui", "appearance.json")));
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -80,7 +83,7 @@ public sealed class DesktopApp : Application
             graph.Bind(CommitGraphControl.CommitsProperty, new Binding("Commits"));
             graph.Bind(CommitGraphControl.SelectedCommitProperty, new Binding("SelectedCommit") { Mode = BindingMode.TwoWay });
             desktop.MainWindow = new MainWindow(provider.GetRequiredService<MainWindowViewModel>(), graph,
-                provider.GetRequiredService<IGitRuntimeSettings>());
+                provider.GetRequiredService<IGitRuntimeSettings>(), appearance);
             var bridge = new AskPassBridge(provider.GetRequiredService<IWorkspaceInteraction>());
             var runner = provider.GetRequiredService<GitProcessRunner>();
             var executable = Environment.ProcessPath!;
