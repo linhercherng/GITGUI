@@ -14,6 +14,7 @@ using Avalonia.Media.TextFormatting;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Threading;
 using Avalonia.Utilities;
+using Avalonia.VisualTree;
 using GitGui.Core;
 
 namespace GitGui.Controls;
@@ -211,6 +212,7 @@ public sealed class CommitGraphControl : Control
 
     private void ObserveBrush(int index, IBrush source)
     {
+        if (this.GetVisualRoot() is null) return;
         if (ReferenceEquals(observedBrushes[index], source)) return;
         brushObservers[index]?.Dispose(); observedBrushes[index] = source;
         brushObservers[index] = source is AvaloniaObject ? new BrushObserver(source, InvalidateVisual) : null;

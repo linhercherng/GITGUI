@@ -190,6 +190,34 @@ public sealed class GraphTextCacheTests(ITestOutputHelper output)
     }
 
     [AvaloniaFact]
+    public async Task Detached_manual_render_does_not_subscribe_and_reattachment_restores_brush_updates()
+    {
+        var graph = new CommitGraphControl { Width = 600, Height = 120,
+            Commits = new[] { Commit(0) with { Parents = [Commit(1).Hash] }, Commit(1) } };
+        var lane = new SolidColorBrush(Colors.Red); graph.Resources["GraphLane0"] = lane;
+        await graph.LayoutReady; graph.Measure(new Size(600, 120)); graph.Arrange(new Rect(0, 0, 600, 120));
+        Draw(graph);
+        var observers = typeof(CommitGraphControl).GetField("brushObservers", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        void AssertNoObservers() => Assert.All(((Array)observers.GetValue(graph)!).Cast<object?>(), observer => Assert.Null(observer));
+        AssertNoObservers();
+        var window = new Window { Width = 640, Height = 180, Content = graph };
+        try
+        {
+            window.Show(); PumpFrame(window);
+            Assert.Contains(((Array)observers.GetValue(graph)!).Cast<object?>(), observer => observer is not null);
+            window.Content = null; window.UpdateLayout(); AssertNoObservers();
+            Draw(graph); AssertNoObservers();
+            window.Content = graph; PumpFrame(window);
+            Assert.Contains(((Array)observers.GetValue(graph)!).Cast<object?>(), observer => observer is not null);
+            lane.Color = Colors.Blue; PumpFrame(window);
+            var pens = (Array)typeof(CommitGraphControl).GetField("lanePens", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(graph)!;
+            Assert.Equal(Colors.Blue, Assert.IsAssignableFrom<ISolidColorBrush>(((ImmutablePen)pens.GetValue(0)!).Brush).Color);
+        }
+        finally { window.Close(); }
+        AssertNoObservers();
+    }
+
+    [AvaloniaFact]
     public async Task Repeated_render_and_selection_reuse_shaped_lines()
     {
         var (window, graph) = await Open(Commit(0), Commit(1));
