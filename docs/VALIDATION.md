@@ -1,37 +1,41 @@
-# M0 驗證紀錄
+# M1 驗證紀錄
 
-日期：2026-10-23。這是初始化版本的證據，不代表完整規格或 P0 已完成。
+日期：2026-10-23。此紀錄區分本機實測、Headless 渲染與遠端 CI；完整功能對照見 [M1-ACCEPTANCE.md](M1-ACCEPTANCE.md)。
 
-## 本機環境
+## 本機環境與結果
 
 - Windows、.NET SDK 8.0.404、Git 2.54.0.windows.1。
 - `dotnet restore GitGui.sln --locked-mode`：通過。
 - `dotnet build GitGui.sln -c Release --no-restore`：0 warnings / 0 errors。
-- `dotnet test GitGui.sln -c Release --no-build`：18 passed / 0 failed / 0 skipped。
-- Core 6、Engine/Infrastructure 10、UI 2。
+- 完整 Release 回歸：111 passed / 0 failed / 0 skipped（Core 15、UI 20、Engine 76）；另兩個新增 Preview 案例通過，合計覆蓋 113 項。最後的 SHA 搜尋修正另以 GraphHistoryTests 4 項重跑通過。
 - `dotnet list GitGui.sln package --vulnerable --include-transitive`：當次 NuGet 來源未回報已知漏洞。
-- 實際啟動 Release Windows EXE，確認 `GITGUI · M0` 視窗存在且 Responding=true，之後正常關閉。
-- Avalonia Headless/Skia 產生 [UI 截圖](images/m0-headless.png)，人工檢視三欄配置、中文顯示與 Diff；截圖內容為固定測試資料。
+- `tests/WindowsSmoke.ps1 -Desktop`：實際 Windows WinExe AskPass Unicode 往返通過；桌面視窗存在、Responding=true，正常關閉。
+- 三張 Avalonia Headless/Skia 截圖已人工檢視：[工作區](images/m1-headless.png)、[提交圖](images/m1-headless-history.png)、[三方衝突編輯](images/m1-headless-conflict.png)。截圖使用固定測試資料。
+- 原始 specification.md 與使用者附件的 SHA-256 相同：`4EBC58C7CD23D2F0715471FD65FA86628C995E82F91E751519F2EB9A8EA07369`。
 
-## 測試範圍
+## 真實 Git 驗證
 
-- porcelain v2 一般、rename、unmerged、untracked、中文／空格／換行／emoji、無效 UTF-8 路徑位元組與截斷輸出。
-- 真實 SHA-1/SHA-256 倉庫的 status、歷史、Diff，前後 index 位元組一致；unborn HEAD 與 staged Diff。
-- 外部 fsmonitor／Diff 設定不被讀取流程執行。
-- Lib 路由決策、失敗降級、取消傳播、Core 禁止相依。
-- SQLite 路徑參數化、重複紀錄與重新連線後的持久性。
-- UI 綁定、唯讀 Diff、載入錯誤清除舊狀態、視窗釋放生命週期。
+使用獨立暫存目錄，測試自行建立倉庫、設定測試身分與本地 hooks。未對使用者既有倉庫執行破壞性測試。
 
-## 審查與已處理問題
+- 檔案、hunk、行暫存與反向取消：26 個 patch 案例，包含 CRLF、中文路徑、無尾換行、新／刪除檔與 executable mode。
+- 分支與網路：本地 bare remote 的 clone/fetch/pull/push、分支 CRUD、ff-only、stale lease、保護分支確認、hook 拒絕與此次 no-verify。
+- commit/amend、merge conflict／ours/theirs／MarkResolved／merge commit、abort、Undo/Redo。
+- raw 工作目錄、二進位／未追蹤、SHA-1/SHA-256、HEAD 狀態、各 index stage、所有本地分支/tag 與 GC 後復原。
+- 固定 seed 的 20 次變更序列後，逐項比對 refs、index entries/flags 與所有工作檔原始位元組。
+- 既有 index.lock 不刪除、refs 命名衝突在修改前失敗、ignored 碰撞保留、Unix executable 衝突編輯不降權限。
+- 未信任 filter 不執行；信任後依正常 Git clean filter 比對內容。
+- SQLite 持久性、同使用者 AskPass 協定、無效請求後可正常繼續，以及命令秘密遮蔽。
 
-- 重複 Dispose 的 UI 測試先失敗，再加入 idempotent disposal 並重跑通過。
-- 切換至無效路徑時舊 Diff 殘留的回歸測試先失敗，再清空舊狀態並重跑通過。
-- 新增 Skia 中央套件版本後，以 force-evaluate 更新 lock，隨後 locked restore 與完整 build/test 通過。
-- Core 不引用 Process、Avalonia、LibGit2Sharp；寫入／網路功能未開放。原規格快照對 untracked/unmerged 的不足已列在 ROADMAP。
-- 未將本機路徑、憑證或倉庫內容寫入日誌；SQLite 僅儲存使用者開啟過的路徑。
+## 審查與修復
 
-## 尚未驗證
+分別執行後端安全／規格與 UI 規格／品質審查。已處理：index/ref 鎖取得順序、Windows symlink placeholder、信任設定傳遞、pull.ff 與 rebase 策略確認、FETCH_HEAD 競態、批次物件串流管線阻塞、Windows 無主控台 AskPass、Unix executable mode、遲到 Diff／commit 回應、載入／儲存時的衝突草稿遺失。
 
-大型倉庫目標、真實 macOS/Linux 桌面互動、Git 2.40 精確版本、reftable 整合案例、快照完整復原、跨平台封裝與安裝。GitHub runner 的 build/test 結果請查看 [Actions](https://github.com/linhercherng/GITGUI/actions)。
+延遲 backend 測試驗證回應過期時不套用舊 patch、不切回舊 commit，且儲存期間較新的草稿不被清除。UI 審查修復後核准；後端未發現剩餘阻擋問題。
 
-未執行 BenchmarkDotNet 效能量測；目前只建立可執行的 50,000 筆 status 解析基準入口。
+## GitHub 與未驗證範圍
+
+工作流程包含 Windows 2022、Ubuntu 22.04、macOS 14 的 locked restore/build/test，Windows 另跑實際 AskPass apphost。推送後核對本次 commit 的 [Actions](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)。
+
+本輪不宣稱達到大型效能指標，也未執行 BenchmarkDotNet。未驗證真實 macOS/Linux 桌面操作、Git 2.40 精確版、reftable 倉庫、各種 GCM/SSH/LFS/proxy/mergetool 組合與跨平台安裝封裝。這些與 README 所列不支援狀態留待後續里程碑。
+
+M0 原本的 18 項測試已併入本輪回歸範圍；不是把 M0 結果當作 M1 功能證據。

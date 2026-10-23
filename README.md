@@ -2,17 +2,15 @@
 
 [![CI](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml/badge.svg)](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)
 
-跨平台桌面 Git 用戶端，以 **C# / .NET 8 + Avalonia 11** 建立。所有寫入與網路操作預計只走 git CLI；高頻讀取使用 LibGit2Sharp，遇不支援的倉庫格式自動切回 CLI。
+跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。**M1 已實作 11 項 P0 日常功能、安全快照與復原**；進階歷史、終端機與安裝封裝列在後續里程碑。
 
-**目前狀態：M0 基礎版本，僅提供讀取功能。原始架構規格是產品目標，並非已完成的功能清單。**
+![M1 工作區，Headless 測試資料](docs/images/m1-headless.png)
 
-![M0 三欄介面，Headless 測試資料](docs/images/m0-headless.png)
-
-上圖由 Avalonia Headless 以固定測試資料渲染；真實倉庫讀取由獨立整合測試驗證。
+截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m1-headless-history.png)、[三方衝突編輯](docs/images/m1-headless-conflict.png)。
 
 ## 執行
 
-需求：.NET SDK **8.0.404** 或同屬 .NET 8 的較新 SDK、Git **2.40+**。Git 必須在 PATH 中。
+需要 .NET SDK **8.0.404** 或同屬 .NET 8 的較新 SDK，以及 PATH 中的 Git **2.40+**。
 
 ```powershell
 git clone https://github.com/linhercherng/GITGUI.git
@@ -21,47 +19,56 @@ dotnet restore GitGui.sln --locked-mode
 dotnet run --project src/GitGui.App
 ```
 
-使用「瀏覽」選取 Git **倉庫根目錄**，或輸入路徑後按「開啟 / 重新整理」。左欄顯示分支與最近倉庫；中欄切換變更與提交歷史；右欄顯示未暫存／已暫存 Diff 與提交中繼資料。重新取得視窗焦點會刷新。
+使用「瀏覽」與「開啟」載入本地倉庫；「倉庫操作」建立或 clone 到新／空目錄。首次寫入需要信任倉庫，對話框會列出可能執行程式的 Git 設定。
+
+## M1 功能
+
+| 功能 | 使用方式 |
+| --- | --- |
+| 開啟、init、clone | 路徑列與「倉庫操作」 |
+| 狀態 | 未暫存／已暫存清單、多選、分支與上游 ahead/behind |
+| 檔案、hunk、行暫存與取消 | 檔案工具列；右側「選取 hunk / 行」勾選後套用 |
+| 捨棄變更 | 列出選取檔案，確認後建立快照再執行 |
+| commit、amend | 提交訊息、修改上一筆、此次略過 hooks、簽章選項；Ctrl+Enter |
+| 提交圖、搜尋與篩選 | 拓撲圖、作者／路徑／日期篩選、每批載入 1,000 筆 |
+| 工作區與 commit Diff | AvaloniaEdit 行內／並排、大小變化、圖片前後預覽 |
+| 分支 CRUD | 左側分支清單與操作；雙擊切換 |
+| fetch、pull | 上方工具列；pull 先快照，遵守 pull.ff；rebase 設定會先詢問此次改用 merge |
+| push | 預設一般推送；force 僅使用 lease + includes，保護分支另要求輸入名稱 |
+| merge 與衝突 | ours/base/theirs、逐段採用一方／雙方、手動編輯結果、儲存後標記已解決，或外部 mergetool／中止 |
+
+視窗為石墨深色三欄，可調欄寬；提供繁中／英文資源、F5、Ctrl+Shift+P 指令面板。檔案監看以 300ms 合併事件，重新取得焦點時補做刷新。操作紀錄顯示實際指令、輸出、退出碼與耗時，可複製。
+
+## 快照與復原
+
+中高風險操作前自動建立快照；一般 commit 與建立分支也保存。上方「復原／重做」與「復原快照」頁籤可還原；還原前另建快照，因此可以重做。
+
+- 保存 HEAD（含 unborn/detached）、本地分支／tag、branch 設定、index stage 0/1/2/3 與旗標、工作目錄原始位元組、未追蹤檔案及 merge 狀態。
+- 原始內容存為 Git blob/tree/commit，以 `refs/gitgui/snapshots/` 保護；SQLite 存索引。已測試 `git gc --prune=now` 後復原。
+- 不單靠 `stash create`：它不足以保存未追蹤檔案與衝突 index。還原由 Git 產生完整 index，持有 index/ref 鎖後安裝，避免直接改寫二進位 index。
+- 保留最近 50 筆或 14 天，取涵蓋範圍較廣者；只清理本產品的快照 refs。忽略檔不會被一般捨棄操作清除；還原會替換的特定忽略路徑會先納入重做快照。
+- 本地快照無法回復遠端推送；force push 仍必須經確認。
+
+## 驗證與架構
 
 ```powershell
 dotnet build GitGui.sln -c Release
 dotnet test GitGui.sln -c Release
-dotnet run --project tests/GitGui.Benchmarks -c Release
+# Windows：實際 apphost 憑證管線與桌面啟動
+./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net8.0/GitGui.App.exe -Desktop
 ```
 
-## M0 已提供
+詳細證據與邊界見 [驗證紀錄](docs/VALIDATION.md)、[M1 驗收表](docs/M1-ACCEPTANCE.md)、[架構決策](docs/ARCHITECTURE.md)。七個主專案維持單向相依：Core 無 UI／Process／libgit2；所有寫入與網路都走 git CLI。一般 SHA-1/files 提交圖走 LibGit2Sharp，格式不支援或原生讀取失敗時自動降級；篩選與 Diff 使用 CLI 以保持 Git patch 語意。
 
-- 七個主專案，Core 不參照 UI、Git 函式庫或 Process。
-- 真實倉庫的 status、中文與特殊檔名、未暫存／已暫存 unified Diff。
-- 目前 HEAD 最近 500 筆提交；SHA-1/files 使用 LibGit2Sharp，SHA-256/reftable 或函式庫失敗時走 CLI。
-- 三欄繁體中文介面、SQLite 最近倉庫、14 日滾動生命週期日誌。
-- CLI 使用 ArgumentList、literal pathspec、停用可選鎖與 fsmonitor；Diff 停用 external diff 與 textconv。取消會終止行程樹。
-- 核心與解析器單元測試、暫存真實倉庫整合測試、Avalonia.Headless UI 測試、解析器基準測試入口。
-- Windows / macOS / Linux 建置與測試工作流程。
+## 目前限制
 
-## 後續里程碑
+- 快照寫入會拒絕 submodule、sparse checkout、進行中的 rebase/cherry-pick/revert/bisect 及 merge autostash；已在其他 worktree 使用且需要改動的分支也會阻擋復原。
+- 為保證原子 refs 復原，M1 不允許把分支 `topic` 直接改名為 `topic/sub` 或反向操作。
+- 非 UTF-8 檔案請使用整檔暫存或 ours/theirs；不提供可能改變編碼的逐行暫存／文字衝突編輯。無效 UTF-8 檔名的寫入會安全拒絕。Commit 訊息支援 Big5 fallback。
+- 單檔 Diff 超過 1 MiB／20,000 行先摺疊；圖片預覽每側最多 8 MiB；一般 CLI 輸出上限 32 MiB。快照檔案資料另走有界串流。
+- 尚未量測 10 萬 commit／5 萬檔案效能目標；精準增量快取、背景自動 fetch、完整無障礙與跨平台安裝檔留待後續。Diff 目前以變更色彩標記，程式語言高亮仍待補齊。
+- 遠端同步測試使用隔離的本地 bare remote；未宣稱實測每種 SSH agent、LFS、代理與外部 mergetool。真實 macOS/Linux 桌面互動也需另外驗收。
+- 資料存於 `.NET LocalApplicationData/GitGui`（Windows 通常是 `%LOCALAPPDATA%\GitGui`）。信任設定、最近倉庫與快照索引持久保存；憑證經同使用者 AskPass 管線傳遞，不寫入資料庫／日誌。操作輸出僅留本次視窗記憶體；生命週期日誌保留 14 天。
+- .NET 8 升級與授權方式是正式版前追蹤事項。目前未附 LICENSE；公開程式碼不代表授予再散佈授權。
 
-完整項目見 [ROADMAP](docs/ROADMAP.md) 與 [原始架構規格](docs/specification.md)。
-
-目前尚未開放 init/clone、stage/unstage、commit/amend、分支操作、fetch/pull/push、merge、快照／復原、檔案監看、提交圖、hunk/行暫存、AvaloniaEdit、衝突編輯器、內建終端機、英文資源與單一實例控制。寫入功能必須與快照／復原安全測試一併完成。
-
-## 資料與限制
-
-- 資料目錄：`.NET LocalApplicationData/GitGui`。Windows 通常是 `%LOCALAPPDATA%\GitGui`；只存最近倉庫路徑與生命週期日誌，不存憑證或檔案內容。
-- M0 不實作完整的倉庫信任管理；唯讀指令固定關閉外部 fsmonitor 與 Diff 程式，仍應只開啟你有權使用的本機倉庫。
-- CLI 每個輸出串流上限 4 MiB，過大會顯示錯誤；Diff 尚無語法高亮與大檔折疊。未追蹤檔案只列出，不載入內容。
-- 狀態解析保留原始路徑位元組；M0 顯示使用 UTF-8，無效 UTF-8 路徑的 Diff 選取與 Big5 commit 解碼仍待實作。
-- 尚未宣稱通過 10 萬 commit／5 萬檔案的效能目標。CI 現階段使用 runner 內建 Git；Git 2.40 精確版本矩陣、reftable 整合測試與大型基準門檻仍待補齊。
-- .NET 8 的支援期限與升級 .NET 10 是正式發行前的追蹤事項。
-- 原規格未決定授權方式，目前未附開源 LICENSE；公開程式碼不代表授予再散佈授權。
-
-## 設計依據
-
-- [Git porcelain v2](https://git-scm.com/docs/git-status#_porcelain_format_version_2)
-- [Git Diff](https://git-scm.com/docs/git-diff)
-- [LibGit2Sharp 官方專案](https://github.com/libgit2/libgit2sharp)
-- [Avalonia 官方文件](https://docs.avaloniaui.net/docs/get-started/)
-- [Avalonia Headless 測試](https://docs.avaloniaui.net/docs/testing/setting-up-the-headless-platform)
-- [.NET SDK global.json](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json)
-
-原始規格日期：2026-10-23。來源文字中的兩份嵌入式架構／里程碑圖表未包含原圖，保存文字標記供後續補齊。
+原始規格日期：2026-10-23，全文保存於 [specification.md](docs/specification.md)，未改寫原始內容。其他優先級見 [ROADMAP](docs/ROADMAP.md)。
