@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+TestResults/
+BenchmarkDotNet.Artifacts/
+artifacts/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+*.log
+.env
+*.key
+*.pem
