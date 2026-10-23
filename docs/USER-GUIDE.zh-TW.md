@@ -1,10 +1,10 @@
 # GITGUI 操作手冊
 
-適用版本：0.5.0（M4 預覽版）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。正式版本號、下載檔名與驗證結果，請以同版 Release 為準；本版功能與回歸測試通過，但大型倉庫首屏及嚴格16ms回應目標仍未完整通過；不屬於M4正式完成驗收。詳見 [效能結果](M4-PERFORMANCE.md)。
+適用版本：0.6.0（M4 效能改善候選版）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。發布狀態、下載檔名與驗證結果，請以同版 Release 為準；目前仍在進行跨平台與效能驗收，尚未宣告 M4 正式驗收通過。詳見 [效能結果](M4-PERFORMANCE.md)。
 
 ## 1. 解壓縮與啟動
 
-1. 從本專案 Release 下載 `GITGUI-0.5.0-win-x64-portable.zip`。
+1. 版本發布後，從本專案 Release 下載 `GITGUI-0.6.0-win-x64-portable.zip`。
 2. 在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。
 3. 開啟解壓縮資料夾，執行 `GitGui.App.exe`。請勿直接從 ZIP 內執行。
 4. 第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 `PortableGit\cmd\git.exe`。
@@ -14,7 +14,7 @@
 若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 `SHA256SUMS.txt`；此版本未提供程式碼簽章。
 
 ```powershell
-Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.5.0-win-x64-portable.zip' -Algorithm SHA256
+Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.6.0-win-x64-portable.zip' -Algorithm SHA256
 ```
 
 上方 `C:\下載` 是範例，請換成實際下載位置。

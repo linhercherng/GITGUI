@@ -14,10 +14,11 @@ using Avalonia.Threading;
 using GitGui.Controls;
 using GitGui.Core;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace GitGui.UI.Tests;
 
-public sealed class GraphTextCacheTests
+public sealed class GraphTextCacheTests(ITestOutputHelper output)
 {
     private static CommitInfo Commit(int index, string? subject = null) => new(index.ToString("x40"), subject ?? "中文 history 🙂 " + index, "Author", DateTimeOffset.UnixEpoch, []);
     private static void Draw(CommitGraphControl graph) { using var context = new DrawingGroup().Open(); graph.Render(context); }
@@ -125,9 +126,28 @@ public sealed class GraphTextCacheTests
             graph.Width = width + 250; window.UpdateLayout(); Draw(graph); var layout = Layout(graph);
             var typeface = new Typeface("Segoe UI,Inter,Microsoft JhengHei,PingFang TC,Noto Sans TC,sans-serif");
             var brush = graph.GetValue(CommitGraphControl.GraphForegroundProperty).ToImmutable();
-            var expected = Pixels(context => context.DrawText(new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 12, brush)
-                { MaxTextWidth = layout.MaxWidth, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis }, new Point(2, 2)));
+            var formatted = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 12, brush)
+                { MaxTextWidth = layout.MaxWidth, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
+            var expected = Pixels(context => context.DrawText(formatted, new Point(2, 2)));
             var actual = Pixels(context => layout.Draw(context, new Point(2, 2)));
+            if (!expected.AsSpan().SequenceEqual(actual))
+            {
+                var folder = new DirectoryInfo(Directory.GetCurrentDirectory());
+                while (folder.Parent is not null && !File.Exists(Path.Combine(folder.FullName, "GitGui.sln"))) folder = folder.Parent;
+                var destination = Path.Combine(folder.FullName, "TestResults", "graph-text-cache", Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(destination);
+                File.WriteAllBytes(Path.Combine(destination, "expected.png"), expected);
+                File.WriteAllBytes(Path.Combine(destination, "actual.png"), actual);
+                var metrics = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Text = text, RequestedWidth = width, GraphWidth = graph.Bounds.Width, Culture = CultureInfo.CurrentCulture.Name,
+                    Formatted = new { formatted.MaxTextWidth, formatted.Width, formatted.WidthIncludingTrailingWhitespace, formatted.Height, formatted.Baseline },
+                    Cached = new { layout.MaxWidth, layout.Width, layout.WidthIncludingTrailingWhitespace, layout.Height, layout.Baseline,
+                        Lines = layout.TextLines.Select(line => new { line.Length, line.Width, line.WidthIncludingTrailingWhitespace, line.Height, line.HasCollapsed }).ToArray() }
+                }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(Path.Combine(destination, "metrics.json"), metrics);
+                output.WriteLine("Strict PNG comparison diagnostics: " + destination + Environment.NewLine + metrics);
+            }
             Assert.Equal(expected, actual);
         }
         finally { window.Close(); }

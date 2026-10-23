@@ -156,7 +156,7 @@ public sealed class CommitGraphControl : Control
         // FormattedText.Draw reshapes its lines each time in Avalonia11.3.
         // TextLayout owns retained shaped lines and can be drawn without formatting again.
         var properties = new GenericTextRunProperties(typeface, 12, foregroundBrush: brush, cultureInfo: System.Globalization.CultureInfo.CurrentCulture);
-        var layout = new TextLayout(text, typeface, 12, brush, textWrapping: TextWrapping.WrapWithOverflow,
+        var layout = new TextLayout(text, typeface, 12, brush, textWrapping: TextWrapping.NoWrap,
             textTrimming: TextTrimming.CharacterEllipsis, maxWidth: Math.Max(1, width), maxLines: 1,
             textStyleOverrides: text.Length == 0 ? null : new[] { new ValueSpan<TextRunProperties>(0, text.Length, properties) });
         if (text.Length > MaximumEntryCharacters)

@@ -519,23 +519,36 @@ public sealed class WindowTests
         var backend = new SampleWorkspace { HasConflict = true };
         using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
         var window = new MainWindow(vm); window.Show(); await vm.RefreshCommand.ExecuteAsync(null); Dispatcher.UIThread.RunJobs();
-        vm.UseConflictSideCommand.Execute("Ours");
-        var captured = vm.ConflictResult;
-        backend.PendingOperation = new();
-        var save = vm.ActionCommand.ExecuteAsync("WriteConflictResult");
-        Assert.True(vm.IsBusy); Assert.False(vm.CanSaveConflict);
-        Assert.False(window.FindControl<CodeEditor>("ConflictResultInput")!.IsEnabled);
-        vm.UseConflictSideCommand.Execute("Theirs"); vm.UseConflictSectionCommand.Execute("Both");
-        Assert.Equal(captured, vm.ConflictResult);
-        var newer = captured + "late draft edit\n";
-        vm.ConflictResult = newer;
-        backend.PendingOperation.SetResult(new(true, "Saved captured result")); await save;
-        Assert.Equal(captured, Assert.Single(backend.Executed).Message);
-        Assert.Equal(newer, vm.ConflictResult); Assert.True(vm.ConflictDirty);
-        backend.PendingOperation = null;
-        await vm.ActionCommand.ExecuteAsync("WriteConflictResult");
-        Assert.Equal(newer, vm.ConflictResult); Assert.False(vm.ConflictDirty);
-        window.Close();
+        if (vm.RefreshCommand.ExecutionTask is { } initialRefresh) await initialRefresh.WaitAsync(TimeSpan.FromSeconds(5));
+        backend.DeferredOpen = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.UIThread.Post(window.Activate); Dispatcher.UIThread.RunJobs();
+        Assert.NotNull(backend.DeferredOpenState); Assert.True(vm.IsBusy);
+        var activationRefresh = vm.RefreshCommand.ExecutionTask;
+        Assert.NotNull(activationRefresh); Assert.False(activationRefresh.IsCompleted);
+        backend.DeferredOpen.SetResult(backend.DeferredOpenState); backend.DeferredOpen = null;
+        try
+        {
+            // Activated may start a refresh while pumping jobs. Fence that real operation so the busy assertions below belong to saving.
+            await activationRefresh.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(vm.IsBusy);
+            vm.UseConflictSideCommand.Execute("Ours");
+            var captured = vm.ConflictResult;
+            backend.PendingOperation = new();
+            var save = vm.ActionCommand.ExecuteAsync("WriteConflictResult");
+            Assert.True(vm.IsBusy); Assert.False(vm.CanSaveConflict);
+            Assert.False(window.FindControl<CodeEditor>("ConflictResultInput")!.IsEnabled);
+            vm.UseConflictSideCommand.Execute("Theirs"); vm.UseConflictSectionCommand.Execute("Both");
+            Assert.Equal(captured, vm.ConflictResult);
+            var newer = captured + "late draft edit\n";
+            vm.ConflictResult = newer;
+            backend.PendingOperation.SetResult(new(true, "Saved captured result")); await save;
+            Assert.Equal(captured, Assert.Single(backend.Executed).Message);
+            Assert.Equal(newer, vm.ConflictResult); Assert.True(vm.ConflictDirty);
+            backend.PendingOperation = null;
+            await vm.ActionCommand.ExecuteAsync("WriteConflictResult");
+            Assert.Equal(newer, vm.ConflictResult); Assert.False(vm.ConflictDirty);
+        }
+        finally { await activationRefresh.WaitAsync(TimeSpan.FromSeconds(5)); window.Close(); }
     }
 
     [AvaloniaFact]
