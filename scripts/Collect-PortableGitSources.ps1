@@ -1,0 +1,32 @@
+param(
+    [Parameter(Mandatory = $true)][string]$PortableGit,
+    [Parameter(Mandatory = $true)][string]$OutputDirectory
+)
+$ErrorActionPreference = 'Stop'
+$output = [IO.Path]::GetFullPath($OutputDirectory)
+$null = New-Item -ItemType Directory -Path $output -Force
+$sources = Join-Path $output 'PortableGit-2.56.0.3-copyleft-sources'
+$null = New-Item -ItemType Directory -Path $sources -Force
+$manifest = Join-Path $PSScriptRoot '../docs/portable/portablegit-sources.json'
+$records = @(Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json)
+# Includes GNU/GPL/LGPL/AGPL components and shared-library variants. GCC runtime
+# exception and permissive components retain their original binary notices.
+# Archives preserve upstream source, patches and PKGBUILD build recipes.
+foreach ($record in $records) {
+    $target = Join-Path $sources $record.file
+    if (-not (Test-Path -LiteralPath $target) -or (Get-FileHash -LiteralPath $target).Hash.ToLowerInvariant() -ne $record.sha256) {
+        $partial = $target + '.partial'
+        Invoke-WebRequest -Uri $record.url -OutFile $partial -TimeoutSec 300
+        if ((Get-FileHash -LiteralPath $partial).Hash.ToLowerInvariant() -ne $record.sha256) { throw "Source checksum mismatch: $($record.file)" }
+        Move-Item -LiteralPath $partial -Destination $target -Force
+    }
+    & tar -tf $target 1>$null
+    if ($LASTEXITCODE -ne 0) { throw "Source archive cannot be read: $($record.file)" }
+}
+Copy-Item -LiteralPath $manifest -Destination "$sources/source-manifest.json" -Force
+Copy-Item -LiteralPath (Join-Path $PortableGit 'etc/package-versions.txt') -Destination $sources -Force
+Copy-Item -LiteralPath "$PSScriptRoot/../docs/portable/THIRD-PARTY.txt" -Destination $sources -Force
+$zip = Join-Path $output 'PortableGit-2.56.0.3-copyleft-sources.zip'
+if (Test-Path -LiteralPath $zip) { throw 'Source ZIP already exists; do not replace released artifacts.' }
+[IO.Compression.ZipFile]::CreateFromDirectory($sources, $zip, [IO.Compression.CompressionLevel]::NoCompression, $true)
+Write-Output "SOURCES: $zip ($($records.Count) corresponding source packages)"

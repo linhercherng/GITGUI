@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/GitGui.Engine.Cli/GitGui.Engine.Cli.csproj" />
+    <ProjectReference Include="../../src/GitGui.Engine.Lib/GitGui.Engine.Lib.csproj" />
+    <ProjectReference Include="../../src/GitGui.Infrastructure/GitGui.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

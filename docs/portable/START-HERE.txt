@@ -1,0 +1,25 @@
+GITGUI 0.1.0 — Windows x64 免安裝版
+
+1. 將整個 ZIP 解壓縮至有寫入權限的資料夾。
+2. 開啟 GitGui.App.exe。不要直接在壓縮檔內啟動。
+3. 使用「瀏覽」開啟 Git 倉庫，或使用「倉庫操作」建立／複製倉庫。
+
+內附 .NET 8.0.32 與完整 Portable Git 2.56.0.3，不需另外安裝。
+請一起保留 PortableGit 資料夾及其他 DLL；整個資料夾可移動。
+「Git 設定」預設自動偵測程式旁 PortableGit。若曾選過其他 Git，
+請按「自動偵測」後儲存，以使用內附版本。
+
+Windows 10/11 x64；不需要系統管理員權限，不修改系統 PATH。
+本版 GITGUI 執行檔未做 Authenticode 簽章。
+
+此處「免安裝」指執行環境隨附；使用者設定、信任清單、最近倉庫、
+快照索引及生命週期日誌仍存於 %LOCALAPPDATA%\GitGui。
+Git 使用個人的 Git 設定、憑證與 SSH keys；首次 commit 需設定作者。
+不會內附帳號、密碼或私人金鑰。
+
+移除程式：關閉後刪除解壓縮資料夾即可。刪除程式不會刪除 Git 倉庫。
+更新：解壓縮新版本至新資料夾再啟動，勿覆寫正在執行的程式。
+
+原始碼、說明與問題回報：https://github.com/linhercherng/GITGUI
+發行頁：https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0
+授權及相依元件來源：THIRD-PARTY.txt、licenses/、PortableGit/LICENSE.txt。

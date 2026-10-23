@@ -30,7 +30,7 @@ GITGUI/
 
 一般讀取、所有寫入／網路、快照 refs prepare/commit 都透過同一個 GitRuntime 建立行程。Windows 子行程 PATH 會優先加入選定發行包的 cmd/bin、ucrt64（或 mingw64）與 usr/bin，並選用同一包的 git-core；系統 PATH 不變。既有 Git Credential Manager、AskPass 與使用者 Git 設定保留正常語意。
 
-請保留完整發行包。只有一份 git.exe 不足以提供 hooks 所需 shell、SSH、傳輸與其他 helpers。這項功能提供 Git 執行路徑設定；GITGUI 仍需要 .NET 執行環境，並未因而改成完整免安裝封裝。
+請保留完整發行包。只有一份 git.exe 不足以提供 hooks 所需 shell、SSH、傳輸與其他 helpers。[Windows x64 免安裝版](WINDOWS-RELEASE.md) 已內附完整 PortableGit 與 .NET 執行環境，解壓後直接開啟 GitGui.App.exe。從原始碼執行時仍需準備 SDK 與 Git。
 
 ## 驗證
 

@@ -2,13 +2,19 @@
 
 [![CI](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml/badge.svg)](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)
 
-跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。**M1 已實作 11 項 P0 日常功能、安全快照與復原**；進階歷史、終端機與安裝封裝列在後續里程碑。
+跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。**M1 已實作 11 項 P0 日常功能、安全快照與復原**，並提供內附 Portable Git 的 Windows x64 免安裝版。
 
 ![M1 工作區，Headless 測試資料](docs/images/m1-headless.png)
 
 截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m1-headless-history.png)、[三方衝突編輯](docs/images/m1-headless-conflict.png)。
 
-## 執行
+## Windows 免安裝版
+
+從 [GitHub Release v0.1.0](https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0) 下載 `GITGUI-0.1.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
+
+請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
+
+## 從原始碼執行
 
 需要 .NET SDK **8.0.404** 或同屬 .NET 8 的較新 SDK，以及 Git **2.40+**。支援已安裝的 Git 與 **Portable Git**，不要求 Git 在系統 PATH 中。
 

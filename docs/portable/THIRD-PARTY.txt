@@ -1,0 +1,39 @@
+Third-party software notices and corresponding sources
+
+PortableGit 2.56.0.3 is redistributed unmodified as a separate command-line
+distribution. Its complete directory, GPLv2 text, component licenses and package
+inventory are preserved under PortableGit/. Other bundled components retain their
+own licenses; the Git license does not replace those licenses.
+
+Upstream binaries and Git source/build package:
+https://github.com/git-for-windows/git/releases/tag/v2.56.0.windows.3
+https://github.com/git-for-windows/git/tree/v2.56.0.windows.3
+Component versions: PortableGit/etc/package-versions.txt
+Component source packages and build instructions:
+https://github.com/git-for-windows/build-extra/blob/main/get-sources.sh
+https://github.com/git-for-windows/MSYS2-packages
+https://github.com/git-for-windows/MINGW-packages
+https://github.com/git-for-windows/pacman-repo
+https://repo.msys2.org/msys/sources/
+https://repo.msys2.org/mingw/sources/
+The release additionally provides PortableGit copyleft corresponding source
+packages, with upstream locations and SHA-256 values in their source manifest.
+Download those source assets from the same GITGUI release page as this ZIP:
+https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0
+
+.NET runtime 8.0.32: MIT and third-party notices in licenses/DOTNET-*.txt.
+https://github.com/dotnet/runtime/tree/v8.0.32
+Runtime/native library licenses and NuGet author/copyright/repository metadata
+are preserved in licenses/, alongside nuget-inventory.json (versions/content hashes).
+MIT.txt contains the MIT terms for packages identified as MIT in that inventory;
+each package's original nuspec retains its own copyright holder notice.
+Avalonia: https://github.com/AvaloniaUI/Avalonia (MIT)
+AvaloniaEdit: https://github.com/AvaloniaUI/AvaloniaEdit (MIT)
+LibGit2Sharp: https://github.com/libgit2/libgit2sharp (MIT)
+libgit2: https://github.com/libgit2/libgit2 (GPLv2 with linking exception;
+the native NuGet package includes the exception and third-party notices).
+SkiaSharp: https://github.com/mono/SkiaSharp (MIT and third-party notices)
+SQLite: https://sqlite.org/copyright.html (public domain)
+
+GITGUI's public source currently has no general redistribution license.
+Third-party software remains available under its respective licenses.

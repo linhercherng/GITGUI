@@ -41,21 +41,34 @@ public class RecoveryWorkflowTests
         var interaction = new PausedConfirmation(); var runner = new GitProcessRunner(); var catalog = new MemoryCatalog();
         var service = new WorkspaceService(runner, new TestSettings(), catalog, new(runner, catalog), interaction);
         await File.WriteAllTextAsync(Path.Combine(repo.Root, "tracked.txt"), "changed\n");
-        var first = service.ExecuteAsync(repo.Root, new(GitAction.Discard) { Paths = ["tracked.txt"] }, null, default);
-        await interaction.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
         using var cancellation = new CancellationTokenSource();
-        var waiting = new QueueProgress();
-        var second = service.ExecuteAsync(repo.Root, new(GitAction.CreateBranch) { Name = "queued" }, waiting, cancellation.Token);
-        await waiting.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
-        cancellation.Cancel();
-        var cancelled = await second;
-        Assert.True(cancelled.Cancelled);
-        Assert.DoesNotContain("queued", await repo.Git("for-each-ref", "refs/heads"));
-        interaction.Answer.SetResult(new(true));
-        Assert.True((await first).Success);
-        Assert.Equal("base\n", await File.ReadAllTextAsync(Path.Combine(repo.Root, "tracked.txt")));
-        var third = await service.ExecuteAsync(repo.Root, new(GitAction.CreateBranch) { Name = "after" }, null, default);
-        Assert.True(third.Success, third.Message);
+        var first = service.ExecuteAsync(repo.Root, new(GitAction.Discard) { Paths = ["tracked.txt"] }, null, default);
+        Task<OperationOutcome>? second = null;
+        try
+        {
+            // Confirmation follows real Git probes; allow slow Windows hosts under parallel I/O load.
+            await interaction.Entered.Task.WaitAsync(TimeSpan.FromSeconds(60));
+            var waiting = new QueueProgress();
+            second = service.ExecuteAsync(repo.Root, new(GitAction.CreateBranch) { Name = "queued" }, waiting, cancellation.Token);
+            await waiting.Entered.Task.WaitAsync(TimeSpan.FromSeconds(60));
+            cancellation.Cancel();
+            var cancelled = await second;
+            Assert.True(cancelled.Cancelled);
+            Assert.DoesNotContain("queued", await repo.Git("for-each-ref", "refs/heads"));
+            interaction.Answer.SetResult(new(true));
+            Assert.True((await first).Success);
+            Assert.Equal("base\n", await File.ReadAllTextAsync(Path.Combine(repo.Root, "tracked.txt")));
+            var third = await service.ExecuteAsync(repo.Root, new(GitAction.CreateBranch) { Name = "after" }, null, default);
+            Assert.True(third.Success, third.Message);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            interaction.Answer.TrySetResult(new(false));
+            if (second is not null) await second;
+            // A timeout/assertion must not leave Git using a directory while Dispose deletes it.
+            await first;
+        }
     }
 
     [Fact]
