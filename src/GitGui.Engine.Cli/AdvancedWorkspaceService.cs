@@ -79,7 +79,7 @@ public sealed partial class WorkspaceService
             if (op.Action == GitAction.SkipOperation && state.InProgress.Kind == "merge") throw new InvalidOperationException("A merge cannot be skipped; resolve or abort it.");
             if (op.Action == GitAction.ContinueOperation && state.InProgress.HasConflicts) throw new InvalidOperationException("Resolve and stage every conflict before continuing.");
         }
-        if (op.Action is GitAction.CherryPick or GitAction.Revert or GitAction.RebaseInteractive && state.Status.Files.Count > 0)
+        if (op.Action is GitAction.CherryPick or GitAction.Revert or GitAction.RebaseInteractive && await HasParentChanges(root, state.Status.Files, true, ct))
             throw new InvalidOperationException("Commit or stash changes before rewriting history.");
         if (op.Action is GitAction.CherryPick or GitAction.Revert or GitAction.Reset or GitAction.CreateTag)
             _ = await reader.Resolve(root, op.Revision ?? (op.Action == GitAction.CreateTag ? "HEAD" : op.Name) ?? "HEAD", ct);
@@ -100,7 +100,7 @@ public sealed partial class WorkspaceService
             ArgumentException.ThrowIfNullOrWhiteSpace(op.Name);
             await git.Text(root, ct, "check-ref-format", "refs/tags/" + op.Name);
             if (op.Name.StartsWith('-')) throw new ArgumentException("Invalid tag name.");
-            if (op.Action == GitAction.CreateTag && op.Annotated && string.IsNullOrWhiteSpace(op.Message)) throw new ArgumentException("Enter the annotated tag message.");
+            if (op.Action == GitAction.CreateTag && (op.Annotated || op.Sign) && string.IsNullOrWhiteSpace(op.Message)) throw new ArgumentException("Enter the annotated or signed tag message.");
         }
         if (op.Action is GitAction.AddRemote or GitAction.RenameRemote or GitAction.SetRemoteUrl or GitAction.RemoveRemote)
         {
@@ -137,11 +137,20 @@ public sealed partial class WorkspaceService
         if (op.Action == GitAction.Reset && !Enum.IsDefined(op.ResetMode)) throw new ArgumentException("Invalid reset mode.");
     }
 
+    private async Task EnsureParentTarget(string root, string revision, CancellationToken ct)
+    {
+        await EnsureNoSubmoduleTree(root, revision, ct);
+        var head = await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", "HEAD");
+        if (head is not null)
+            EnsureNoSubmoduleChanges(await git.Text(root, ct, "diff", "--raw", "--no-renames", "-z", head, revision, "--"));
+    }
+
     private async Task EnsureNoSubmoduleTree(string root, string revision, CancellationToken ct)
     {
         var tree = await git.Text(root, ct, "ls-tree", "-r", "-z", revision, "--");
-        if (tree.Split('\0').Any(e => e.StartsWith("160000 ", StringComparison.Ordinal)))
-            throw new InvalidOperationException("Submodule targets are outside M2 recovery support.");
+        EnsureGitlinkTargets(root, tree.Split('\0', StringSplitOptions.RemoveEmptyEntries));
+        await EnsureNoChildOverwrite(root, tree.Split('\0', StringSplitOptions.RemoveEmptyEntries)
+            .Where(e => !e.StartsWith("160000 ", StringComparison.Ordinal)).Select(e => e[(e.IndexOf('\t') + 1)..]), ct);
     }
     private static void EnsureNoSubmoduleChanges(string raw)
     {
@@ -150,8 +159,10 @@ public sealed partial class WorkspaceService
         {
             var header = Regex.Match(fields[n].TrimStart('\r', '\n'), @"^:([0-7]{6}) ([0-7]{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]$");
             if (!header.Success) continue;
-            if (header.Groups[1].Value == "160000" || header.Groups[2].Value == "160000")
-                throw new InvalidOperationException("Submodule changes are outside M2 recovery support.");
+            var before = header.Groups[1].Value; var after = header.Groups[2].Value;
+            if ((before == "160000" && after is not ("160000" or "000000")) ||
+                (after == "160000" && before is not ("160000" or "000000")))
+                throw new InvalidOperationException("A file/submodule type transition can overwrite a child repository; move the child aside first.");
             n++; // --no-renames emits exactly one following path; it is never a header.
         }
     }
@@ -169,8 +180,9 @@ public sealed partial class WorkspaceService
     {
         var target = await reader.Resolve(root, op.Revision ?? op.Name ?? "HEAD", ct);
         var entries = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-tree", "-r", "-z", target, "--"]));
-        if (entries.Any(e => e.StartsWith("160000 ", StringComparison.Ordinal))) throw new InvalidOperationException("Submodule reset targets are outside M2 recovery support.");
-        var paths = entries.Select(e => e[(e.IndexOf('\t') + 1)..]).ToArray();
+        EnsureGitlinkTargets(root, entries);
+        var paths = entries.Where(e => !e.StartsWith("160000 ", StringComparison.Ordinal)).Select(e => e[(e.IndexOf('\t') + 1)..]).ToArray();
+        await EnsureNoChildOverwrite(root, paths, ct);
         foreach (var path in paths)
         {
             var full = GitAccess.FullPath(root, path);
@@ -185,15 +197,48 @@ public sealed partial class WorkspaceService
         EnsureNoSubmoduleChanges(raw);
         var fields = raw.Split('\0'); var paths = new List<string>();
         for (var n = 0; n + 1 < fields.Length; n++)
-            if (Regex.IsMatch(fields[n].TrimStart('\r', '\n'), @"^:[0-7]{6} [0-7]{6} [0-9a-f]+ [0-9a-f]+ [A-Z]$")) paths.Add(fields[++n]);
+        {
+            var header = Regex.Match(fields[n].TrimStart('\r', '\n'), @"^:([0-7]{6}) ([0-7]{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]$");
+            if (header.Success)
+            {
+                var path = fields[++n];
+                if (header.Groups[1].Value != "160000" && header.Groups[2].Value != "160000") paths.Add(path);
+            }
+        }
         return paths;
     }
     private async Task<IReadOnlyList<string>> TreePaths(string root, string revision, CancellationToken ct)
     {
         var entries = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-tree", "-r", "-z", revision, "--"]));
-        if (entries.Any(e => e.StartsWith("160000 ", StringComparison.Ordinal)))
-            throw new InvalidOperationException("Submodule targets are outside M2 recovery support.");
-        return entries.Select(e => e[(e.IndexOf('\t') + 1)..]).ToArray();
+        EnsureGitlinkTargets(root, entries);
+        var paths = entries.Where(e => !e.StartsWith("160000 ", StringComparison.Ordinal)).Select(e => e[(e.IndexOf('\t') + 1)..]).ToArray();
+        await EnsureNoChildOverwrite(root, paths, ct);
+        return paths;
+    }
+
+    private async Task EnsureNoChildOverwrite(string root, IEnumerable<string> paths, CancellationToken ct)
+    {
+        var links = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-files", "--stage", "-z"]))
+            .Where(e => e.StartsWith("160000 ", StringComparison.Ordinal)).Select(e => e[(e.IndexOf('\t') + 1)..]).ToArray();
+        var comparison = GitAccess.CollisionComparison;
+        foreach (var path in paths)
+            if (links.Any(p => path.Equals(p, comparison) || path.StartsWith(p + "/", comparison) || p.StartsWith(path + "/", comparison)))
+                throw new InvalidOperationException("A parent file would overwrite a child repository: " + path);
+    }
+
+    private static void EnsureGitlinkTargets(string root, IEnumerable<string> entries)
+    {
+        var links = entries.Where(e => e.StartsWith("160000 ", StringComparison.Ordinal)).Select(e => e[(e.IndexOf('\t') + 1)..]);
+        if (GitAccess.OverwriteCollisions(root, links).Count > 0)
+            throw new InvalidOperationException("A parent file blocks a submodule target; move it aside before changing the parent tree.");
+    }
+
+    private async Task<bool> HasParentChanges(string root, IReadOnlyList<FileChange> files, bool includeUntracked, CancellationToken ct)
+    {
+        var links = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-files", "--stage", "-z"]))
+            .Where(e => e.StartsWith("160000 ", StringComparison.Ordinal)).Select(e => e[(e.IndexOf('\t') + 1)..])
+            .ToHashSet(GitAccess.CollisionComparer);
+        return files.Any(f => (includeUntracked || f.IndexStatus != "?") && !(f.IndexStatus == "." && links.Contains(f.Path)));
     }
 
     private async Task<IReadOnlyList<string>> OperationOverwritePaths(string root, InProgressState state, GitOperation op, CancellationToken ct)
@@ -290,8 +335,8 @@ public sealed partial class WorkspaceService
             case GitAction.Reset:
                 await Run("reset", "--" + op.ResetMode.ToString().ToLowerInvariant(), await reader.Resolve(root, revision, ct), "--"); break;
             case GitAction.CreateTag:
-                if (op.Annotated) await RunWrite(root, ["tag", "--annotate", "--file=-", "--", op.Name!, await reader.Resolve(root, revision, ct)], Encoding.UTF8.GetBytes(op.Message!), ct, progress);
-                else await Run("tag", "--", op.Name!, await reader.Resolve(root, revision, ct));
+                if (op.Annotated || op.Sign) await RunWrite(root, ["tag", .. (op.Sign ? new[] { "--sign" } : new[] { "--annotate", "--no-sign" }), "--file=-", "--", op.Name!, await reader.Resolve(root, revision, ct)], Encoding.UTF8.GetBytes(op.Message!), ct, progress);
+                else await Run("tag", "--no-sign", "--", op.Name!, await reader.Resolve(root, revision, ct));
                 break;
             case GitAction.DeleteTag: await Run("tag", "--delete", "--", op.Name!); break;
             case GitAction.AddRemote: await Run("remote", "add", "--", op.Remote ?? op.Name!, op.Url!); break;
@@ -357,7 +402,7 @@ public sealed partial class WorkspaceService
         var env = new Dictionary<string, string?> { ["GIT_EDITOR"] = "true", ["GIT_SEQUENCE_EDITOR"] = "true" };
         if (File.Exists(Path.Combine(dir, "editor.sh"))) env["GIT_EDITOR"] = "sh " + ShellQuote(Path.Combine(dir, "editor.sh").Replace('\\', '/'));
         if (File.Exists(Path.Combine(dir, "sequence.sh"))) env["GIT_SEQUENCE_EDITOR"] = "sh " + ShellQuote(Path.Combine(dir, "sequence.sh").Replace('\\', '/'));
-        var result = await runner.RunAsync(root, args, ct, new() { IsReadOnly = false, Trusted = true, Environment = env }, progress);
+        var result = await runner.RunAsync(root, ["-c", "submodule.recurse=false", .. args], ct, new() { IsReadOnly = false, Trusted = true, Environment = env }, progress);
         if (result.ExitCode != 0) throw new GitCommandException(result);
     }
 }

@@ -8,7 +8,7 @@ namespace GitGui.Engine.Tests;
 public sealed class PendingSubmoduleSafetyTests
 {
     [Fact]
-    public async Task Continue_external_rebase_refuses_future_gitlink_without_snapshot_or_state_mutation()
+    public async Task Continue_external_rebase_supports_future_gitlink_and_restores_the_parent_pause()
     {
         using var repo = new TemporaryRepository(); await repo.Init();
         var upstream = (await repo.Git("rev-parse", "HEAD")).Trim();
@@ -34,7 +34,7 @@ public sealed class PendingSubmoduleSafetyTests
         Assert.Contains("later commit adds gitlink", await File.ReadAllTextAsync(Path.Combine(stateDirectory, "git-rebase-todo")));
         await File.WriteAllBytesAsync(Path.Combine(repo.Root, "private.bin"), [0, 255, 128, 13, 10, 42]);
         var beforeHead = await repo.Git("rev-parse", "HEAD");
-        var beforeIndex = await File.ReadAllBytesAsync(Path.Combine(repo.Root, ".git", "index"));
+        var beforeIndex = await repo.Git("ls-files", "--stage", "-z");
         var beforeState = CaptureFiles(stateDirectory);
         var beforeWork = CaptureFiles(repo.Root, excludeGit: true);
         var catalog = new MemoryCatalog();
@@ -42,10 +42,12 @@ public sealed class PendingSubmoduleSafetyTests
 
         var outcome = await service.ExecuteAsync(repo.Root, new(GitAction.ContinueOperation), null, default);
 
-        Assert.False(outcome.Success); Assert.Contains("Submodule", outcome.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Null(outcome.Snapshot); Assert.Empty(await catalog.ListAsync(repo.Root, default));
+        Assert.True(outcome.Success, outcome.Message); Assert.NotNull(outcome.Snapshot);
+        Assert.Contains("160000", await repo.Git("ls-files", "--stage"));
+        var undo = await service.ExecuteAsync(repo.Root, new(GitAction.RestoreSnapshot) { SnapshotId = outcome.Snapshot.Id }, null, default);
+        Assert.True(undo.Success, undo.Message);
         Assert.Equal(beforeHead, await repo.Git("rev-parse", "HEAD"));
-        Assert.Equal(beforeIndex, await File.ReadAllBytesAsync(Path.Combine(repo.Root, ".git", "index")));
+        Assert.Equal(beforeIndex, await repo.Git("ls-files", "--stage", "-z"));
         AssertFilesEqual(beforeState, CaptureFiles(stateDirectory));
         AssertFilesEqual(beforeWork, CaptureFiles(repo.Root, excludeGit: true));
     }

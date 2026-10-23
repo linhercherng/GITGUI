@@ -9,6 +9,12 @@ public sealed class GitCommandException(GitResult result) : InvalidOperationExce
 
 internal sealed class GitAccess(GitProcessRunner runner)
 {
+    // macOS commonly uses case-insensitive APFS. Conservative overlap guards
+    // also protect those volumes; Linux paths retain distinct casing.
+    internal static StringComparison CollisionComparison => OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+        ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+    internal static StringComparer CollisionComparer => OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+        ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
     internal static readonly UTF8Encoding Utf8 = new(false, true);
     public async Task<byte[]> Bytes(string root, CancellationToken ct, string[] args, GitRunOptions? options = null)
     {

@@ -179,7 +179,9 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
                         if (ff == "only") mergeArgs.Add("--ff-only");
                         else if (ff == "false") mergeArgs.Add("--no-ff");
                         else if (ff == "true") mergeArgs.Add("--ff");
-                        mergeArgs.Add(await reader.Resolve(root, privateRef, executionToken));
+                        var fetchedTarget = await reader.Resolve(root, privateRef, executionToken);
+                        await EnsureParentTarget(root, fetchedTarget, executionToken);
+                        mergeArgs.Add(fetchedTarget);
                         await Run(mergeArgs.ToArray());
                     }
                     finally
@@ -255,7 +257,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
         if (op.Action == GitAction.AbortMerge && state.InProgress.Kind != "merge") throw new InvalidOperationException("No merge in progress.");
         if (state.InProgress.Kind == "merge" && op.Action is GitAction.SwitchBranch or GitAction.CreateBranch or GitAction.RenameBranch or GitAction.DeleteBranch or GitAction.Merge or GitAction.Pull)
             throw new InvalidOperationException("Complete or abort the merge first.");
-        if (op.Action is GitAction.SwitchBranch or GitAction.Merge or GitAction.Pull && state.Status.Files.Any(f => f.IndexStatus != "?"))
+        if (op.Action is GitAction.SwitchBranch or GitAction.Merge or GitAction.Pull && await HasParentChanges(root, state.Status.Files, false, ct))
             throw new InvalidOperationException("Commit or discard tracked changes before switching/merging/pulling.");
         if (op.Action is GitAction.Push or GitAction.Pull && state.Status.Branch is "(detached)" or "(unknown)")
             throw new InvalidOperationException("Switch to a local branch before push/pull.");
@@ -266,7 +268,12 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
             {
                 var full = GitAccess.FullPath(root, path);
                 if (Directory.Exists(full) && new DirectoryInfo(full).LinkTarget is null)
-                    throw new InvalidOperationException("Select individual files, not directories.");
+                {
+                    var entries = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-files", "--stage", "-z", "--", path]));
+                    var gitlink = entries.Any(e => e.StartsWith("160000 ", StringComparison.Ordinal) && e[(e.IndexOf('\t') + 1)..] == path);
+                    if (!gitlink || op.Action is not (GitAction.Stage or GitAction.Unstage or GitAction.MarkResolved))
+                        throw new InvalidOperationException("Select individual files or an indexed submodule for staging; child worktrees are managed separately.");
+                }
             }
         }
         if (op.Action is GitAction.StagePatch or GitAction.UnstagePatch && string.IsNullOrWhiteSpace(op.Patch))
@@ -291,6 +298,8 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
             }
         }
         if (op.Action is GitAction.SwitchBranch or GitAction.Merge) ArgumentException.ThrowIfNullOrWhiteSpace(op.Name);
+        if (op.Action is GitAction.SwitchBranch or GitAction.Merge)
+            await EnsureParentTarget(root, await reader.Resolve(root, op.Name!, ct), ct);
         if (op.Action is GitAction.Fetch or GitAction.Pull or GitAction.Push) _ = Remote(state, op);
         if (op.Action == GitAction.Pull)
         {
@@ -334,6 +343,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
 
     private async Task RunWrite(string root, string[] args, byte[]? input, CancellationToken ct, IProgress<OperationProgress>? progress, bool literalPathspecs = true)
     {
+        args = ["-c", "submodule.recurse=false", .. args];
         var result = await runner.RunAsync(root, args, ct, new() { IsReadOnly = false, Trusted = true, Input = input, LiteralPathspecs = literalPathspecs }, progress);
         if (result.ExitCode != 0) throw new GitCommandException(result);
     }

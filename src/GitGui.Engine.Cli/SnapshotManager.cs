@@ -9,12 +9,16 @@ namespace GitGui.Engine.Cli;
 internal sealed record IndexEntry(string Path, string Mode, string Oid, int Stage, uint Flags = 0);
 internal sealed record SavedFile(string Path, string Mode, string Oid);
 internal sealed record StashLogEntry(string Oid, string Name, string Email, string Date, string Message);
+internal sealed record SparseSnapshot(List<KeyValuePair<string, string>> LocalConfig,
+    List<KeyValuePair<string, string>> WorktreeConfig, string? PatternOid);
 internal sealed record SnapshotManifest(string Root, string? HeadRef, string? HeadOid,
     Dictionary<string, string> Refs, List<IndexEntry> Index, List<SavedFile> Files,
     Dictionary<string, string> Markers, List<KeyValuePair<string, string>> BranchConfig,
     List<KeyValuePair<string, string>>? RemoteConfig = null, List<StashLogEntry>? StashLog = null,
     List<string>? StateDirectories = null, Dictionary<string, string>? StateModes = null,
-    Dictionary<string, string>? OperationRefs = null, Dictionary<string, string>? SymbolicRefs = null);
+    Dictionary<string, string>? OperationRefs = null, Dictionary<string, string>? SymbolicRefs = null,
+    List<KeyValuePair<string, string>>? SubmoduleConfig = null, List<string>? ProtectedDirectories = null,
+    SparseSnapshot? Sparse = null);
 
 public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog catalog)
 {
@@ -67,11 +71,14 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         var operationRefs = await ReadOperationRefs(root, ct);
         var paths = GitAccess.NullFields(await git.Bytes(root, ct,
             ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]))
-            .Concat(GitAccess.OverwriteCollisions(root, additionalPaths ?? [])).Distinct(StringComparer.Ordinal).ToArray();
+            .Concat(GitAccess.OverwriteCollisions(root, additionalPaths ?? [])).Select(p => p.TrimEnd('/'))
+            .Distinct(StringComparer.Ordinal).ToArray();
+        var protectedDirectories = ProtectedDirectories(root, index, paths);
         var files = new List<SavedFile>();
         var regular = new List<(string Path, string Mode)>();
         foreach (var path in paths)
         {
+            if (protectedDirectories.Any(p => Within(path, p))) continue;
             var full = GitAccess.FullPath(root, path);
             var info = new FileInfo(full);
             var link = info.LinkTarget;
@@ -86,7 +93,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                 regular.Add((path, mode));
             }
             else if (Directory.Exists(full))
-                throw new InvalidOperationException("Nested repositories/submodules cannot be safely snapshotted in M1: " + path);
+                throw new InvalidOperationException("An unexpected directory blocks a parent file snapshot: " + path);
         }
         if (regular.Count > 0)
         {
@@ -157,8 +164,11 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         markerTargets.AddRange(operationRefs.Values);
         var configuration = await ReadBranchConfig(root, ct);
         var remoteConfiguration = await ReadRemoteConfig(root, ct);
+        var submoduleConfiguration = await ReadConfig(root, "^submodule\\.", "--local", ct);
+        var sparse = await ReadSparse(root, ct);
         var manifest = new SnapshotManifest(root, headRef, headOid, refs, index, files, markers, configuration,
-            remoteConfiguration, stashLog, stateDirectories, stateModes, operationRefs, symbolicRefs);
+            remoteConfiguration, stashLog, stateDirectories, stateModes, operationRefs, symbolicRefs,
+            submoduleConfiguration, protectedDirectories, sparse);
         var manifestOid = await Hash(root, JsonSerializer.SerializeToUtf8Bytes(manifest), ct);
         var roots = new List<string> { $"100644 blob {manifestOid}\tmanifest\0" };
         roots.Add($"040000 tree {await BuildTree(root, files.Select(f => new IndexEntry(f.Path, f.Mode, f.Oid, 0)), ct)}\tworktree\0");
@@ -166,6 +176,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             roots.Add($"040000 tree {await BuildTree(root, index.Where(e => e.Stage == stage), ct)}\tindex{stage}\0");
         var markerTree = await BuildTree(root, markers.Select(kv => new IndexEntry(kv.Key, "100644", kv.Value, 0)), ct);
         roots.Add($"040000 tree {markerTree}\tstate\0");
+        if (sparse.PatternOid is not null) roots.Add($"100644 blob {sparse.PatternOid}\tsparse-patterns\0");
         var tree = GitAccess.Utf8.GetString(await git.Bytes(root, ct, ["mktree", "-z"],
             new() { IsReadOnly = false, Input = Encoding.UTF8.GetBytes(string.Concat(roots)), HideOutput = true })).Trim();
         var id = DateTimeOffset.UtcNow.ToString("yyyyMMddTHHmmssfffffff", CultureInfo.InvariantCulture) + "-" + Guid.NewGuid().ToString("N");
@@ -204,6 +215,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         await CheckSupported(root, ct);
         var saved = await ReadManifest(root, info, ct);
         await using var indexLock = await RepositoryIndexLock.Acquire(git, root, ct);
+        var currentIndex = await ReadIndex(root, ct);
         var statePaths = await ReadStatePaths(root, ct);
         ValidateStateStorage(statePaths);
         var currentRefs = await ReadRefs(root, ct);
@@ -220,9 +232,17 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             currentRefs = currentRefs.Where(p => p.Key.StartsWith("refs/heads/", StringComparison.Ordinal) ||
                 p.Key.StartsWith("refs/tags/", StringComparison.Ordinal)).ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
         await CheckOtherWorktrees(root, currentRefs, saved.Refs, ct);
-        var currentFiles = GitAccess.NullFields(await git.Bytes(root, ct,
+        var listedFiles = GitAccess.NullFields(await git.Bytes(root, ct,
             ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]))
-            .Concat(GitAccess.OverwriteCollisions(root, saved.Files.Select(f => f.Path))).Distinct().ToArray();
+            .Concat(GitAccess.OverwriteCollisions(root, saved.Files.Select(f => f.Path))).Select(p => p.TrimEnd('/')).Distinct().ToArray();
+        var protectedDirectories = ProtectedDirectories(root, currentIndex, listedFiles)
+            .Concat(saved.ProtectedDirectories ?? []).Concat(saved.Index.Where(e => e.Mode == "160000").Select(e => e.Path)).Distinct().ToArray();
+        if (GitAccess.OverwriteCollisions(root, saved.Index.Where(e => e.Mode == "160000").Select(e => e.Path)).Count > 0)
+            throw new InvalidOperationException("A file blocks a saved submodule path; move it aside before parent restoration.");
+        if (saved.Files.Any(f => protectedDirectories.Any(p => Within(f.Path, p) || Within(p, f.Path))))
+            throw new InvalidOperationException("A child repository blocks parent restoration. Move it aside; child worktrees are never overwritten.");
+        var currentFiles = listedFiles.Where(f => !protectedDirectories.Any(p => Within(f, p))).ToArray();
+        if (saved.Sparse is not null) _ = await SparsePatternPath(root, ct);
         var currentSet = currentFiles.ToHashSet(StringComparer.Ordinal);
         var savedSet = saved.Files.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
         foreach (var file in saved.Files)
@@ -302,6 +322,14 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                 foreach (var item in saved.RemoteConfig)
                     await git.Write(root, ct, ["config", "--local", "--add", item.Key, item.Value]);
             }
+            if (saved.SubmoduleConfig is not null)
+            {
+                foreach (var key in (await ReadConfig(root, "^submodule\\.", "--local", ct)).Select(p => p.Key).Distinct())
+                    await git.Write(root, ct, ["config", "--local", "--unset-all", key]);
+                foreach (var item in saved.SubmoduleConfig)
+                    await git.Write(root, ct, ["config", "--local", "--add", item.Key, item.Value]);
+            }
+            if (saved.Sparse is not null) await RestoreSparse(root, saved.Sparse, ct);
             foreach (var directory in (saved.StateDirectories ?? []).OrderBy(p => p.Length))
                 Directory.CreateDirectory(StatePath(directory, statePaths));
             foreach (var (marker, oid) in saved.Markers)
@@ -336,7 +364,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         foreach (var path in manifest.Files.Select(f => f.Path).Concat(manifest.Index.Select(e => e.Path))) GitAccess.FullPath(root, path);
         if (manifest.Files.Select(f => f.Path).Distinct().Count() != manifest.Files.Count ||
             manifest.Files.Any(f => !IsOid(f.Oid) || f.Mode is not ("100644" or "100755" or "120000")) ||
-            manifest.Index.Any(e => !IsOid(e.Oid) || e.Stage is < 0 or > 3 || e.Mode is not ("100644" or "100755" or "120000")) ||
+            manifest.Index.Any(e => !IsOid(e.Oid) || e.Stage is < 0 or > 3 || e.Mode is not ("100644" or "100755" or "120000" or "160000")) ||
             manifest.Refs.Any(p => !IsOid(p.Value) || !SafeRef(p.Key) || !SnapshotRef(p.Key)) ||
             manifest.Markers.Any(p => !SafeStatePath(p.Key) || !IsOid(p.Value)) ||
             manifest.HeadOid is not null && !IsOid(manifest.HeadOid) || manifest.HeadRef is not null && !SafeRef(manifest.HeadRef) ||
@@ -346,10 +374,14 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             manifest.StateModes?.Any(p => !manifest.Markers.ContainsKey(p.Key) || p.Value is not ("100644" or "100755")) == true ||
             manifest.OperationRefs?.Any(p => !OperationRefNames.Contains(p.Key) || !IsOid(p.Value)) == true ||
             manifest.SymbolicRefs?.Any(p => !manifest.Refs.ContainsKey(p.Key) || !SafeRef(p.Key) || !SafeRef(p.Value)) == true ||
+            manifest.SubmoduleConfig?.Any(p => !p.Key.StartsWith("submodule.", StringComparison.Ordinal) || p.Key.Any(char.IsControl)) == true ||
+            manifest.Sparse is not null && (manifest.Sparse.PatternOid is not null && !IsOid(manifest.Sparse.PatternOid) ||
+                manifest.Sparse.LocalConfig.Concat(manifest.Sparse.WorktreeConfig).Any(p => !SparseKey(p.Key))) ||
             manifest.StashLog?.Any(s => !IsOid(s.Oid) || !Regex.IsMatch(s.Date, @"^-?[0-9]+ [+-][0-9]{4}$") ||
                 s.Name.Any(char.IsControl) || s.Email.Any(char.IsControl) || s.Message.Contains('\0')) == true ||
             manifest.StashLog is { Count: > 0 } && manifest.Refs.GetValueOrDefault("refs/stash") != manifest.StashLog[0].Oid)
             throw new InvalidOperationException("Snapshot metadata is not safe to restore.");
+        foreach (var path in manifest.ProtectedDirectories ?? []) GitAccess.FullPath(root, path);
         return manifest;
     }
 
@@ -360,8 +392,6 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             var path = await git.Text(root, ct, "rev-parse", "--path-format=absolute", "--git-path", marker);
             if (File.Exists(path) || Directory.Exists(path)) throw new InvalidOperationException("Finish or abort the active " + marker + " operation first.");
         }
-        if (await git.TryText(root, ct, "config", "--bool", "core.sparseCheckout") == "true")
-            throw new InvalidOperationException("Snapshot writes are disabled for sparse checkouts.");
     }
 
     internal async Task<Dictionary<string, string>> ReadRefs(string root, CancellationToken ct)
@@ -401,7 +431,8 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         var entries = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-files", "--stage", "-z"]))
             .Select(line => { var tab = line.IndexOf('\t'); var fields = line[..tab].Split(' ');
                 return new IndexEntry(line[(tab + 1)..], fields[0], fields[1], int.Parse(fields[2], CultureInfo.InvariantCulture)); }).ToList();
-        if (entries.Any(e => e.Mode == "160000")) throw new InvalidOperationException("Submodule snapshots are scheduled for P2; this write is blocked.");
+        if (entries.GroupBy(e => e.Path).Any(g => g.Any(e => e.Mode == "160000") && g.Any(e => e.Mode != "160000")))
+            throw new InvalidOperationException("Resolve the file/submodule type conflict before using parent snapshots.");
         var debug = GitAccess.Utf8.GetString(await git.Bytes(root, ct, ["ls-files", "--debug", "-z"]));
         var flags = new Dictionary<string, uint>();
         var offset = 0;
@@ -462,6 +493,84 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         if (result.ExitCode != 0) throw new GitCommandException(result);
         return GitAccess.NullFields(result.Output).Select(item => { var at = item.IndexOf('\n');
             return new KeyValuePair<string, string>(item[..at], item[(at + 1)..]); }).ToList();
+    }
+
+    private static bool Within(string path, string directory) => path.Equals(directory, GitAccess.CollisionComparison) ||
+        path.StartsWith(directory + "/", GitAccess.CollisionComparison);
+
+    private static List<string> ProtectedDirectories(string root, IEnumerable<IndexEntry> index, IEnumerable<string> paths)
+    {
+        var result = index.Where(e => e.Mode == "160000").Select(e => e.Path)
+            .ToHashSet(GitAccess.CollisionComparer);
+        foreach (var path in result)
+            if (File.Exists(GitAccess.FullPath(root, path)) || new FileInfo(GitAccess.FullPath(root, path)).LinkTarget is not null)
+                throw new InvalidOperationException("A file occupies an indexed submodule path; move it aside before parent restoration.");
+        foreach (var path in paths)
+        {
+            var full = GitAccess.FullPath(root, path);
+            if (Directory.Exists(full) && (File.Exists(Path.Combine(full, ".git")) || Directory.Exists(Path.Combine(full, ".git"))))
+            {
+                if (new DirectoryInfo(full).LinkTarget is not null) throw new InvalidOperationException("Symbolic child repository directory.");
+                result.Add(path);
+            }
+        }
+        return result.ToList();
+    }
+
+    private const string SparseConfigPattern = "^(core\\.sparsecheckout(cone)?|index\\.sparse)$";
+    private static bool SparseKey(string key) => key.Equals("core.sparsecheckout", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("core.sparsecheckoutcone", StringComparison.OrdinalIgnoreCase) || key.Equals("index.sparse", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<List<KeyValuePair<string, string>>> ReadConfig(string root, string pattern, string scope, CancellationToken ct)
+    {
+        var result = await runner.RunAsync(root, ["config", scope, "-z", "--get-regexp", pattern], ct);
+        if (result.ExitCode == 1) return [];
+        if (result.ExitCode != 0) throw new GitCommandException(result);
+        return GitAccess.NullFields(result.Output).Select(item => { var at = item.IndexOf('\n');
+            return new KeyValuePair<string, string>(item[..at], item[(at + 1)..]); }).ToList();
+    }
+
+    private async Task<string> SparsePatternPath(string root, CancellationToken ct)
+    {
+        var path = await git.Text(root, ct, "rev-parse", "--path-format=absolute", "--git-path", "info/sparse-checkout");
+        if (new FileInfo(path).LinkTarget is not null || Directory.Exists(path) ||
+            new DirectoryInfo(Path.GetDirectoryName(path)!).LinkTarget is not null)
+            throw new InvalidOperationException("Unsafe sparse-checkout patterns path.");
+        return path;
+    }
+
+    private async Task<SparseSnapshot> ReadSparse(string root, CancellationToken ct)
+    {
+        var local = await ReadConfig(root, SparseConfigPattern, "--local", ct);
+        var worktree = await git.TryText(root, ct, "config", "--bool", "extensions.worktreeConfig") == "true"
+            ? await ReadConfig(root, SparseConfigPattern, "--worktree", ct) : [];
+        var path = await SparsePatternPath(root, ct);
+        return new(local, worktree, File.Exists(path) ? await Hash(root, await File.ReadAllBytesAsync(path, ct), ct) : null);
+    }
+
+    private async Task RestoreSparse(string root, SparseSnapshot sparse, CancellationToken ct)
+    {
+        var worktreeConfig = await git.TryText(root, ct, "config", "--bool", "extensions.worktreeConfig") == "true";
+        if (!worktreeConfig && sparse.WorktreeConfig.Count > 0)
+        {
+            await git.Write(root, ct, ["config", "--local", "extensions.worktreeConfig", "true"]);
+            worktreeConfig = true;
+        }
+        // Retain Git's repository-format upgrade: disabling worktreeConfig can
+        // invalidate sibling worktrees whose core settings Git migrated there.
+        foreach (var scope in worktreeConfig ? new[] { "--local", "--worktree" } : ["--local"])
+            foreach (var key in (await ReadConfig(root, SparseConfigPattern, scope, ct)).Select(p => p.Key).Distinct())
+                await git.Write(root, ct, ["config", scope, "--unset-all", key]);
+        foreach (var item in sparse.LocalConfig) await git.Write(root, ct, ["config", "--local", "--add", item.Key, item.Value]);
+        foreach (var item in sparse.WorktreeConfig) await git.Write(root, ct, ["config", "--worktree", "--add", item.Key, item.Value]);
+        var path = await SparsePatternPath(root, ct);
+        if (sparse.PatternOid is null) { if (File.Exists(path)) File.Delete(path); }
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await using var output = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+            await git.Bytes(root, ct, ["cat-file", "blob", sparse.PatternOid], new() { OutputStream = output, HideOutput = true });
+        }
     }
 
     private static bool SnapshotRef(string name) => name == "refs/stash" ||

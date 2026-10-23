@@ -96,7 +96,7 @@ public sealed class HardResetSafetyTests
     [Theory]
     [InlineData(ResetMode.Mixed)]
     [InlineData(ResetMode.Hard)]
-    public async Task Reset_refuses_target_tree_with_gitlink_before_changing_HEAD_index_or_files(ResetMode mode)
+    public async Task Reset_parent_gitlink_and_snapshot_undo_preserve_parent_files(ResetMode mode)
     {
         using var repo = new TemporaryRepository(); await repo.Init();
         var linkedCommit = (await repo.Git("rev-parse", "HEAD")).Trim();
@@ -108,13 +108,17 @@ public sealed class HardResetSafetyTests
         var beforeHead = await repo.Git("rev-parse", "HEAD"); var beforeIndex = await repo.Git("ls-files", "--stage", "-z");
         byte[] original = [0, 255, 128, 13, 10, 42];
         await File.WriteAllBytesAsync(Path.Combine(repo.Root, "private.bin"), original);
-        var catalog = new MemoryCatalog();
-        var outcome = await Service(catalog).ExecuteAsync(repo.Root, new(GitAction.Reset) { Revision = target, ResetMode = mode }, null, default);
-        Assert.False(outcome.Success); Assert.Null(outcome.Snapshot); Assert.Empty(await catalog.ListAsync(repo.Root, default));
+        var catalog = new MemoryCatalog(); var service = Service(catalog);
+        var outcome = await service.ExecuteAsync(repo.Root, new(GitAction.Reset) { Revision = target, ResetMode = mode }, null, default);
+        Assert.True(outcome.Success, outcome.Message); Assert.NotNull(outcome.Snapshot);
+        Assert.Equal(target, (await repo.Git("rev-parse", "HEAD")).Trim());
+        Assert.Contains("160000 " + linkedCommit + " 0\tmodule", await repo.Git("ls-files", "--stage", "-z"));
+        Assert.Equal(original, await File.ReadAllBytesAsync(Path.Combine(repo.Root, "private.bin")));
+        var undo = await service.ExecuteAsync(repo.Root, new(GitAction.RestoreSnapshot) { SnapshotId = outcome.Snapshot!.Id }, null, default);
+        Assert.True(undo.Success, undo.Message);
         Assert.Equal(beforeHead, await repo.Git("rev-parse", "HEAD"));
         Assert.Equal(beforeIndex, await repo.Git("ls-files", "--stage", "-z"));
         Assert.Equal(original, await File.ReadAllBytesAsync(Path.Combine(repo.Root, "private.bin")));
-        Assert.False(Directory.Exists(Path.Combine(repo.Root, "module")));
     }
 
     [Fact]
