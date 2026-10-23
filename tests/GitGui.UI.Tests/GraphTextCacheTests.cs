@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
@@ -132,9 +133,7 @@ public sealed class GraphTextCacheTests(ITestOutputHelper output)
             var actual = Pixels(context => layout.Draw(context, new Point(2, 2)));
             if (!expected.AsSpan().SequenceEqual(actual))
             {
-                var folder = new DirectoryInfo(Directory.GetCurrentDirectory());
-                while (folder.Parent is not null && !File.Exists(Path.Combine(folder.FullName, "GitGui.sln"))) folder = folder.Parent;
-                var destination = Path.Combine(folder.FullName, "TestResults", "graph-text-cache", Guid.NewGuid().ToString("N"));
+                var destination = DiagnosticDestination();
                 Directory.CreateDirectory(destination);
                 File.WriteAllBytes(Path.Combine(destination, "expected.png"), expected);
                 File.WriteAllBytes(Path.Combine(destination, "actual.png"), actual);
@@ -151,6 +150,14 @@ public sealed class GraphTextCacheTests(ITestOutputHelper output)
             Assert.Equal(expected, actual);
         }
         finally { window.Close(); }
+    }
+
+    private static string DiagnosticDestination([CallerFilePath] string sourcePath = "")
+    {
+        var folder = new DirectoryInfo(Path.GetDirectoryName(sourcePath) ?? Directory.GetCurrentDirectory());
+        while (folder.Parent is not null && !File.Exists(Path.Combine(folder.FullName, "GitGui.sln"))) folder = folder.Parent;
+        var root = File.Exists(Path.Combine(folder.FullName, "GitGui.sln")) ? folder.FullName : Directory.GetCurrentDirectory();
+        return Path.Combine(root, "TestResults", "graph-text-cache", Guid.NewGuid().ToString("N"));
     }
 
     private static byte[] Pixels(Action<DrawingContext> draw)
