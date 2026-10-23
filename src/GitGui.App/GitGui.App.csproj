@@ -1,1 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><ProjectReference Include="../GitGui.Core/GitGui.Core.csproj" /><ProjectReference Include="../GitGui.Engine.Cli/GitGui.Engine.Cli.csproj" /><ProjectReference Include="../GitGui.Engine.Lib/GitGui.Engine.Lib.csproj" /><ProjectReference Include="../GitGui.Infrastructure/GitGui.Infrastructure.csproj" /><ProjectReference Include="../GitGui.UI/GitGui.UI.csproj" /><ProjectReference Include="../GitGui.Controls/GitGui.Controls.csproj" /></ItemGroup></Project>
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../GitGui.Core/GitGui.Core.csproj" />
+    <ProjectReference Include="../GitGui.Engine.Cli/GitGui.Engine.Cli.csproj" />
+    <ProjectReference Include="../GitGui.Engine.Lib/GitGui.Engine.Lib.csproj" />
+    <ProjectReference Include="../GitGui.Infrastructure/GitGui.Infrastructure.csproj" />
+    <ProjectReference Include="../GitGui.UI/GitGui.UI.csproj" />
+    <ProjectReference Include="../GitGui.Controls/GitGui.Controls.csproj" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+  </PropertyGroup>
+</Project>

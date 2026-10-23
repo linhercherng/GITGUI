@@ -1,0 +1,72 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitGui.UI"
+        xmlns:core="using:GitGui.Core"
+        x:Class="GitGui.UI.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1280" Height="820" MinWidth="960" MinHeight="600"
+        Title="GITGUI · M0" Background="#14181F">
+  <Window.Styles>
+    <Style Selector="TextBlock.heading"><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="FontSize" Value="16" /></Style>
+    <Style Selector="TabItem"><Setter Property="FontSize" Value="14" /></Style>
+    <Style Selector="Border.panel"><Setter Property="Background" Value="#1D232D" /><Setter Property="Padding" Value="16" /><Setter Property="CornerRadius" Value="8" /></Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20" RowSpacing="16">
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+      <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+        <TextBlock Text="GITGUI" FontSize="23" FontWeight="Bold" />
+        <TextBlock Text="M0 · Repository reader" FontSize="11" Foreground="#90A2BA" />
+      </StackPanel>
+      <TextBox Grid.Column="1" Name="RepositoryPathInput" Text="{Binding RepositoryPath}" Watermark="Git 倉庫根目錄路徑" VerticalAlignment="Center" />
+      <Button Grid.Column="2" Content="瀏覽…" Click="BrowseClick" VerticalAlignment="Center" />
+      <Button Grid.Column="3" Name="OpenRepositoryButton" Content="開啟 / 重新整理" Command="{Binding RefreshCommand}" VerticalAlignment="Center" />
+    </Grid>
+    <Grid Grid.Row="1" ColumnDefinitions="220,6,*,6,*" ColumnSpacing="8">
+      <Border Classes="panel">
+        <StackPanel Spacing="14">
+          <TextBlock Text="倉庫導覽" Classes="heading" />
+          <TextBlock Text="目前分支" Foreground="#90A2BA" />
+          <TextBlock Text="{Binding Branch}" FontSize="18" Foreground="#82CEB2" TextWrapping="Wrap" />
+          <Separator />
+          <TextBlock Text="最近開啟" Classes="heading" />
+          <ListBox ItemsSource="{Binding Recent}" SelectionChanged="RecentSelectionChanged" MaxHeight="360">
+            <ListBox.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" /></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock Text="M0 僅讀取倉庫。快照與寫入操作將依里程碑逐步開放。" Foreground="#90A2BA" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+      <Border Grid.Column="2" Classes="panel">
+        <TabControl>
+          <TabItem Header="工作區變更">
+            <ListBox Name="ChangesList" ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange}">
+              <ListBox.ItemTemplate><DataTemplate x:DataType="core:FileChange"><TextBlock Text="{Binding Label}" FontFamily="Cascadia Code,Consolas,Microsoft JhengHei,monospace" TextWrapping="Wrap" /></DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
+          </TabItem>
+          <TabItem Header="提交歷史 · 500 筆">
+            <ListBox ItemsSource="{Binding Commits}" SelectedItem="{Binding SelectedCommit}">
+              <ListBox.ItemTemplate><DataTemplate x:DataType="core:CommitInfo"><StackPanel Margin="0,4"><TextBlock Text="{Binding Label}" TextWrapping="Wrap" /><TextBlock Text="{Binding Author}" Foreground="#90A2BA" FontSize="12" /></StackPanel></DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
+          </TabItem>
+        </TabControl>
+      </Border>
+      <GridSplitter Grid.Column="3" ResizeDirection="Columns" Background="Transparent" />
+      <Border Grid.Column="4" Classes="panel">
+        <Grid RowDefinitions="Auto,*" RowSpacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="詳情與 Diff" Classes="heading" VerticalAlignment="Center" />
+            <CheckBox Grid.Column="1" Content="已暫存" IsChecked="{Binding ShowStaged}" />
+          </Grid>
+          <TextBox Grid.Row="1" Name="DiffViewer" Text="{Binding Diff, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" FontSize="12" FontFamily="Cascadia Code,Consolas,Microsoft JhengHei,monospace" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+        </Grid>
+      </Border>
+    </Grid>
+    <Border Grid.Row="2" Classes="panel">
+      <StackPanel Spacing="6">
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" />
+        <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" Foreground="#D3DCED" />
+        <Expander Header="讀取方式與等效指令"><TextBox Text="{Binding Commands, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" /></Expander>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

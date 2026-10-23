@@ -1,1 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><ProjectReference Include="../GitGui.Core/GitGui.Core.csproj" /></ItemGroup></Project>
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../GitGui.Core/GitGui.Core.csproj" />
+    <PackageReference Include="Avalonia" />
+  </ItemGroup>
+</Project>
