@@ -9,6 +9,7 @@ public sealed record GitResult(int ExitCode, byte[] Output, string Error);
 
 public sealed record GitRunOptions
 {
+    public bool LiteralPathspecs { get; init; } = true;
     public bool IsReadOnly { get; init; } = true;
     public bool Trusted { get; init; }
     public byte[]? Input { get; init; }
@@ -38,8 +39,9 @@ public sealed class GitProcessRunner(GitRuntime? runtime = null)
         ct.ThrowIfCancellationRequested();
         var watch = Stopwatch.StartNew();
         var start = await CreateStartInfoAsync(repository, ct);
-        var prefix = new List<string> { "--literal-pathspecs", "-c", "core.quotepath=false",
+        var prefix = new List<string> { "-c", "core.quotepath=false",
             "-c", "color.ui=never", "-c", "core.pager=cat" };
+        if (options.LiteralPathspecs) prefix.Insert(0, "--literal-pathspecs");
         if (options.IsReadOnly) prefix.Insert(0, "--no-optional-locks");
         if (!options.Trusted) prefix.AddRange(["-c", "core.fsmonitor=false"]);
         if (!options.Trusted && args.Any(a => a is "status" or "diff" or "diff-files" or "diff-index"))

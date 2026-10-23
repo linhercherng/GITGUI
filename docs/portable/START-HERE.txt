@@ -4,6 +4,10 @@ GITGUI 0.1.0 — Windows x64 免安裝版
 2. 開啟 GitGui.App.exe。不要直接在壓縮檔內啟動。
 3. 使用「瀏覽」開啟 Git 倉庫，或使用「倉庫操作」建立／複製倉庫。
 4. 「外觀配色」提供石墨深色、午夜藍、森林綠與霧白，選取後立即套用並記住。
+5. 「進階功能」提供 stash、互動式 rebase、cherry-pick/revert/reset、標籤、reflog、遠端管理、檔案歷史與 Blame。
+6. 進行中的 rebase/cherry-pick/revert 可在重新啟動後繼續、略過或中止；先在主畫面解決並暫存衝突。
+7. 「終端機」使用目前倉庫與所選 Git 的持續文字 shell；先關閉終端機再由 GUI 寫入。
+   不支援 VT 全螢幕與 Ctrl+C；關閉會結束 shell 子程序。任意終端機指令不保證自動快照復原。
 
 內附 .NET 8.0.32 與完整 Portable Git 2.56.0.3，不需另外安裝。
 請一起保留 PortableGit 資料夾及其他 DLL；整個資料夾可移動。

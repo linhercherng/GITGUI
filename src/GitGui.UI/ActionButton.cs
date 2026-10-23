@@ -65,6 +65,7 @@ public sealed class ActionIcon : Control
         ["Save"] = "M4 3H17L21 7V21H3V3Z M7 3V9H17V3 M7 21V14H17V21",
         ["Shield"] = "M12 3L21 6V12Q20 18 12 22Q4 18 3 12V6Z M7 12L11 16L17 9",
         ["Search"] = "M16 10A6 6 0 1 0 4 10A6 6 0 1 0 16 10 M14 15L21 22",
+        ["History"] = "M4 4V10H10 M4 10A8 8 0 1 1 6 18 M12 7V12L16 15",
         ["More"] = "M6 10L12 16L18 10",
         ["Command"] = "M4 5L10 12L4 19 M13 19H21"
     }.ToDictionary(k => k.Key, v => Geometry.Parse(v.Value));

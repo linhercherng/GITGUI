@@ -83,6 +83,15 @@ internal sealed class WorkspaceReader(GitProcessRunner runner, IRepositorySettin
         var kind = new[] { ("rebase-merge", "rebase"), ("rebase-apply", "rebase"), ("MERGE_HEAD", "merge"),
             ("CHERRY_PICK_HEAD", "cherry-pick"), ("REVERT_HEAD", "revert"), ("BISECT_LOG", "bisect") }
             .FirstOrDefault(pair => File.Exists(Path.Combine(directory, pair.Item1)) || Directory.Exists(Path.Combine(directory, pair.Item1))).Item2 ?? "";
+        if (kind.Length == 0 && Directory.Exists(Path.Combine(directory, "sequencer")))
+        {
+            var todo = Path.Combine(directory, "sequencer", "todo");
+            kind = File.Exists(todo) && (await File.ReadAllTextAsync(todo, ct)).TrimStart().StartsWith("revert ", StringComparison.Ordinal)
+                ? "revert" : "cherry-pick";
+        }
+        if (kind.Length == 0 && await git.TryText(root, ct, "config", "--get", "extensions.refStorage") == "reftable")
+            foreach (var (name, operation) in new[] { ("CHERRY_PICK_HEAD", "cherry-pick"), ("REVERT_HEAD", "revert"), ("MERGE_HEAD", "merge") })
+                if (await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", name) is not null) { kind = operation; break; }
         return new(kind, status.Files.Any(f => f.IndexStatus == "U" || f.WorktreeStatus == "U" ||
             f.IndexStatus + f.WorktreeStatus is "AA" or "DD"));
     }

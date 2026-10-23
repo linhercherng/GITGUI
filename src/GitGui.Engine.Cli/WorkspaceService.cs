@@ -5,7 +5,7 @@ using GitGui.Core;
 
 namespace GitGui.Engine.Cli;
 
-public sealed class WorkspaceService : IWorkspaceService
+public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorkspaceService
 {
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Queues = new(
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
@@ -16,14 +16,16 @@ public sealed class WorkspaceService : IWorkspaceService
     private readonly IWorkspaceInteraction interaction;
     private readonly GitAccess git;
     private readonly WorkspaceReader reader;
+    private readonly IFileHistoryReader? fileHistory;
     public event EventHandler<CommandEntry>? CommandExecuted;
 
     public WorkspaceService(GitProcessRunner runner, IRepositorySettings settings, ISnapshotCatalog catalog,
-        SnapshotManager snapshots, IWorkspaceInteraction interaction, IGraphHistoryReader? history = null)
+        SnapshotManager snapshots, IWorkspaceInteraction interaction, IGraphHistoryReader? history = null, IFileHistoryReader? fileHistory = null)
     {
         this.runner = runner; this.settings = settings; this.catalog = catalog;
         this.snapshots = snapshots; this.interaction = interaction;
         git = new(runner); reader = new(runner, settings, history);
+        this.fileHistory = fileHistory;
         runner.CommandExecuted += (_, entry) => CommandExecuted?.Invoke(this, entry);
     }
 
@@ -91,6 +93,10 @@ public sealed class WorkspaceService : IWorkspaceService
                     description += "\n\n該分支獨有的提交（最多 20 筆） / Branch-only commits (up to 20):\n" +
                         await git.Text(root, ct, "log", "--oneline", "--max-count=20", "HEAD.." + tip, "--");
                 }
+                if (op.Action == GitAction.Reset && op.ResetMode == ResetMode.Hard)
+                    description += "\n\nFiles / 檔案:\n" + string.Join("\n", state.Status.Files.Select(f => f.Path)) +
+                        "\n\nCommits / 提交 (up to 20):\n" + await git.Text(root, ct, "log", "--oneline", "--max-count=20",
+                            await reader.Resolve(root, op.Revision ?? op.Name ?? "HEAD", ct) + "..HEAD", "--");
                 var answer = await interaction.ConfirmAsync(new(op.Action.ToString(), description, risk, protectedName), ct);
                 if (!answer.Accepted || protectedName is not null && answer.Text != protectedName)
                     return new(false, "操作已取消 / Cancelled", Cancelled: true);
@@ -212,7 +218,7 @@ public sealed class WorkspaceService : IWorkspaceService
                     break;
                 case GitAction.RestoreSnapshot:
                     await snapshots.RestoreAsync(root, target!, executionToken); break;
-                default: throw new InvalidOperationException("Unsupported operation.");
+                default: await ExecuteAdvanced(root, state, op, executionToken, progress); break;
             }
             if (snapshot is not null)
             {
@@ -237,7 +243,11 @@ public sealed class WorkspaceService : IWorkspaceService
     {
         var gitDirectory = await git.Text(root, ct, "rev-parse", "--absolute-git-dir");
         if (File.Exists(Path.Combine(gitDirectory, "index.lock"))) throw new InvalidOperationException("index.lock exists; wait for the other Git process.");
-        if (state.InProgress.IsActive && state.InProgress.Kind != "merge" && op.Action != GitAction.Fetch)
+        var sequenceAllowed = op.Action is GitAction.Fetch or GitAction.Stage or GitAction.Unstage or GitAction.StagePatch or GitAction.UnstagePatch or
+            GitAction.ResolveOurs or GitAction.ResolveTheirs or GitAction.MarkResolved or GitAction.ExternalMergeTool or GitAction.WriteConflictResult or
+            GitAction.ContinueOperation or GitAction.SkipOperation or GitAction.AbortOperation or GitAction.RestoreSnapshot;
+        var stateCommit = op.Action == GitAction.Commit && (state.InProgress.Kind == "merge" || state.InProgress.Kind == "rebase" && op.Amend);
+        if (state.InProgress.IsActive && !sequenceAllowed && !stateCommit && !(state.InProgress.Kind == "merge" && op.Action == GitAction.AbortMerge))
             throw new InvalidOperationException("Finish the active " + state.InProgress.Kind + " operation first.");
         var conflictAction = op.Action is GitAction.ResolveOurs or GitAction.ResolveTheirs or GitAction.MarkResolved or GitAction.ExternalMergeTool or GitAction.WriteConflictResult;
         if (conflictAction && !state.InProgress.HasConflicts) throw new InvalidOperationException("No unresolved conflicts.");
@@ -288,10 +298,11 @@ public sealed class WorkspaceService : IWorkspaceService
             if (rebase is not (null or "false"))
             {
                 var answer = await interaction.ConfirmAsync(new("Pull strategy",
-                    $"This repository configures pull.rebase={rebase}. M1 provides merge-based Pull. Continue using merge for this pull only? The repository setting will be kept; pull.ff restrictions still apply.", RiskLevel.Medium), ct);
+                    $"This repository configures pull.rebase={rebase}. Pull uses merge. Continue using merge for this pull only? Use interactive rebase in Advanced for a reviewed rebase plan. The repository setting will be kept; pull.ff restrictions still apply.", RiskLevel.Medium), ct);
                 if (!answer.Accepted) throw new OperationCanceledException("Pull strategy was not approved.", ct);
             }
         }
+        await PreflightAdvanced(root, state, op, ct);
     }
 
     private async Task<OperationOutcome> CreateRepository(string destination, GitOperation op, IProgress<OperationProgress>? progress, CancellationToken ct)
@@ -320,9 +331,9 @@ public sealed class WorkspaceService : IWorkspaceService
         return new(true, op.Action + " completed: " + destination);
     }
 
-    private async Task RunWrite(string root, string[] args, byte[]? input, CancellationToken ct, IProgress<OperationProgress>? progress)
+    private async Task RunWrite(string root, string[] args, byte[]? input, CancellationToken ct, IProgress<OperationProgress>? progress, bool literalPathspecs = true)
     {
-        var result = await runner.RunAsync(root, args, ct, new() { IsReadOnly = false, Trusted = true, Input = input }, progress);
+        var result = await runner.RunAsync(root, args, ct, new() { IsReadOnly = false, Trusted = true, Input = input, LiteralPathspecs = literalPathspecs }, progress);
         if (result.ExitCode != 0) throw new GitCommandException(result);
     }
     private static string Remote(WorkspaceState state, GitOperation operation)
@@ -336,6 +347,9 @@ public sealed class WorkspaceService : IWorkspaceService
         GitAction.Push when op.Force => RiskLevel.RemoteIrreversible,
         GitAction.Discard or GitAction.RestoreSnapshot => RiskLevel.High,
         GitAction.DeleteBranch when op.Force => RiskLevel.High,
+        GitAction.Reset when op.ResetMode == ResetMode.Hard => RiskLevel.High,
+        GitAction.RebaseInteractive or GitAction.CherryPick or GitAction.Revert or GitAction.Reset or GitAction.StashDrop or
+            GitAction.StashApply or GitAction.StashPop or GitAction.ContinueOperation or GitAction.SkipOperation or GitAction.AbortOperation => RiskLevel.Medium,
         GitAction.Commit when op.Amend => RiskLevel.Medium,
         GitAction.Merge or GitAction.Pull or GitAction.SwitchBranch or GitAction.RenameBranch or GitAction.DeleteBranch or
             GitAction.AbortMerge or GitAction.ResolveOurs or GitAction.ResolveTheirs or GitAction.ExternalMergeTool => RiskLevel.Medium,

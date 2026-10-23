@@ -85,7 +85,7 @@ public sealed class WindowTests
                 window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 0;
                 vm.English = english; window.Width = 1100; window.Height = 800;
                 window.UpdateLayout();
-                foreach (var name in new[] { "AppearanceButton", "GitSettingsButton", "OpenRepositoryButton", "CommitButton" })
+                foreach (var name in new[] { "AppearanceButton", "GitSettingsButton", "OpenRepositoryButton", "CommitButton", "AdvancedButton", "TerminalButton" })
                 {
                     var button = window.FindControl<Button>(name)!;
                     var point = button.TranslatePoint(default, window)!.Value;
@@ -186,6 +186,30 @@ public sealed class WindowTests
         backend.NextOutcome = new(true, "committed"); vm.SkipHooks = true;
         await vm.ActionCommand.ExecuteAsync("Commit");
         Assert.False(vm.SkipHooks); Assert.Empty(vm.CommitMessage); Assert.False(vm.IsBusy);
+    }
+
+    [AvaloniaFact]
+    public async Task Commit_disables_message_editor_and_preserves_newer_programmatic_draft()
+    {
+        var backend = new SampleWorkspace();
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath, CommitMessage = "Submitted message", Amend = true };
+        var window = new MainWindow(vm); window.Show(); await vm.RefreshCommand.ExecuteAsync(null);
+        try
+        {
+            backend.PendingOperation = new();
+            var commit = vm.ActionCommand.ExecuteAsync("Commit");
+            Assert.True(vm.IsBusy);
+            Assert.False(window.FindControl<TextBox>("CommitMessageInput")!.IsEnabled);
+            vm.CommitMessage = "New draft entered while commit completes";
+            backend.PendingOperation.SetResult(new(true, "Committed submitted message")); await commit;
+            Assert.Equal("Submitted message", Assert.Single(backend.Executed).Message);
+            Assert.Equal("New draft entered while commit completes", vm.CommitMessage);
+            Assert.True(window.FindControl<TextBox>("CommitMessageInput")!.IsEnabled);
+            backend.PendingOperation = null;
+            await vm.ActionCommand.ExecuteAsync("Commit");
+            Assert.Empty(vm.CommitMessage);
+        }
+        finally { window.Close(); }
     }
 
     [AvaloniaFact]

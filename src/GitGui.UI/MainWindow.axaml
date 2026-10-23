@@ -31,7 +31,7 @@
       <CheckBox Grid.Column="7" Content="EN" IsChecked="{Binding English}" VerticalAlignment="Center" Margin="8,0,0,0"/>
     </Grid>
     <Border Grid.Row="1" Classes="panel" Padding="12,6">
-      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><vm:ActionIcon Kind="Branch" Width="16" Height="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/><TextBlock Text="{Binding Branch}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding Tracking}" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding Summary}" Foreground="{DynamicResource MutedBrush}"/></StackPanel>
         <TextBox Grid.Column="1" Text="{Binding RemoteName}" Width="100" Watermark="{Binding L[Remote]}" ToolTip.Tip="{Binding L[Remote]}"/>
         <vm:ActionButton Icon="Fetch" Grid.Column="2" Content="{Binding L[Fetch]}" Command="{Binding ActionCommand}" CommandParameter="Fetch" IsEnabled="{Binding CanOperate}"/>
@@ -40,6 +40,8 @@
         <vm:ActionButton Icon="Push" Grid.Column="5" Content="{Binding L[Push]}" Command="{Binding ActionCommand}" CommandParameter="Push" IsEnabled="{Binding CanOperate}"/>
         <vm:ActionButton Icon="Undo" Margin="12,0,0,0" Grid.Column="6" Content="{Binding L[Undo]}" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}"/>
         <vm:ActionButton Icon="Redo" Grid.Column="7" Content="{Binding L[Redo]}" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}"/>
+        <vm:ActionButton Icon="History" Grid.Column="8" Name="AdvancedButton" Content="{Binding L[AdvancedOpen]}" Click="AdvancedClick" IsEnabled="{Binding CanOperate}"/>
+        <vm:ActionButton Icon="Command" Grid.Column="9" Name="TerminalButton" Content="{Binding L[Terminal]}" Click="TerminalClick" IsEnabled="{Binding CanOperate}"/>
       </Grid>
     </Border>
     <Grid Grid.Row="2" ColumnDefinitions="224,6,*,6,1.05*" ColumnSpacing="6">
@@ -76,7 +78,7 @@
                   <TabItem Header="{Binding L[Staged]}"><ListBox Name="StagedChangesList" ItemsSource="{Binding StagedChanges}" SelectionMode="Multiple" SelectionChanged="ChangesSelectionChanged"><ListBox.ItemTemplate><DataTemplate x:DataType="core:FileChange"><Grid ColumnDefinitions="24,*" Margin="0,3"><TextBlock Text="{Binding IndexStatus}" Foreground="{DynamicResource SuccessBrush}" FontFamily="Consolas,monospace"/><TextBlock Grid.Column="1" Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
                 </TabControl>
               </Grid>
-              <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="2,12,2,0"><StackPanel Spacing="7"><TextBlock Text="{Binding L[Message]}" Classes="section"/><TextBox Name="CommitMessageInput" Text="{Binding CommitMessage}" AcceptsReturn="True" MinHeight="92" MaxHeight="150" Watermark="{Binding L[Message]}"/><WrapPanel><CheckBox Content="{Binding L[Amend]}" IsChecked="{Binding Amend}" Margin="0,0,12,0"/><CheckBox Content="{Binding L[SkipHooks]}" IsChecked="{Binding SkipHooks}" Margin="0,0,12,0"/><CheckBox Content="{Binding L[Sign]}" IsChecked="{Binding SignCommit}"/></WrapPanel><vm:ActionButton Icon="Commit" Name="CommitButton" MinHeight="38" Classes="primary" Content="{Binding L[Commit]}" Command="{Binding ActionCommand}" CommandParameter="Commit" IsEnabled="{Binding CanOperate}" HorizontalAlignment="Stretch"/><TextBlock Text="{Binding L[CommitHint]}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/></StackPanel></Border>
+              <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="2,12,2,0"><StackPanel Spacing="7"><TextBlock Text="{Binding L[Message]}" Classes="section"/><TextBox Name="CommitMessageInput" IsEnabled="{Binding CanOperate}" Text="{Binding CommitMessage}" AcceptsReturn="True" MinHeight="92" MaxHeight="150" Watermark="{Binding L[Message]}"/><WrapPanel><CheckBox Content="{Binding L[Amend]}" IsChecked="{Binding Amend}" Margin="0,0,12,0"/><CheckBox Content="{Binding L[SkipHooks]}" IsChecked="{Binding SkipHooks}" Margin="0,0,12,0"/><CheckBox Content="{Binding L[Sign]}" IsChecked="{Binding SignCommit}"/></WrapPanel><vm:ActionButton Icon="Commit" Name="CommitButton" MinHeight="38" Classes="primary" Content="{Binding L[Commit]}" Command="{Binding ActionCommand}" CommandParameter="Commit" IsEnabled="{Binding CanOperate}" HorizontalAlignment="Stretch"/><TextBlock Text="{Binding L[CommitHint]}" FontSize="10" Foreground="{DynamicResource MutedBrush}"/></StackPanel></Border>
             </Grid>
           </TabItem>
           <TabItem Header="{Binding L[History]}">

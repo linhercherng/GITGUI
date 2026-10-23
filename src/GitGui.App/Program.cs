@@ -58,7 +58,7 @@ public sealed class DesktopApp : Application
         {
             var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
             var log = AppLogging.Create(directory);
-            log.Information("GITGUI M1 started; repository content and credential logging are disabled");
+            log.Information("GITGUI M2 started; repository content and credential logging are disabled");
             var services = new ServiceCollection();
             services.AddSingleton<GitProcessRunner>();
             services.AddSingleton<IGitPathStore>(sp => sp.GetRequiredService<WorkspaceStorage>());
@@ -68,6 +68,7 @@ public sealed class DesktopApp : Application
             services.AddSingleton<LibHistoryReader>();
             services.AddSingleton<IHistoryReader>(sp => sp.GetRequiredService<LibHistoryReader>());
             services.AddSingleton<IGraphHistoryReader>(sp => sp.GetRequiredService<LibHistoryReader>());
+            services.AddSingleton<IFileHistoryReader>(sp => sp.GetRequiredService<LibHistoryReader>());
             services.AddSingleton<IRepoReader>(sp => new RoutedRepoReader(
                 sp.GetRequiredService<CliRepoReader>(), sp.GetRequiredService<IHistoryReader>()));
             services.AddSingleton<IRecentRepositories>(new RecentRepositories(Path.Combine(directory, "gitgui.db")));
@@ -76,14 +77,18 @@ public sealed class DesktopApp : Application
             services.AddSingleton<ISnapshotCatalog>(sp => sp.GetRequiredService<WorkspaceStorage>());
             services.AddSingleton<IWorkspaceInteraction>(new DeferredInteraction(() => desktop.MainWindow as IWorkspaceInteraction));
             services.AddSingleton<SnapshotManager>();
-            services.AddSingleton<IWorkspaceService, WorkspaceService>();
+            services.AddSingleton<WorkspaceService>();
+            services.AddSingleton<IWorkspaceService>(sp => sp.GetRequiredService<WorkspaceService>());
+            services.AddSingleton<ITerminalService>(sp => new TerminalService(sp.GetRequiredService<GitRuntime>(),
+                sp.GetRequiredService<IRepositorySettings>(), sp.GetRequiredService<WorkspaceService>().TrustAsync,
+                sp.GetRequiredService<WorkspaceService>().AcquireTerminalLeaseAsync, sp.GetRequiredService<GitProcessRunner>()));
             services.AddTransient<MainWindowViewModel>();
             var provider = services.BuildServiceProvider();
             var graph = new CommitGraphControl();
             graph.Bind(CommitGraphControl.CommitsProperty, new Binding("Commits"));
             graph.Bind(CommitGraphControl.SelectedCommitProperty, new Binding("SelectedCommit") { Mode = BindingMode.TwoWay });
             desktop.MainWindow = new MainWindow(provider.GetRequiredService<MainWindowViewModel>(), graph,
-                provider.GetRequiredService<IGitRuntimeSettings>(), appearance);
+                provider.GetRequiredService<IGitRuntimeSettings>(), appearance, provider.GetRequiredService<IWorkspaceService>(), provider.GetRequiredService<ITerminalService>());
             var bridge = new AskPassBridge(provider.GetRequiredService<IWorkspaceInteraction>());
             var runner = provider.GetRequiredService<GitProcessRunner>();
             var executable = Environment.ProcessPath!;

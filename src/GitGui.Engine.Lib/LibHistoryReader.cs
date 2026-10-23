@@ -3,8 +3,36 @@ using LibGit2Sharp;
 
 namespace GitGui.Engine.Lib;
 
-public sealed class LibHistoryReader : IHistoryReader, IGraphHistoryReader
+public sealed class LibHistoryReader : IHistoryReader, IGraphHistoryReader, IFileHistoryReader
 {
+    public Task<FileHistoryResult> ReadAsync(string root, string path, CancellationToken ct)
+        => Task.Run(() =>
+        {
+            using var repo = new Repository(root);
+            var history = new List<FileHistoryEntry>();
+            foreach (var entry in repo.Commits.QueryBy(path).Take(500))
+            {
+                ct.ThrowIfCancellationRequested(); var c = entry.Commit;
+                history.Add(new(new(c.Sha, c.MessageShort, c.Author.Name, c.Author.When, c.Parents.Select(p => p.Sha).ToArray()), entry.Path));
+            }
+            var blob = repo.Head.Tip?[path]?.Target as Blob;
+            if (blob is null) throw new InvalidOperationException("Native file history needs a HEAD blob; retry deleted-file history using Git CLI.");
+            if (blob.IsBinary) throw new InvalidOperationException("Blame is available for text files.");
+            using var stream = blob.GetContentStream();
+            using var input = new StreamReader(stream, new System.Text.UTF8Encoding(false, true));
+            var lines = input.ReadToEnd().Split('\n');
+            var count = lines.Length - (lines[^1].Length == 0 ? 1 : 0);
+            var hunks = repo.Blame(path).ToArray();
+            var blame = new List<BlameLine>();
+            for (var n = 0; n < count; n++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var hunk = hunks.First(h => h.ContainsLine(n));
+                blame.Add(new(n + 1, hunk.FinalCommit.Sha, hunk.FinalSignature.Name, lines[n].TrimEnd('\r')));
+            }
+            return new FileHistoryResult(blame, history, "libgit2");
+        }, ct);
+
     public Task<IReadOnlyList<CommitInfo>> GetGraphAsync(string repository, int skip, int take, CancellationToken ct)
         => Task.Run<IReadOnlyList<CommitInfo>>(() =>
         {

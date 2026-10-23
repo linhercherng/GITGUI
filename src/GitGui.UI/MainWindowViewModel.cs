@@ -111,7 +111,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public ObservableCollection<string> Recent { get; } = [];
     public string Root => state?.Root ?? RepositoryPath.Trim();
     public string Summary => $"{Changes.Count} {L["Changes"]}  ·  {Commits.Count} {L["Commits"]}";
-    public bool CanOperate => !IsBusy && HasRepository;
+    [ObservableProperty] private bool terminalActive;
+    partial void OnTerminalActiveChanged(bool value) { OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    public bool CanOperate => !IsBusy && !TerminalActive && HasRepository;
     public bool CanApplyPatch => CanOperate && !IsDiffLoading && !IsHistoryDiff && !IsLargeDiff && sourceIdentity is not null && sourceIdentity == CurrentDiffIdentity();
     public bool CanSaveConflict => CanOperate && HasConflict && !ConflictLoading && !ConflictBinary;
     public bool HasImages => BeforeImage is not null || AfterImage is not null;
@@ -258,7 +260,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task ActionAsync(string? action)
     {
-        if (action is null || IsBusy || disposed) return;
+        if (action is null || IsBusy || TerminalActive || disposed) return;
         try
         {
             if (action == "Trust")
@@ -326,7 +328,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task RunAsync(GitOperation operation, bool isUndo = false, bool isRedo = false)
     {
-        if (IsBusy) return;
+        if (IsBusy || TerminalActive) return;
         IsBusy = true; CanCancel = false; HasProgressPercent = false; ProgressText = operation.Action.ToString();
         using var request = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         operationRequest = request;
@@ -357,7 +359,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 else { undoId = snapshot.Id; redoId = null; }
                 CanUndo = undoId is not null; CanRedo = redoId is not null;
             }
-            if (outcome.Success && operation.Action == GitAction.Commit) { CommitMessage = ""; Amend = false; }
+            if (outcome.Success && operation.Action == GitAction.Commit && CommitMessage == operation.Message) { CommitMessage = ""; Amend = false; }
             if (!outcome.Cancelled)
             {
                 try { await RefreshStateAsync(); }

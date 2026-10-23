@@ -8,14 +8,24 @@ namespace GitGui.Engine.Cli;
 
 internal sealed record IndexEntry(string Path, string Mode, string Oid, int Stage, uint Flags = 0);
 internal sealed record SavedFile(string Path, string Mode, string Oid);
+internal sealed record StashLogEntry(string Oid, string Name, string Email, string Date, string Message);
 internal sealed record SnapshotManifest(string Root, string? HeadRef, string? HeadOid,
     Dictionary<string, string> Refs, List<IndexEntry> Index, List<SavedFile> Files,
-    Dictionary<string, string> Markers, List<KeyValuePair<string, string>> BranchConfig);
+    Dictionary<string, string> Markers, List<KeyValuePair<string, string>> BranchConfig,
+    List<KeyValuePair<string, string>>? RemoteConfig = null, List<StashLogEntry>? StashLog = null,
+    List<string>? StateDirectories = null, Dictionary<string, string>? StateModes = null,
+    Dictionary<string, string>? OperationRefs = null, Dictionary<string, string>? SymbolicRefs = null);
 
 public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog catalog)
 {
     private readonly GitAccess git = new(runner);
-    private static readonly string[] MarkerNames = ["MERGE_HEAD", "MERGE_MSG", "MERGE_MODE", "AUTO_MERGE", "ORIG_HEAD", "SQUASH_MSG"];
+    private static readonly string[] MarkerNames = ["MERGE_HEAD", "MERGE_MSG", "MERGE_MODE", "AUTO_MERGE", "ORIG_HEAD", "SQUASH_MSG",
+        "CHERRY_PICK_HEAD", "REVERT_HEAD", "REBASE_HEAD", "MERGE_AUTOSTASH", "REBASE_AUTOSTASH", "MERGE_RR"];
+    private static readonly string[] StateDirectoryNames = ["rebase-merge", "rebase-apply", "sequencer", "gitgui-rebase"];
+    // Unlike MERGE_HEAD (a possibly multi-OID pseudoref), these refs can be
+    // stored in reftable rather than in individual files.
+    private static readonly string[] OperationRefNames = ["CHERRY_PICK_HEAD", "REVERT_HEAD", "REBASE_HEAD", "AUTO_MERGE",
+        "ORIG_HEAD", "MERGE_AUTOSTASH", "REBASE_AUTOSTASH"];
     public int MinimumRetainedCount { get; set; } = 50;
     public TimeSpan MinimumRetainedAge { get; set; } = TimeSpan.FromDays(14);
 
@@ -47,11 +57,14 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         root = await git.Root(root, ct);
         await CheckSupported(root, ct);
         await using var indexLock = await RepositoryIndexLock.Acquire(git, root, ct);
+        var statePaths = await ReadStatePaths(root, ct);
         var index = await ReadIndex(root, ct);
         var modes = index.GroupBy(e => e.Path).ToDictionary(g => g.Key, g => g.First().Mode, StringComparer.Ordinal);
         var refs = await ReadRefs(root, ct);
+        var symbolicRefs = await ReadSymbolicRefs(root, ct);
         var headRef = await git.TryText(root, ct, "symbolic-ref", "--quiet", "HEAD");
         var headOid = await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", "HEAD");
+        var operationRefs = await ReadOperationRefs(root, ct);
         var paths = GitAccess.NullFields(await git.Bytes(root, ct,
             ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]))
             .Concat(additionalPaths ?? []).Distinct(StringComparer.Ordinal).ToArray();
@@ -85,21 +98,67 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             for (var n = 0; n < regular.Count; n++) files.Add(new(regular[n].Path, regular[n].Mode, oids[n].Trim()));
         }
         var markers = new Dictionary<string, string>();
-        var markerTargets = new List<string>();
-        foreach (var marker in MarkerNames)
+        var stateModes = new Dictionary<string, string>();
+        var stateDirectories = new List<string>();
+        var stateObjects = new HashSet<string>(StringComparer.Ordinal);
+        async Task SaveState(string relative, string path)
         {
-            var path = await git.Text(root, ct, "rev-parse", "--path-format=absolute", "--git-path", marker);
-            if (!File.Exists(path)) continue;
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidOperationException("Symbolic Git state files are not supported.");
             var content = await File.ReadAllBytesAsync(path, ct);
-            markers[marker] = await Hash(root, content, ct);
-            if (marker is "MERGE_HEAD" or "AUTO_MERGE" or "ORIG_HEAD")
-                markerTargets.AddRange(Encoding.UTF8.GetString(content).Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                    .Where(IsOid));
+            markers[relative] = await Hash(root, content, ct);
+            stateModes[relative] = !OperatingSystem.IsWindows() &&
+                (File.GetUnixFileMode(path) & UnixFileMode.UserExecute) != 0 ? "100755" : "100644";
+            foreach (Match match in Regex.Matches(Encoding.UTF8.GetString(content), @"(?<![0-9a-f])[0-9a-f]{4,64}(?![0-9a-f])"))
+                stateObjects.Add(match.Value);
         }
+        foreach (var marker in MarkerNames)
+        {
+            var path = StatePath(marker, statePaths);
+            if (new FileInfo(path).LinkTarget is not null)
+                throw new InvalidOperationException("Symbolic Git state files are not supported.");
+            if (Directory.Exists(path)) throw new InvalidOperationException("A Git state file became a directory.");
+            if (!File.Exists(path)) continue;
+            await SaveState(marker, path);
+        }
+        foreach (var name in StateDirectoryNames)
+        {
+            var directory = StatePath(name, statePaths);
+            if (new DirectoryInfo(directory).LinkTarget is not null)
+                throw new InvalidOperationException("Symbolic Git state directories are not supported.");
+            if (File.Exists(directory)) throw new InvalidOperationException("A Git state directory became a file.");
+            if (!Directory.Exists(directory)) continue;
+            var pending = new Stack<(string Relative, string Full)>();
+            pending.Push((name, directory));
+            while (pending.TryPop(out var entry))
+            {
+                if ((File.GetAttributes(entry.Full) & FileAttributes.ReparsePoint) != 0)
+                    throw new InvalidOperationException("Symbolic Git state directories are not supported.");
+                stateDirectories.Add(entry.Relative);
+                foreach (var child in Directory.EnumerateFileSystemEntries(entry.Full))
+                {
+                    if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) != 0)
+                        throw new InvalidOperationException("Symbolic Git state files are not supported.");
+                    var relative = entry.Relative + "/" + Path.GetFileName(child);
+                    if (Directory.Exists(child)) pending.Push((relative, child));
+                    else await SaveState(relative, child);
+                }
+            }
+        }
+        var markerTargets = new List<string>();
+        if (stateObjects.Count > 0)
+        {
+            var resolved = await git.Bytes(root, ct, ["cat-file", "--batch-check=%(objectname)"], new()
+            { Input = Encoding.ASCII.GetBytes(string.Join("\n", stateObjects) + "\n"), HideOutput = true });
+            markerTargets.AddRange(Encoding.ASCII.GetString(resolved).Split('\n').Where(IsOid));
+        }
+        var stashLog = await ReadStashLog(root, refs, ct);
+        markerTargets.AddRange(stashLog.Select(s => s.Oid));
+        markerTargets.AddRange(operationRefs.Values);
         var configuration = await ReadBranchConfig(root, ct);
-        var manifest = new SnapshotManifest(root, headRef, headOid, refs, index, files, markers, configuration);
+        var remoteConfiguration = await ReadRemoteConfig(root, ct);
+        var manifest = new SnapshotManifest(root, headRef, headOid, refs, index, files, markers, configuration,
+            remoteConfiguration, stashLog, stateDirectories, stateModes, operationRefs, symbolicRefs);
         var manifestOid = await Hash(root, JsonSerializer.SerializeToUtf8Bytes(manifest), ct);
         var roots = new List<string> { $"100644 blob {manifestOid}\tmanifest\0" };
         roots.Add($"040000 tree {await BuildTree(root, files.Select(f => new IndexEntry(f.Path, f.Mode, f.Oid, 0)), ct)}\tworktree\0");
@@ -124,6 +183,12 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         // Verify refs did not change while the objects were captured.
         if (!refs.OrderBy(p => p.Key).SequenceEqual((await ReadRefs(root, ct)).OrderBy(p => p.Key)))
             throw new InvalidOperationException("Repository refs changed during snapshot. Retry after the other Git operation completes.");
+        if (!stashLog.SequenceEqual(await ReadStashLog(root, refs, ct)))
+            throw new InvalidOperationException("Stash stack changed during snapshot. Retry after the other Git operation completes.");
+        if (!operationRefs.OrderBy(p => p.Key).SequenceEqual((await ReadOperationRefs(root, ct)).OrderBy(p => p.Key)))
+            throw new InvalidOperationException("Sequencer refs changed during snapshot. Retry after the other Git operation completes.");
+        if (!symbolicRefs.OrderBy(p => p.Key).SequenceEqual((await ReadSymbolicRefs(root, ct)).OrderBy(p => p.Key)))
+            throw new InvalidOperationException("Symbolic refs changed during snapshot. Retry after the other Git operation completes.");
         await git.Write(root, ct, ["update-ref", "--stdin"], Encoding.UTF8.GetBytes(transaction.ToString().Replace("\r\n", "\n", StringComparison.Ordinal)));
         var snapshot = new SnapshotInfo(id, root, title, DateTimeOffset.UtcNow, prefix + "/state", headOid, files.Count);
         await catalog.SaveAsync(snapshot, ct);
@@ -139,7 +204,21 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         await CheckSupported(root, ct);
         var saved = await ReadManifest(root, info, ct);
         await using var indexLock = await RepositoryIndexLock.Acquire(git, root, ct);
+        var statePaths = await ReadStatePaths(root, ct);
+        ValidateStateStorage(statePaths);
         var currentRefs = await ReadRefs(root, ct);
+        var currentOperationRefs = await ReadOperationRefs(root, ct);
+        var savedOperationRefs = saved.OperationRefs ?? new Dictionary<string, string>();
+        if (saved.OperationRefs is null)
+            foreach (var (name, oid) in saved.Markers.Where(p => OperationRefNames.Contains(p.Key)))
+            {
+                var target = GitAccess.Utf8.GetString(await git.Bytes(root, ct, ["cat-file", "blob", oid], new() { HideOutput = true })).Trim();
+                if (!IsOid(target)) throw new InvalidOperationException("Invalid saved operation reference.");
+                savedOperationRefs[name] = target;
+            }
+        if (saved.RemoteConfig is null && saved.StashLog is null)
+            currentRefs = currentRefs.Where(p => p.Key.StartsWith("refs/heads/", StringComparison.Ordinal) ||
+                p.Key.StartsWith("refs/tags/", StringComparison.Ordinal)).ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
         await CheckOtherWorktrees(root, currentRefs, saved.Refs, ct);
         var currentFiles = GitAccess.NullFields(await git.Bytes(root, ct,
             ["ls-files", "--cached", "--others", "--exclude-standard", "-z"])).Distinct().ToArray();
@@ -153,12 +232,19 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                 .Any(p => !currentSet.Contains(Path.GetRelativePath(root, p).Replace('\\', '/'))))
                 throw new InvalidOperationException("An ignored file blocks snapshot restoration: " + file.Path);
         }
+        // Remote HEAD is commonly symbolic. Never dereference a ref transaction:
+        // doing so could update/delete its target or update the same target twice.
         var refCommands = new StringBuilder();
         foreach (var (name, oid) in saved.Refs)
-            refCommands.Append(currentRefs.TryGetValue(name, out var old)
+            refCommands.Append("option no-deref\n").Append(currentRefs.TryGetValue(name, out var old)
                 ? $"update {name} {oid} {old}\n" : $"create {name} {oid}\n");
         foreach (var (name, oid) in currentRefs.Where(p => !saved.Refs.ContainsKey(p.Key)))
-            refCommands.Append($"delete {name} {oid}\n");
+            refCommands.Append("option no-deref\n").Append($"delete {name} {oid}\n");
+        foreach (var (name, oid) in savedOperationRefs)
+            refCommands.Append("option no-deref\n").Append(currentOperationRefs.TryGetValue(name, out var old)
+                ? $"update {name} {oid} {old}\n" : $"create {name} {oid}\n");
+        foreach (var (name, oid) in currentOperationRefs.Where(p => !savedOperationRefs.ContainsKey(p.Key)))
+            refCommands.Append("option no-deref\n").Append($"delete {name} {oid}\n");
         // Acquire all ref locks before touching a file. Namespace conflicts also fail here.
         await using var refLock = await PreparedRefs.Begin(root, refCommands.ToString(), runner, ct);
         var generatedIndex = Path.Combine(Path.GetTempPath(), "gitgui-restore-index-" + Guid.NewGuid().ToString("N"));
@@ -171,7 +257,9 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             // No cancellation after mutation starts. Caller already created the redo snapshot.
             ct.ThrowIfCancellationRequested();
             ct = CancellationToken.None;
-            await git.Write(root, ct, ["merge", "--quit"]);
+            // Restore the captured sequencer state directly. Git's --quit commands can
+            // move autostashes or discard state needed to redo an interrupted operation.
+            await ClearState(root, statePaths, ct);
             foreach (var batch in currentFiles.Where(p => !savedSet.Contains(p)).Chunk(100))
             {
                 foreach (var path in batch)
@@ -206,16 +294,28 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                 await git.Write(root, ct, ["config", "--local", "--unset-all", key]);
             foreach (var item in saved.BranchConfig)
                 await git.Write(root, ct, ["config", "--local", "--add", item.Key, item.Value]);
-            foreach (var marker in MarkerNames)
+            if (saved.RemoteConfig is not null)
             {
-                var path = await git.Text(root, ct, "rev-parse", "--path-format=absolute", "--git-path", marker);
-                if (saved.Markers.TryGetValue(marker, out var oid))
-                {
-                    await using var output = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-                    await git.Bytes(root, ct, ["cat-file", "blob", oid], new() { OutputStream = output, HideOutput = true });
-                }
-                else if (File.Exists(path)) File.Delete(path);
+                foreach (var key in (await ReadRemoteConfig(root, ct)).Select(p => p.Key).Distinct())
+                    await git.Write(root, ct, ["config", "--local", "--unset-all", key]);
+                foreach (var item in saved.RemoteConfig)
+                    await git.Write(root, ct, ["config", "--local", "--add", item.Key, item.Value]);
             }
+            foreach (var directory in (saved.StateDirectories ?? []).OrderBy(p => p.Length))
+                Directory.CreateDirectory(StatePath(directory, statePaths));
+            foreach (var (marker, oid) in saved.Markers)
+            {
+                if (OperationRefNames.Contains(marker)) continue;
+                var path = StatePath(marker, statePaths);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await using (var output = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                    await git.Bytes(root, ct, ["cat-file", "blob", oid], new() { OutputStream = output, HideOutput = true });
+                if (!OperatingSystem.IsWindows() && saved.StateModes?.GetValueOrDefault(marker) == "100755")
+                    File.SetUnixFileMode(path, File.GetUnixFileMode(path) | UnixFileMode.UserExecute);
+            }
+            if (saved.StashLog is not null) await RestoreStashLog(root, info.StateRef, saved, ct);
+            foreach (var (name, target) in saved.SymbolicRefs ?? new Dictionary<string, string>())
+                await git.Write(root, ct, ["symbolic-ref", name, target]);
             await indexLock.Install(generatedIndex, ct);
         }
         finally
@@ -236,30 +336,63 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         if (manifest.Files.Select(f => f.Path).Distinct().Count() != manifest.Files.Count ||
             manifest.Files.Any(f => !IsOid(f.Oid) || f.Mode is not ("100644" or "100755" or "120000")) ||
             manifest.Index.Any(e => !IsOid(e.Oid) || e.Stage is < 0 or > 3 || e.Mode is not ("100644" or "100755" or "120000")) ||
-            manifest.Refs.Any(p => !IsOid(p.Value) || !SafeRef(p.Key) || !(p.Key.StartsWith("refs/heads/", StringComparison.Ordinal) || p.Key.StartsWith("refs/tags/", StringComparison.Ordinal))) ||
-            manifest.Markers.Any(p => !MarkerNames.Contains(p.Key) || !IsOid(p.Value)) ||
+            manifest.Refs.Any(p => !IsOid(p.Value) || !SafeRef(p.Key) || !SnapshotRef(p.Key)) ||
+            manifest.Markers.Any(p => !SafeStatePath(p.Key) || !IsOid(p.Value)) ||
             manifest.HeadOid is not null && !IsOid(manifest.HeadOid) || manifest.HeadRef is not null && !SafeRef(manifest.HeadRef) ||
-            manifest.BranchConfig.Any(p => !p.Key.StartsWith("branch.", StringComparison.Ordinal) || p.Key.Any(char.IsControl)))
+            manifest.BranchConfig.Any(p => !p.Key.StartsWith("branch.", StringComparison.Ordinal) || p.Key.Any(char.IsControl)) ||
+            manifest.RemoteConfig?.Any(p => !p.Key.StartsWith("remote.", StringComparison.Ordinal) || p.Key.Any(char.IsControl)) == true ||
+            manifest.StateDirectories?.Any(p => !SafeStatePath(p, directory: true)) == true ||
+            manifest.StateModes?.Any(p => !manifest.Markers.ContainsKey(p.Key) || p.Value is not ("100644" or "100755")) == true ||
+            manifest.OperationRefs?.Any(p => !OperationRefNames.Contains(p.Key) || !IsOid(p.Value)) == true ||
+            manifest.SymbolicRefs?.Any(p => !manifest.Refs.ContainsKey(p.Key) || !SafeRef(p.Key) || !SafeRef(p.Value)) == true ||
+            manifest.StashLog?.Any(s => !IsOid(s.Oid) || !Regex.IsMatch(s.Date, @"^-?[0-9]+ [+-][0-9]{4}$") ||
+                s.Name.Any(char.IsControl) || s.Email.Any(char.IsControl) || s.Message.Contains('\0')) == true ||
+            manifest.StashLog is { Count: > 0 } && manifest.Refs.GetValueOrDefault("refs/stash") != manifest.StashLog[0].Oid)
             throw new InvalidOperationException("Snapshot metadata is not safe to restore.");
         return manifest;
     }
 
     private async Task CheckSupported(string root, CancellationToken ct)
     {
-        foreach (var marker in new[] { "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD", "REVERT_HEAD", "BISECT_LOG", "MERGE_AUTOSTASH" })
+        foreach (var marker in new[] { "BISECT_LOG" })
         {
             var path = await git.Text(root, ct, "rev-parse", "--path-format=absolute", "--git-path", marker);
             if (File.Exists(path) || Directory.Exists(path)) throw new InvalidOperationException("Finish or abort the active " + marker + " operation first.");
         }
         if (await git.TryText(root, ct, "config", "--bool", "core.sparseCheckout") == "true")
-            throw new InvalidOperationException("M1 snapshot writes are disabled for sparse checkouts.");
+            throw new InvalidOperationException("Snapshot writes are disabled for sparse checkouts.");
     }
 
     internal async Task<Dictionary<string, string>> ReadRefs(string root, CancellationToken ct)
     {
-        var text = await git.Text(root, ct, "for-each-ref", "--format=%(refname)%00%(objectname)", "refs/heads", "refs/tags");
+        var text = await git.Text(root, ct, "for-each-ref", "--format=%(refname)%00%(objectname)",
+            "refs/heads", "refs/tags", "refs/remotes", "refs/stash", "refs/rewritten");
         return text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.TrimEnd('\r').Split('\0'))
-            .ToDictionary(p => p[0], p => p[1], StringComparer.Ordinal);
+            .Where(p => SnapshotRef(p[0])).ToDictionary(p => p[0], p => p[1], StringComparer.Ordinal);
+    }
+
+    private async Task<Dictionary<string, string>> ReadOperationRefs(string root, CancellationToken ct)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var output = await git.Bytes(root, ct, ["cat-file", "--batch-check=%(objectname)"], new()
+        { Input = Encoding.ASCII.GetBytes(string.Join("\n", OperationRefNames) + "\n"), HideOutput = true });
+        var lines = Encoding.ASCII.GetString(output).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length != OperationRefNames.Length) throw new InvalidOperationException("Cannot preserve operation references.");
+        for (var n = 0; n < OperationRefNames.Length; n++)
+        {
+            if (lines[n] == OperationRefNames[n] + " missing") continue;
+            if (!IsOid(lines[n])) throw new InvalidOperationException("Invalid operation reference: " + OperationRefNames[n]);
+            result[OperationRefNames[n]] = lines[n];
+        }
+        return result;
+    }
+
+    private async Task<Dictionary<string, string>> ReadSymbolicRefs(string root, CancellationToken ct)
+    {
+        var output = await git.Text(root, ct, "for-each-ref", "--format=%(refname)%00%(symref)",
+            "refs/heads", "refs/tags", "refs/remotes", "refs/stash", "refs/rewritten");
+        return output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r').Split('\0'))
+            .Where(p => SnapshotRef(p[0]) && p[1].Length > 0).ToDictionary(p => p[0], p => p[1], StringComparer.Ordinal);
     }
 
     private async Task<List<IndexEntry>> ReadIndex(string root, CancellationToken ct)
@@ -319,6 +452,144 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         if (result.ExitCode != 0) throw new GitCommandException(result);
         return GitAccess.NullFields(result.Output).Select(item => { var at = item.IndexOf('\n');
             return new KeyValuePair<string, string>(item[..at], item[(at + 1)..]); }).ToList();
+    }
+
+    private async Task<List<KeyValuePair<string, string>>> ReadRemoteConfig(string root, CancellationToken ct)
+    {
+        var result = await runner.RunAsync(root, ["config", "--local", "-z", "--get-regexp", "^remote\\."], ct);
+        if (result.ExitCode == 1) return [];
+        if (result.ExitCode != 0) throw new GitCommandException(result);
+        return GitAccess.NullFields(result.Output).Select(item => { var at = item.IndexOf('\n');
+            return new KeyValuePair<string, string>(item[..at], item[(at + 1)..]); }).ToList();
+    }
+
+    private static bool SnapshotRef(string name) => name == "refs/stash" ||
+        new[] { "refs/heads/", "refs/tags/", "refs/remotes/", "refs/rewritten/" }.Any(p => name.StartsWith(p, StringComparison.Ordinal));
+
+    private static bool SafeStatePath(string name, bool directory = false)
+    {
+        if (!directory && MarkerNames.Contains(name)) return true;
+        var parts = name.Split('/');
+        return StateDirectoryNames.Contains(parts[0]) && (directory || parts.Length > 1) &&
+            parts.All(p => p.Length > 0 && p is not ("." or "..") && !p.Equals(".git", StringComparison.OrdinalIgnoreCase) &&
+                !p.Any(c => char.IsControl(c) || c is '\\' or ':'));
+    }
+
+    private async Task<Dictionary<string, string>> ReadStatePaths(string root, CancellationToken ct)
+    {
+        var names = MarkerNames.Concat(StateDirectoryNames).ToArray();
+        var args = new List<string> { "rev-parse", "--path-format=absolute" };
+        foreach (var name in names) args.AddRange(["--git-path", name]);
+        var lines = (await git.Text(root, ct, args.ToArray())).Split('\n').Select(s => s.TrimEnd('\r')).ToArray();
+        if (lines.Length != names.Length) throw new InvalidOperationException("Cannot resolve Git state directories safely.");
+        return names.Select((name, n) => (name, path: Path.GetFullPath(lines[n])))
+            .ToDictionary(p => p.name, p => p.path, StringComparer.Ordinal);
+    }
+
+    private static string StatePath(string relative, IReadOnlyDictionary<string, string> locations)
+    {
+        if (!SafeStatePath(relative) && !SafeStatePath(relative, directory: true))
+            throw new InvalidOperationException("Unsafe Git state path.");
+        var slash = relative.IndexOf('/');
+        var name = slash < 0 ? relative : relative[..slash];
+        var top = locations[name];
+        return slash < 0 ? top : GitAccess.FullPath(top, relative[(slash + 1)..]);
+    }
+
+    private static void ValidateStateStorage(IReadOnlyDictionary<string, string> locations)
+    {
+        foreach (var name in MarkerNames.Concat(StateDirectoryNames))
+        {
+            var path = StatePath(name, locations);
+            if (new FileInfo(path).LinkTarget is not null)
+                throw new InvalidOperationException("Symbolic Git state files/directories are not supported.");
+            if (!File.Exists(path) && !Directory.Exists(path)) continue;
+            var pending = new Stack<string>();
+            pending.Push(path);
+            while (pending.TryPop(out var entry))
+            {
+                if ((File.GetAttributes(entry) & FileAttributes.ReparsePoint) != 0)
+                    throw new InvalidOperationException("Symbolic Git state files/directories are not supported.");
+                if (Directory.Exists(entry))
+                {
+                    if (MarkerNames.Contains(name)) throw new InvalidOperationException("A Git state file became a directory.");
+                    foreach (var child in Directory.EnumerateFileSystemEntries(entry)) pending.Push(child);
+                }
+                else if (entry == path && StateDirectoryNames.Contains(name))
+                    throw new InvalidOperationException("A Git state directory became a file.");
+            }
+        }
+    }
+
+    private async Task ClearState(string root, IReadOnlyDictionary<string, string> locations, CancellationToken ct)
+    {
+        // Paths are resolved and checked before mutation; only these Git-owned
+        // whitelisted directories can be recursively removed.
+        var gitDirectory = await git.Text(root, ct, "rev-parse", "--absolute-git-dir");
+        var commonDirectory = await git.Text(root, ct, "rev-parse", "--path-format=absolute", "--git-common-dir");
+        foreach (var name in MarkerNames)
+        {
+            if (OperationRefNames.Contains(name)) continue;
+            var path = StatePath(name, locations);
+            if (File.Exists(path)) File.Delete(path);
+        }
+        foreach (var name in StateDirectoryNames)
+        {
+            var path = StatePath(name, locations);
+            if (!GitAccess.SamePath(path, Path.Combine(gitDirectory, name)) &&
+                !GitAccess.SamePath(path, Path.Combine(commonDirectory, name)))
+                throw new InvalidOperationException("Git state directory escaped its metadata directory.");
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private async Task<List<StashLogEntry>> ReadStashLog(string root, IReadOnlyDictionary<string, string> refs, CancellationToken ct)
+    {
+        if (!refs.ContainsKey("refs/stash")) return [];
+        var output = await git.Bytes(root, ct,
+            ["log", "-g", "-z", "--date=raw", "--format=%H%x00%gn%x00%ge%x00%gD%x00%gs", "refs/stash", "--"],
+            new() { HideOutput = true });
+        if (output.Length == 0) return [];
+        var fields = GitAccess.Utf8.GetString(output).Split('\0');
+        if (fields[^1].Length == 0) fields = fields[..^1];
+        if (fields.Length % 5 != 0) throw new InvalidOperationException("Cannot preserve the stash reflog.");
+        var result = new List<StashLogEntry>();
+        for (var n = 0; n < fields.Length; n += 5)
+        {
+            var selector = fields[n + 3];
+            var at = selector.LastIndexOf("@{", StringComparison.Ordinal);
+            if (at < 0 || !selector.EndsWith('}')) throw new InvalidOperationException("Cannot preserve stash reflog timestamps.");
+            result.Add(new(fields[n], fields[n + 1], fields[n + 2], selector[(at + 2)..^1], fields[n + 4]));
+        }
+        return result;
+    }
+
+    private async Task RestoreStashLog(string root, string snapshotRef, SnapshotManifest saved, CancellationToken ct)
+    {
+        if (!saved.Refs.TryGetValue("refs/stash", out var current)) return;
+        // Recreate through Git rather than editing the logs/ layout: this also
+        // supports reftable. Ref updates compare the previous OID at every step.
+        var exists = await runner.RunAsync(root, ["reflog", "exists", "refs/stash"], ct);
+        if (exists.ExitCode == 0)
+            await git.Write(root, ct, ["reflog", "expire", "--expire=all", "--expire-unreachable=all", "refs/stash"]);
+        else if (exists.ExitCode != 1) throw new GitCommandException(exists);
+        var sentinel = await git.Text(root, ct, "rev-parse", "--verify", snapshotRef);
+        foreach (var entry in saved.StashLog!.AsEnumerable().Reverse())
+        {
+            var environment = new Dictionary<string, string?> {
+                ["GIT_COMMITTER_NAME"] = entry.Name, ["GIT_COMMITTER_EMAIL"] = entry.Email,
+                ["GIT_COMMITTER_DATE"] = "@" + entry.Date };
+            var same = current == entry.Oid;
+            if (same)
+            {
+                if (sentinel == current) throw new InvalidOperationException("Snapshot and stash object unexpectedly collide.");
+                await git.Write(root, ct, ["update-ref", "--no-deref", "--create-reflog", "-m", "GITGUI temporary reflog entry", "refs/stash", sentinel, current], environment: environment);
+                current = sentinel;
+            }
+            await git.Write(root, ct, ["update-ref", "--no-deref", "--create-reflog", "-m", entry.Message, "refs/stash", entry.Oid, current], environment: environment);
+            current = entry.Oid;
+            if (same) await git.Write(root, ct, ["reflog", "delete", "--rewrite", "refs/stash@{1}"]);
+        }
     }
 
     private async Task CheckOtherWorktrees(string root, Dictionary<string, string> current,

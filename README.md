@@ -2,15 +2,15 @@
 
 [![CI](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml/badge.svg)](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)
 
-跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。**M1 已實作 11 項 P0 日常功能、安全快照與復原**，並提供內附 Portable Git 的 Windows x64 免安裝版。
+跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。**M1 P0 日常功能與 M2 P1 進階歷史、安全快照及復原**，並提供內附 Portable Git 的 Windows x64 免安裝版。
 
-![M1 工作區，Headless 測試資料](docs/images/m1-headless.png)
+![M2 工作區，Headless 測試資料](docs/images/m2-main.png)
 
-截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m1-headless-history.png)、[三方衝突編輯](docs/images/m1-headless-conflict.png)。
+截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m2-main-history.png)、[三方衝突編輯](docs/images/m2-main-conflict.png)。
 
 ## Windows 免安裝版
 
-從 [GitHub 最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載 `GITGUI-0.2.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
+從 [GitHub 最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載 `GITGUI-0.3.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
 
 請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
 
@@ -45,6 +45,16 @@ v0.2.0 加入應用程式圖示、一致的線條操作圖示與按鈕層級。�
 
 四款實際 Avalonia 畫面：[石墨](docs/images/appearance-graphite.png)、[午夜藍](docs/images/appearance-midnight.png)、[森林綠](docs/images/appearance-forest.png)、[霧白](docs/images/appearance-porcelain.png)。截圖使用固定測試資料，另有行為與原生桌面啟動測試；詳細說明見 [外觀說明](docs/APPEARANCE.md)。
 
+## M2 進階歷史
+
+工具列「進階功能」提供 stash（含未追蹤檔案）、互動式 rebase、cherry-pick／revert、soft／mixed／hard reset、輕量／附註標籤、reflog、遠端管理與檔案歷史／Blame。Rebase 可拖曳排序，指定 pick／reword／edit／squash／fixup／drop；訊息在 UI 編輯，無須呼叫外部編輯器。進行中的操作會在重啟後重新識別，解決衝突後可繼續、略過或中止。
+
+![M2 互動式 Rebase，Headless 固定測試資料](docs/images/m2-advanced-rebase.png)
+
+「終端機」提供目前倉庫的持續文字 shell，使用已選定的 Git 與 Portable Git helpers。關閉終端機後才可由 GUI 寫入；任意終端機指令不自動建立快照。此版本採逐行輸入／輸出，不支援 VT 全螢幕、vim/top 或 Ctrl+C 訊號；「關閉終端機」會終止 shell 與其子程序。
+
+互動式 rebase 目前接受線性範圍；含 merge commit 的範圍會在建立快照前拒絕，避免隱含攤平合併歷史。檔案歷史跟隨重新命名，SHA-1/files 優先使用 libgit2，其他格式或讀取失敗改用 Git CLI。驗收範圍見 [M2 驗收表](docs/M2-ACCEPTANCE.md)。
+
 ## M1 功能
 
 | 功能 | 使用方式 |
@@ -67,7 +77,7 @@ v0.2.0 加入應用程式圖示、一致的線條操作圖示與按鈕層級。�
 
 中高風險操作前自動建立快照；一般 commit 與建立分支也保存。上方「復原／重做」與「復原快照」頁籤可還原；還原前另建快照，因此可以重做。
 
-- 保存 HEAD（含 unborn/detached）、本地分支／tag、branch 設定、index stage 0/1/2/3 與旗標、工作目錄原始位元組、未追蹤檔案及 merge 狀態。
+- 保存 HEAD（含 unborn/detached）、本地分支／tag／遠端追蹤 refs、stash 完整堆疊、branch／remote 設定、index stage 0/1/2/3 與旗標、工作目錄原始位元組、未追蹤檔案及 merge／rebase／cherry-pick／revert 狀態。
 - 原始內容存為 Git blob/tree/commit，以 `refs/gitgui/snapshots/` 保護；SQLite 存索引。已測試 `git gc --prune=now` 後復原。
 - 不單靠 `stash create`：它不足以保存未追蹤檔案與衝突 index。還原由 Git 產生完整 index，持有 index/ref 鎖後安裝，避免直接改寫二進位 index。
 - 保留最近 50 筆或 14 天，取涵蓋範圍較廣者；只清理本產品的快照 refs。忽略檔不會被一般捨棄操作清除；還原會替換的特定忽略路徑會先納入重做快照。
@@ -86,7 +96,7 @@ dotnet test GitGui.sln -c Release
 
 ## 目前限制
 
-- 快照寫入會拒絕 submodule、sparse checkout、進行中的 rebase/cherry-pick/revert/bisect 及 merge autostash；已在其他 worktree 使用且需要改動的分支也會阻擋復原。
+- 快照寫入會拒絕 submodule、sparse checkout 與進行中的 bisect；已在其他 worktree 使用且需要改動的分支也會阻擋復原。
 - 為保證原子 refs 復原，M1 不允許把分支 `topic` 直接改名為 `topic/sub` 或反向操作。
 - 非 UTF-8 檔案請使用整檔暫存或 ours/theirs；不提供可能改變編碼的逐行暫存／文字衝突編輯。無效 UTF-8 檔名的寫入會安全拒絕。Commit 訊息支援 Big5 fallback。
 - 單檔 Diff 超過 1 MiB／20,000 行先摺疊；圖片預覽每側最多 8 MiB；一般 CLI 輸出上限 32 MiB。快照檔案資料另走有界串流。

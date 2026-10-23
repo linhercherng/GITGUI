@@ -19,6 +19,11 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private MainWindowViewModel? viewModel;
     private IGitRuntimeSettings? gitSettings;
     private AppearanceManager? appearance;
+    private IWorkspaceService? workspace;
+    private ITerminalService? terminalService;
+    private TerminalPanel? terminalPanel;
+    private Window? terminalWindow;
+    private AdvancedWindow? advancedWindow;
     private FileSystemWatcher? worktreeWatcher;
     private FileSystemWatcher? gitWatcher;
     private FileSystemWatcher? commonWatcher;
@@ -31,11 +36,13 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         if (!Application.Current!.Resources.ContainsKey("CanvasBrush")) _ = new AppearanceManager();
         AvaloniaXamlLoader.Load(this);
     }
-    public MainWindow(MainWindowViewModel vm, Control? graph = null, IGitRuntimeSettings? gitSettings = null, AppearanceManager? appearance = null) : this()
+    public MainWindow(MainWindowViewModel vm, Control? graph = null, IGitRuntimeSettings? gitSettings = null, AppearanceManager? appearance = null,
+        IWorkspaceService? workspace = null, ITerminalService? terminalService = null) : this()
     {
         viewModel = vm;
         this.gitSettings = gitSettings;
         this.appearance = appearance ?? new AppearanceManager();
+        this.workspace = workspace; this.terminalService = terminalService;
         DataContext = vm;
         if (graph is null)
         {
@@ -56,9 +63,45 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         };
         vm.RepositoryOpened += RepositoryOpened;
         vm.PropertyChanged += ViewModelChanged;
+        Closing += (_, args) =>
+        {
+            if (vm.IsBusy || advancedWindow?.ViewModel.IsWriting == true)
+            { args.Cancel = true; vm.Notice = "操作進行中，請完成後再關閉 / Wait for the active operation before closing."; }
+        };
         debounce.Tick += async (_, _) => { debounce.Stop(); if (vm.HasRepository && !vm.IsBusy && !closed) await vm.RefreshCommand.ExecuteAsync(null); };
     }
     private static AvaloniaProperty SelectingItemsControlSelectedItem() => Avalonia.Controls.Primitives.SelectingItemsControl.SelectedItemProperty;
+    private void AdvancedClick(object? sender, RoutedEventArgs args)
+    {
+        if (viewModel is not { CanOperate: true } vm || workspace is not IAdvancedWorkspaceService advanced) return;
+        if (advancedWindow is not null) { advancedWindow.Activate(); return; }
+        var model = new AdvancedWindowViewModel(workspace, advanced, vm.Root,
+            vm.SelectedCommitFile?.Path ?? vm.SelectedChange?.Path, vm.SelectedCommit?.Hash, vm.L);
+        var window = advancedWindow = new AdvancedWindow(model);
+        model.WorkspaceChanged += async (_, _) => { if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
+        window.Closed += async (_, _) => { advancedWindow = null; if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null); };
+        window.Show(this);
+    }
+    private async void TerminalClick(object? sender, RoutedEventArgs args)
+    {
+        if (viewModel is not { CanOperate: true } vm || terminalService is null) return;
+        if (terminalWindow is not null) { terminalWindow.Activate(); return; }
+        // Close the advanced writer before leasing this repository for a shell.
+        advancedWindow?.Close();
+        if (advancedWindow is not null) { vm.Notice = vm.L["AdvancedWait"]; return; }
+        var panel = terminalPanel = new TerminalPanel(terminalService);
+        var window = terminalWindow = new Window { Title = "GITGUI · Terminal", Width = 1040, Height = 680,
+            MinWidth = 640, MinHeight = 400, Content = new Border { Padding = new Thickness(16), Child = panel } };
+        AppearanceManager.StyleWindow(window);
+        panel.RunningChanged += (_, _) => vm.TerminalActive = panel.IsRunning;
+        window.Closed += async (_, _) =>
+        {
+            await panel.CloseAsync(); terminalPanel = null; terminalWindow = null; vm.TerminalActive = false;
+            if (!closed && !vm.IsBusy) await vm.RefreshCommand.ExecuteAsync(null);
+        };
+        window.Show(this);
+        await panel.OpenAsync(vm.Root);
+    }
     private void ViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainWindowViewModel.SelectedCommit) && viewModel?.SelectedCommit is not null)

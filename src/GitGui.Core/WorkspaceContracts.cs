@@ -4,7 +4,10 @@ public enum GitAction
 {
     Init, Clone, Stage, Unstage, StagePatch, UnstagePatch, Discard, Commit,
     CreateBranch, SwitchBranch, RenameBranch, DeleteBranch, Fetch, Pull, Push, Merge,
-    AbortMerge, ResolveOurs, ResolveTheirs, MarkResolved, ExternalMergeTool, RestoreSnapshot, WriteConflictResult
+    AbortMerge, ResolveOurs, ResolveTheirs, MarkResolved, ExternalMergeTool, RestoreSnapshot, WriteConflictResult,
+    StashPush, StashApply, StashPop, StashDrop, RebaseInteractive, CherryPick, Revert, Reset,
+    CreateTag, DeleteTag, AddRemote, RenameRemote, SetRemoteUrl, RemoveRemote,
+    ContinueOperation, SkipOperation, AbortOperation
 }
 
 public sealed record GitOperation(GitAction Action)
@@ -21,6 +24,13 @@ public sealed record GitOperation(GitAction Action)
     public bool Force { get; init; }
     public bool SkipHooks { get; init; }
     public bool Sign { get; init; }
+    public string? Revision { get; init; }
+    public string? StashOid { get; init; }
+    public bool IncludeUntracked { get; init; }
+    public bool Annotated { get; init; }
+    public bool PushUrl { get; init; }
+    public ResetMode ResetMode { get; init; }
+    public IReadOnlyList<RebaseStep> RebasePlan { get; init; } = [];
 }
 
 public sealed record LogFilter(string Search = "", string Author = "", string Path = "",

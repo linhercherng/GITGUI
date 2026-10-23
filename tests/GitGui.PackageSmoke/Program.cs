@@ -19,7 +19,7 @@ var storage = new WorkspaceStorage(Path.Combine(root, "settings", "test.db"));
 var runner = new GitProcessRunner(runtime);
 var commands = new List<CommandEntry>();
 runner.CommandExecuted += (_, e) => commands.Add(e);
-var service = new WorkspaceService(runner, storage, storage, new(runner, storage), new AcceptInTest());
+var service = new WorkspaceService(runner, storage, storage, new(runner, storage), new AcceptInTest(), fileHistory: new LibHistoryReader());
 var work = Path.Combine(root, "倉庫 with spaces"); Directory.CreateDirectory(work);
 await storage.TrustAsync(work, default);
 await Execute(new(GitAction.Init) { Name = "main" });
@@ -61,11 +61,42 @@ var cloned = await service.ExecuteAsync(clone, new(GitAction.Clone) { Url = bare
 Check(cloned.Success, cloned.Message);
 var head = await runner.ReadAsync(clone, ["rev-parse", "HEAD"], default);
 Check(Encoding.UTF8.GetString(head.Output) == original, "Clone HEAD mismatch");
+// M2 is exercised against the extracted release DLLs and the bundled shell/Git.
+await Execute(new(GitAction.Reset) { Revision = "HEAD", ResetMode = ResetMode.Hard });
+await File.WriteAllTextAsync(Path.Combine(work, "暫存 中文.txt"), "untracked");
+await Execute(new(GitAction.StashPush) { IncludeUntracked = true, Message = "package stash" });
+var stash = (await service.GetAdvancedStateAsync(work, default)).Stashes.First();
+Check(!File.Exists(Path.Combine(work, "暫存 中文.txt")), "Stash did not clean Unicode untracked file");
+var drop = await Execute(new(GitAction.StashDrop) { StashOid = stash.Oid, Name = stash.Selector });
+await Execute(new(GitAction.RestoreSnapshot) { SnapshotId = drop.Snapshot!.Id });
+Check((await service.GetAdvancedStateAsync(work, default)).Stashes.First().Oid == stash.Oid, "Stash recovery failed");
+await Execute(new(GitAction.StashPop) { StashOid = stash.Oid, Name = stash.Selector });
+await Execute(new(GitAction.CreateTag) { Name = "package-m2", Annotated = true, Message = "M2 test" });
+await Execute(new(GitAction.AddRemote) { Name = "backup", Url = bare });
+await Execute(new(GitAction.RenameRemote) { Name = "backup", NewName = "backup-renamed" });
+await Execute(new(GitAction.RemoveRemote) { Name = "backup-renamed" });
+await Execute(new(GitAction.Stage) { Paths = ["暫存 中文.txt", "hook-result.txt"] });
+await Execute(new(GitAction.Commit) { Message = "M2 second", SkipHooks = true });
+var plan = await service.GetRebasePlanAsync(work, "HEAD~1", default);
+await Execute(new(GitAction.RebaseInteractive) { Revision = "HEAD~1", RebasePlan = [plan[0] with { Action = RebaseStepKind.Reword, Message = "M2 中文 reword" }] });
+Check((await Run("log", "-1", "--format=%s")).Trim() == "M2 中文 reword", "Packaged sequence/editor helper failed");
+Check((await service.GetFileHistoryAsync(work, "中文 file.txt", default)).Blame.Count > 0, "Packaged M2 blame failed");
+Check((await service.GetAdvancedStateAsync(work, default)).Reflog.Count > 0, "Packaged reflog failed");
+var terminal = new TerminalService(runtime, storage, service.TrustAsync, service.AcquireTerminalLeaseAsync, runner);
+await using (var session = await terminal.StartAsync(work, default))
+{
+    await session.SendLineAsync("git --version", default);
+    await session.SendLineAsync("echo M2_TERMINAL_OK", default);
+    var deadline = DateTime.UtcNow.AddSeconds(20);
+    while ((!session.Output.Contains("\nM2_TERMINAL_OK\n", StringComparison.Ordinal) || !session.Output.Contains(git.Version, StringComparison.Ordinal)) && DateTime.UtcNow < deadline) await Task.Delay(50);
+    Check(session.Output.Contains("\nM2_TERMINAL_OK\n", StringComparison.Ordinal) && session.Output.Contains(git.Version, StringComparison.Ordinal), "Packaged persistent terminal/Git failed");
+    await session.StopAsync();
+}
 Check(commands.All(c => c.Command.Contains(git.Executable, StringComparison.OrdinalIgnoreCase)), "Command used external Git");
 Check(commands.Any(c => c.Command.Contains("update-ref --stdin", StringComparison.Ordinal)), "Ref transaction not exercised");
 Console.WriteLine(JsonSerializer.Serialize(new { result = "PASS", runtime = RuntimeEnvironment.GetRuntimeDirectory(),
     git = git.Executable, gitVersion = git.Version, commands = commands.Count,
-    checks = "SQLite/native libgit2/init/stage/commit/hooks/amend/branch/snapshot undo+redo/push/clone" }));
+    checks = "SQLite/native libgit2/init/stage/commit/hooks/amend/branch/snapshot undo+redo/push/clone/M2 stash recovery/tag/remote/rebase reword/blame/reflog/terminal" }));
 
 async Task<string> Run(params string[] arguments)
 {

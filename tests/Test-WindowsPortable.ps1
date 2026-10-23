@@ -56,7 +56,7 @@ try {
         try {
             $stdout = $child.StandardOutput.ReadToEndAsync()
             $stderr = $child.StandardError.ReadToEndAsync()
-            if (-not $child.WaitForExit(180000)) { $child.Kill($true); throw 'Package operation tests timed out' }
+            if (-not $child.WaitForExit(600000)) { $child.Kill($true); throw 'Package operation tests timed out' }
             $result = $stdout.GetAwaiter().GetResult()
             $errorText = $stderr.GetAwaiter().GetResult()
             if ($child.ExitCode -ne 0) { throw "Package operation tests failed: $errorText" }
