@@ -2,17 +2,19 @@
 
 [![CI](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml/badge.svg)](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)
 
-跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。**M1 P0 日常功能與 M2 P1 進階歷史、安全快照及復原**，並提供內附 Portable Git 的 Windows x64 免安裝版。
+跨平台桌面 Git 用戶端，使用 **C# / .NET 8 + Avalonia 11**。提供 **M1 日常操作、M2 進階歷史、M3 倉庫工具與安全快照復原**，並附完整 Portable Git 的 Windows x64 免安裝版。
 
-![M2 工作區，Headless 測試資料](docs/images/m2-main.png)
+![M3 工作區，Headless 測試資料](docs/images/m3-main.png)
 
-截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m2-main-history.png)、[三方衝突編輯](docs/images/m2-main-conflict.png)。
+截圖由真正的 Avalonia 控制項以固定測試資料渲染；Git 操作另以隔離的真實倉庫測試。更多畫面：[提交圖](docs/images/m3-main-history.png)、[三方衝突編輯](docs/images/m3-main-conflict.png)。
 
 ## Windows 免安裝版
 
-從 [GitHub 最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載 `GITGUI-0.3.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
+從 [GitHub 最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載 `GITGUI-0.4.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 8.0.32 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。適用 Windows 10/11 x64；本版執行檔未簽章。
 
 請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
+
+日常操作、進階歷史與 M3 倉庫工具的步驟見 [繁體中文操作手冊](docs/USER-GUIDE.zh-TW.md)。本機可用瀏覽器開啟 `docs/USER-GUIDE.zh-TW.html`；Windows 免安裝包的 HTML／Markdown 手冊與 `GitGui.App.exe` 放在同一層，可離線閱讀。
 
 ## 從原始碼執行
 
@@ -44,6 +46,14 @@ v0.2.0 加入應用程式圖示、一致的線條操作圖示與按鈕層級。�
 ![配色選擇](docs/images/appearance-picker.png)
 
 四款實際 Avalonia 畫面：[石墨](docs/images/appearance-graphite.png)、[午夜藍](docs/images/appearance-midnight.png)、[森林綠](docs/images/appearance-forest.png)、[霧白](docs/images/appearance-porcelain.png)。截圖使用固定測試資料，另有行為與原生桌面啟動測試；詳細說明見 [外觀說明](docs/APPEARANCE.md)。
+
+## M3 倉庫工具
+
+工具列「倉庫工具」提供子模組新增／初始化／更新／同步／停用、工作樹建立／移除／鎖定／清理、Git LFS 本地安裝與追蹤／物件同步、bisect 人工判斷與 reset、cone／noncone sparse-checkout。進階標籤支援使用既有 signer 簽章，簽章提交沿用主畫面選項。
+
+![M3 子模組工具，Headless 固定測試資料](docs/images/m3-tools.png)
+
+子模組快照限父倉庫，不覆蓋子倉庫資料；sparse 可還原目前工作樹設定、pattern 與檔案。工作樹與 LFS 無快照 Undo；bisect 以原生 reset 結束。詳細步驟與資料保護邊界見 [操作手冊](docs/USER-GUIDE.zh-TW.md)、[M3 驗收表](docs/M3-ACCEPTANCE.md)。
 
 ## M2 進階歷史
 
@@ -85,6 +95,8 @@ v0.2.0 加入應用程式圖示、一致的線條操作圖示與按鈕層級。�
 
 ## 驗證與架構
 
+v0.4.0 的相容性矩陣固定使用 Git **2.40.0** 與查核日最新穩定版 **2.56.0**，各跑 Windows／Ubuntu／macOS Intel 三平台完整套件；實際成功狀態以對應 commit 的六格 CI 為準。SHA-1／SHA-256 搭配 files／reftable 執行相同真實流程，舊版 Git 不支援的 reftable 兩格明確標記 skip。來源、雜湊與重現方式見 [M3 相容性](docs/M3-COMPATIBILITY.md)。Windows ARM64／Linux ARM64 暫不提供正式套件，決策與 native 資產證據見 [ARM 決策](docs/M3-ARM-DECISION.md)。
+
 ```powershell
 dotnet build GitGui.sln -c Release
 dotnet test GitGui.sln -c Release
@@ -96,13 +108,14 @@ dotnet test GitGui.sln -c Release
 
 ## 目前限制
 
-- 快照寫入會拒絕 submodule、sparse checkout 與進行中的 bisect；已在其他 worktree 使用且需要改動的分支也會阻擋復原。
+- Submodule 快照僅還原父倉庫，保留子倉庫自己的工作檔、index／refs；sparse 可復原目前工作樹設定與檔案，保留 Git 的 worktreeConfig 儲存升級。進行中的 bisect 請用 bisect reset；已在其他 worktree 使用且需要改動的分支會阻擋快照復原。
+- 移除工作樹與更新／停用子模組會拒絕可能隱藏變更的 assume-unchanged／skip-worktree index flags；先保存內容並清除 flags 後再試。
 - Hard reset 的目的檔案若被既有目錄擋住，會先拒絕並要求移開目錄，以保護其中的 ignored 資料；其他會被覆寫的 ignored 檔案會納入安全快照。
 - 為保證原子 refs 復原，M1 不允許把分支 `topic` 直接改名為 `topic/sub` 或反向操作。
 - 非 UTF-8 檔案請使用整檔暫存或 ours/theirs；不提供可能改變編碼的逐行暫存／文字衝突編輯。無效 UTF-8 檔名的寫入會安全拒絕。Commit 訊息支援 Big5 fallback。
 - 單檔 Diff 超過 1 MiB／20,000 行先摺疊；圖片預覽每側最多 8 MiB；一般 CLI 輸出上限 32 MiB。快照檔案資料另走有界串流。
 - 尚未量測 10 萬 commit／5 萬檔案效能目標；精準增量快取、背景自動 fetch、完整無障礙與跨平台安裝檔留待後續。Diff 目前以變更色彩標記，程式語言高亮仍待補齊。
-- 遠端同步測試使用隔離的本地 bare remote；未宣稱實測每種 SSH agent、LFS、代理與外部 mergetool。真實 macOS/Linux 桌面互動也需另外驗收。
+- 遠端同步與 LFS 物件轉移測試使用隔離的本地 bare remote；簽章測試使用臨時 SSH key。未宣稱實測每種 SSH agent、遠端 LFS 服務、代理與外部 mergetool。真實 macOS/Linux 桌面互動也需另外驗收。
 - 資料存於 `.NET LocalApplicationData/GitGui`（Windows 通常是 `%LOCALAPPDATA%\GitGui`）。信任設定、最近倉庫與快照索引持久保存；憑證經同使用者 AskPass 管線傳遞，不寫入資料庫／日誌。操作輸出僅留本次視窗記憶體；生命週期日誌保留 14 天。
 - .NET 8 升級與授權方式是正式版前追蹤事項。目前未附 LICENSE；公開程式碼不代表授予再散佈授權。
 

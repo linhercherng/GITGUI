@@ -11,6 +11,14 @@ $null = New-Item -ItemType Directory -Path $temporary
 $package = @(Get-ChildItem -LiteralPath $temporary -Directory)
 if ($package.Count -ne 1) { throw 'ZIP must have exactly one top-level directory' }
 $app = $package[0].FullName
+foreach ($document in @('USER-GUIDE.zh-TW.md', 'USER-GUIDE.zh-TW.html', 'docs/M3-COMPATIBILITY.md', 'docs/M3-ARM-DECISION.md', 'images/m3-main.png', 'images/m3-tools.png')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $app $document) -PathType Leaf)) { throw "Missing offline guide asset: $document" }
+}
+$guide = Get-Content -LiteralPath (Join-Path $app 'USER-GUIDE.zh-TW.md') -Raw
+if ($guide -notmatch '適用版本：0\.4\.0' -or $guide -notmatch '\]\(docs/M3-COMPATIBILITY\.md\)') { throw 'Offline guide version/links are invalid' }
+foreach ($image in @('m3-main.png', 'm3-tools.png')) {
+    if ((Get-FileHash -LiteralPath (Join-Path $app "images/$image")).Hash -ne (Get-FileHash -LiteralPath (Join-Path $repo "docs/images/$image")).Hash) { throw "Offline guide image differs: $image" }
+}
 $harness = Join-Path $temporary 'test-driver'
 Push-Location $repo
 try {
@@ -67,6 +75,7 @@ try {
         & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path $app 'GitGui.App.exe') -Desktop:$Desktop
         $report | Add-Member -NotePropertyName archiveSHA256 -NotePropertyValue (Get-FileHash $zip).Hash.ToLowerInvariant()
         $report | Add-Member -NotePropertyName desktopTested -NotePropertyValue ([bool]$Desktop)
+        $report | Add-Member -NotePropertyName offlineGuideSHA256 -NotePropertyValue (Get-FileHash -LiteralPath (Join-Path $app 'USER-GUIDE.zh-TW.md')).Hash.ToLowerInvariant()
         $report | ConvertTo-Json | Set-Content "$temporary/verification.json" -Encoding utf8
         Write-Output "VERIFICATION: $temporary/verification.json"
         Write-Output "EXTRACTED: $app"

@@ -11,42 +11,54 @@ permissions:
 
 jobs:
   build-and-test:
-    name: Build and test (${{ matrix.os }})
+    name: Git ${{ matrix.git }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2022, ubuntu-22.04, macos-14]
+        os: [windows-2022, ubuntu-22.04, macos-15-intel]
+        git: ['2.40.0', '2.56.0']
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-      - name: Git version
-        run: git --version
+      - name: Unix Git build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev
+      - name: Cache pinned compatibility Git
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/compat-git/${{ matrix.git }}
+          key: compat-git-${{ runner.os }}-${{ runner.arch }}-${{ matrix.git }}-${{ hashFiles('scripts/Install-CompatibilityGit.ps1', 'scripts/compatibility-git.json') }}
+      - name: Install and assert exact Git version
+        shell: pwsh
+        run: ./scripts/Install-CompatibilityGit.ps1 -Version '${{ matrix.git }}' -Destination '${{ runner.temp }}/compat-git/${{ matrix.git }}'
       - name: Restore locked dependencies
         run: dotnet restore GitGui.sln --locked-mode
       - name: Build
         run: dotnet build GitGui.sln -c Release --no-restore
       - name: Prepare verified PortableGit for Windows tests
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
         run: ./tests/PreparePortableGit.ps1
       - name: Test
         run: dotnet test GitGui.sln -c Release --no-build --logger trx --results-directory TestResults
       - name: Windows AskPass apphost protocol
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
         run: ./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net8.0/GitGui.App.exe
       - name: Build and verify self-contained Windows portable ZIP
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
         run: |
           ./scripts/Build-WindowsPortable.ps1 -OutputDirectory "$env:RUNNER_TEMP/windows-package"
-          ./tests/Test-WindowsPortable.ps1 -Archive "$env:RUNNER_TEMP/windows-package/GITGUI-0.3.0-win-x64-portable.zip"
+          ./tests/Test-WindowsPortable.ps1 -Archive "$env:RUNNER_TEMP/windows-package/GITGUI-0.4.0-win-x64-portable.zip"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.git == '2.56.0'
         with:
           name: windows-portable
           path: |
@@ -55,5 +67,5 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: test-results-${{ matrix.os }}
+          name: test-results-${{ matrix.os }}-git-${{ matrix.git }}
           path: TestResults/*.trx

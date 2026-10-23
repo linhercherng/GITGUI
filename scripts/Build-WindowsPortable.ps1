@@ -1,5 +1,5 @@
 param(
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.3.0',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.4.0',
     [string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
@@ -25,6 +25,24 @@ try {
         (Get-Content -LiteralPath "$repo/docs/portable/$document" -Raw).Replace('0.1.0', $Version) |
             Set-Content -LiteralPath (Join-Path $app $document) -Encoding utf8
     }
+    Copy-Item -LiteralPath "$repo/docs/USER-GUIDE.zh-TW.md" -Destination $app
+    $guideDocs = Join-Path $app 'docs'
+    $guideImages = Join-Path $app 'images'
+    $null = New-Item -ItemType Directory -Path $guideDocs, $guideImages
+    foreach ($document in @('M3-COMPATIBILITY.md', 'M3-ARM-DECISION.md', 'specification.md', 'WINDOWS-RELEASE.md')) {
+        Copy-Item -LiteralPath (Join-Path "$repo/docs" $document) -Destination $guideDocs
+    }
+    foreach ($image in @('m3-main.png', 'm3-tools.png')) {
+        Copy-Item -LiteralPath (Join-Path "$repo/docs/images" $image) -Destination $guideImages
+    }
+    # Root guide has the same links in the repository and portable package.
+    $guide = Join-Path $app 'USER-GUIDE.zh-TW.md'
+    (Get-Content -LiteralPath $guide -Raw) -replace '\]\((M3-COMPATIBILITY|M3-ARM-DECISION|specification|WINDOWS-RELEASE)\.md\)', '](docs/$1.md)' |
+        Set-Content -LiteralPath $guide -Encoding utf8
+    & "$repo/scripts/Render-UserGuide.ps1" -OutputPath (Join-Path $app 'USER-GUIDE.zh-TW.html')
+    $htmlGuide = Join-Path $app 'USER-GUIDE.zh-TW.html'
+    (Get-Content -LiteralPath $htmlGuide -Raw) -replace 'href="(M3-COMPATIBILITY|M3-ARM-DECISION|specification|WINDOWS-RELEASE)\.md"', 'href="docs/$1.md"' |
+        Set-Content -LiteralPath $htmlGuide -Encoding utf8
     $licenses = Join-Path $app 'licenses'
     $null = New-Item -ItemType Directory -Path $licenses
     $assets = Get-Content "$repo/src/GitGui.App/obj/project.assets.json" -Raw | ConvertFrom-Json -AsHashtable

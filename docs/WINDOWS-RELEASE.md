@@ -1,15 +1,15 @@
 # Windows x64 免安裝發行
 
 從 [最新 Release](https://github.com/linhercherng/GITGUI/releases/latest)
-下載 `GITGUI-0.3.0-win-x64-portable.zip`，完整解壓縮後開啟
+下載 `GITGUI-0.4.0-win-x64-portable.zip`，完整解壓縮後開啟
 `GitGui.App.exe`。適用 Windows 10/11 x64，不需系統管理員權限。
 
 ## 封裝內容
 
 - .NET 8.0.32，自含執行環境，無 trimming／single-file extraction。
-- GITGUI M2 與 Avalonia、SQLite、libgit2 原生依賴。
+- GITGUI M3 與 Avalonia、SQLite、libgit2 原生依賴。
 - 完整 PortableGit 2.56.0.3，保留 shell、SSH、helpers、原始授權與版本清單。
-- `START-HERE.txt`、`THIRD-PARTY.txt`、`licenses/` 與 `build-info.json`。
+- `START-HERE.txt`、繁體中文離線手冊 `USER-GUIDE.zh-TW.html`／`.md`、`THIRD-PARTY.txt`、`licenses/` 與 `build-info.json`。
 - Release 另附 SHA256SUMS、封裝驗證報告與 PortableGit copyleft 來源 ZIP。
 
 不修改系統 PATH，不註冊服務。個人設定仍在 `%LOCALAPPDATA%\GitGui`，
@@ -21,11 +21,11 @@
 需要 Windows、PowerShell 7、.NET 8 SDK，從指定版本乾淨 checkout 執行：
 
 ```powershell
-./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.3.0
-./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.3.0/GITGUI-0.3.0-win-x64-portable.zip -Desktop
+./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.4.0
+./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.4.0/GITGUI-0.4.0-win-x64-portable.zip -Desktop
 ./scripts/Collect-PortableGitSources.ps1 `
-  -PortableGit C:/Build/GITGUI-0.3.0/GITGUI-0.3.0-win-x64-portable/PortableGit `
-  -OutputDirectory C:/Build/GITGUI-0.3.0-sources
+  -PortableGit C:/Build/GITGUI-0.4.0/GITGUI-0.4.0-win-x64-portable/PortableGit `
+  -OutputDirectory C:/Build/GITGUI-0.4.0-sources
 ```
 
 輸出目錄必須尚不存在，避免覆寫已測試的 ZIP。NuGet 另用各專案的
@@ -44,8 +44,12 @@
 amend、branch、快照 HEAD/index/worktree/refs 還原及重做、本地 bare push/clone；
 M2 stash（中文 untracked）與堆疊復原、附註 tag、remote CRUD、rebase reword 的
 內附 shell/editor helper、blame/reflog，以及持續終端機使用同一套 Portable Git。
+M3 驗證工作樹管理、bisect reset、sparse undo、父倉庫 submodule undo 保留子資料、
+LFS 真實本地遠端物件傳輸／取出、內附 SSH signer 簽章標籤與 verify-tag，並確認離線手冊與截圖存在。
 另外啟動真正的 GitGui.App.exe，驗證 AskPass UTF-8 往返與桌面主視窗啟動／正常關閉。
 Windows CI 每次建置也重建 ZIP 並執行無桌面 smoke test，提供可下載的 CI artifact。
+
+v0.4.0 的六格 Git 相容性 CI 中，只有 Windows 最新 Git 格重建並驗證發行 ZIP；Windows 2.40 格保留其精確 PATH，執行相同完整測試。固定版本與格式覆蓋見 [M3 相容性](M3-COMPATIBILITY.md)。目前正式套件仍為 x64；ARM64 決策見 [說明](M3-ARM-DECISION.md)。
 
 本機初次完整回歸測試在大量來源下載同時執行時，佇列測試的 15 秒同步等待與
 失敗清理出現問題；獨立重跑通過。測試改為 60 秒等候，並以 finally 排空暫停中的

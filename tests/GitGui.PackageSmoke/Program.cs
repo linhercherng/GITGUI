@@ -92,11 +92,79 @@ await using (var session = await terminal.StartAsync(work, default))
     Check(session.Output.Contains("\nM2_TERMINAL_OK\n", StringComparison.Ordinal) && session.Output.Contains(git.Version, StringComparison.Ordinal), "Packaged persistent terminal/Git failed");
     await session.StopAsync();
 }
+// M3 uses these exact shipping DLLs, the selected PortableGit, LFS and SSH signer.
+var tools = new RepositoryToolsService(runner, service, new(runner, storage), new AcceptInTest());
+var linked = Path.Combine(root, "工作樹 M3");
+await Tool(new(RepositoryToolAction.WorktreeAdd) { Path = linked, Name = "package-worktree" });
+Check((await tools.GetStateAsync(work, default)).Worktrees.Any(w => w.Path == linked), "Packaged worktree listing failed");
+await Tool(new(RepositoryToolAction.WorktreeLock) { Path = linked, Reason = "package test" });
+await Tool(new(RepositoryToolAction.WorktreeUnlock) { Path = linked });
+await Tool(new(RepositoryToolAction.WorktreeRemove) { Path = linked });
+Check(!Directory.Exists(linked), "Packaged worktree remove failed");
+await Run("commit", "--allow-empty", "--no-verify", "-m", "M3 bisect middle");
+await Run("commit", "--allow-empty", "--no-verify", "-m", "M3 bisect bad");
+var bisectHead = await Run("rev-parse", "HEAD");
+await Tool(new(RepositoryToolAction.BisectStart) { Revision = "HEAD", GoodRevision = "HEAD~2" });
+Check((await tools.GetStateAsync(work, default)).BisectActive, "Packaged bisect did not start");
+await Tool(new(RepositoryToolAction.BisectGood));
+await Tool(new(RepositoryToolAction.BisectReset));
+Check(await Run("rev-parse", "HEAD") == bisectHead, "Packaged bisect reset failed");
+Directory.CreateDirectory(Path.Combine(work, "保留")); Directory.CreateDirectory(Path.Combine(work, "排除"));
+await File.WriteAllTextAsync(Path.Combine(work, "保留", "a.txt"), "kept");
+await File.WriteAllTextAsync(Path.Combine(work, "排除", "b.txt"), "excluded");
+await Execute(new(GitAction.Stage) { Paths = ["保留/a.txt", "排除/b.txt"] });
+await Execute(new(GitAction.Commit) { Message = "M3 sparse fixture", SkipHooks = true });
+var sparse = await Tool(new(RepositoryToolAction.SparseSet) { Patterns = ["保留"], Cone = true });
+Check(!File.Exists(Path.Combine(work, "排除", "b.txt")), "Packaged sparse checkout failed");
+await Execute(new(GitAction.RestoreSnapshot) { SnapshotId = sparse.Snapshot!.Id });
+Check(File.Exists(Path.Combine(work, "排除", "b.txt")), "Packaged sparse undo failed");
+var sub = await Tool(new(RepositoryToolAction.SubmoduleAdd) { Path = "模組", Url = bare });
+await File.WriteAllTextAsync(Path.Combine(work, "模組", "child-private.txt"), "child unsaved data");
+await Execute(new(GitAction.RestoreSnapshot) { SnapshotId = sub.Snapshot!.Id });
+Check(await File.ReadAllTextAsync(Path.Combine(work, "模組", "child-private.txt")) == "child unsaved data", "Parent undo touched child data");
+await Tool(new(RepositoryToolAction.LfsInstall));
+await Tool(new(RepositoryToolAction.LfsTrack) { Patterns = ["*.m3-lfs"] });
+Check((await tools.GetStateAsync(work, default)).LfsVersion.StartsWith("git-lfs/", StringComparison.Ordinal), "Bundled Git LFS unavailable");
+var large = Enumerable.Range(0, 100_000).Select(i => (byte)(i % 251)).ToArray();
+await File.WriteAllBytesAsync(Path.Combine(work, "payload.m3-lfs"), large);
+await Execute(new(GitAction.Stage) { Paths = [".gitattributes", "payload.m3-lfs"] });
+await Execute(new(GitAction.Commit) { Message = "Packaged real LFS payload", SkipHooks = true });
+await Execute(new(GitAction.Push) { Remote = "origin" });
+var lfsClone = Path.Combine(root, "LFS clone 中文"); Directory.CreateDirectory(lfsClone);
+var cloneResult = await runner.RunAsync(lfsClone, ["clone", "--no-checkout", "--", bare, "."], default, new() { IsReadOnly = false, Trusted = true });
+Check(cloneResult.ExitCode == 0, cloneResult.Error); await storage.TrustAsync(lfsClone, default);
+var install = await tools.ExecuteAsync(lfsClone, new(RepositoryToolAction.LfsInstall), null, default); Check(install.Success, install.Message);
+var pointerCheckout = await runner.RunAsync(lfsClone, ["reset", "--hard", "HEAD"], default, new()
+{ IsReadOnly = false, Trusted = true, Environment = new Dictionary<string, string?> { ["GIT_LFS_SKIP_SMUDGE"] = "1" } });
+Check(pointerCheckout.ExitCode == 0, pointerCheckout.Error);
+Check((await File.ReadAllTextAsync(Path.Combine(lfsClone, "payload.m3-lfs"))).StartsWith("version https://git-lfs.github.com/spec/v1", StringComparison.Ordinal), "LFS pointer fixture failed");
+foreach (var action in new[] { RepositoryToolAction.LfsFetch, RepositoryToolAction.LfsPull })
+{ var result = await tools.ExecuteAsync(lfsClone, new(action) { Name = "origin" }, null, default); Check(result.Success, result.Message); }
+Check(large.SequenceEqual(await File.ReadAllBytesAsync(Path.Combine(lfsClone, "payload.m3-lfs"))), "Packaged LFS object transfer/checkout failed");
+await Tool(new(RepositoryToolAction.LfsUntrack) { Patterns = ["*.m3-lfs"] });
+var signingKey = Path.Combine(work, ".git", "package-signing-key");
+var keygen = new System.Diagnostics.ProcessStartInfo(Path.Combine(package, "PortableGit", "usr", "bin", "ssh-keygen.exe"))
+{ UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+foreach (var argument in new[] { "-q", "-t", "ed25519", "-N", "", "-f", signingKey }) keygen.ArgumentList.Add(argument);
+using (var process = System.Diagnostics.Process.Start(keygen)!)
+{ var error = process.StandardError.ReadToEndAsync(); await process.WaitForExitAsync(); Check(process.ExitCode == 0, await error); }
+var signers = Path.Combine(work, ".git", "allowed-signers");
+await File.WriteAllTextAsync(signers, "package@example.invalid " + await File.ReadAllTextAsync(signingKey + ".pub"));
+await Run("config", "gpg.format", "ssh"); await Run("config", "user.signingkey", signingKey);
+await Run("config", "gpg.ssh.allowedSignersFile", signers);
+await Execute(new(GitAction.CreateTag) { Name = "package-signed-m3", Sign = true, Message = "Portable SSH signing" });
+await Run("verify-tag", "package-signed-m3");
 Check(commands.All(c => c.Command.Contains(git.Executable, StringComparison.OrdinalIgnoreCase)), "Command used external Git");
 Check(commands.Any(c => c.Command.Contains("update-ref --stdin", StringComparison.Ordinal)), "Ref transaction not exercised");
 Console.WriteLine(JsonSerializer.Serialize(new { result = "PASS", runtime = RuntimeEnvironment.GetRuntimeDirectory(),
     git = git.Executable, gitVersion = git.Version, commands = commands.Count,
-    checks = "SQLite/native libgit2/init/stage/commit/hooks/amend/branch/snapshot undo+redo/push/clone/M2 stash recovery/tag/remote/rebase reword/blame/reflog/terminal" }));
+    checks = "SQLite/native libgit2/init/stage/commit/hooks/amend/branch/snapshot undo+redo/push/clone/M2 stash recovery/tag/remote/rebase reword/blame/reflog/terminal/M3 worktree/bisect/sparse undo/submodule parent undo preserves child/LFS real local-remote transfer+checkout/bundled SSH signed tag verification" }));
+
+async Task<OperationOutcome> Tool(RepositoryToolOperation operation)
+{
+    var result = await tools.ExecuteAsync(work, operation, null, default);
+    Check(result.Success, result.Message); return result;
+}
 
 async Task<string> Run(params string[] arguments)
 {

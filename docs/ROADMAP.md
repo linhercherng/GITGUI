@@ -7,7 +7,7 @@
 | M0：專案基礎 | 已完成：七專案、唯讀 UI、CLI/Lib 路由、SQLite、測試與 CI | 三平台 build/test；唯讀不改 index |
 | M1：P0 日常操作 | 已實作：11 項 P0、專業三欄 UI、三方編輯、快照 Undo/Redo | 真實 Git 操作與復原、寫入佇列、安全前置檢查、Headless 與 Windows 實機驗證 |
 | M2：P1 進階歷史 | 已實作：stash、互動 rebase、cherry-pick/revert/reset、tag 管理、blame／檔案歷史、reflog、遠端管理、內建逐行終端機；見 [驗收表](M2-ACCEPTANCE.md) | 中斷／續作與隨機序列復原；擴大衝突類型；實際 Portable ZIP 測試 |
-| M3：P2 與相容性 | 待做：submodule、worktree 管理、LFS、bisect、sparse、ARM 決策 | 精確 Git 2.40/最新版本、SHA-256/reftable 矩陣、真實桌面驗收 |
+| M3：P2 與相容性 | 已實作：submodule、worktree 管理、LFS、bisect、sparse、簽章標籤、ARM 決策；見 [驗收表](M3-ACCEPTANCE.md) 與 [操作手冊](USER-GUIDE.zh-TW.md) | 精確 Git 2.40/2.56 六格 CI、SHA-256/reftable 矩陣、Windows ZIP／桌面驗收；結果以同版 Release 證據為準 |
 | M4：正式版 | 待做：大型效能、完整無障礙／語言資源、封裝與安裝、.NET 升級、授權 | 規格第 11 節目標實測，散佈與升級驗證 |
 
 ## M1 後的技術工作
@@ -24,4 +24,4 @@
 
 快照不再依賴不含 untracked/unmerged 的 stash create。已保存並測試 raw 工作檔、各 index stage、unborn/detached HEAD、分支/tag、merge 狀態與 GC 保護。還原先取得 index/ref 鎖；鎖衝突與 refs 命名衝突在替換資料前失敗。捨棄與還原包含重做快照；ignored 檔案不進行全倉庫清除。
 
-所有網路／寫入使用 CLI。強制推送同時使用 lease/includes；保護分支文字確認、stale lease、hook 拒絕、信任 filters 及 AskPass Unicode 已有測試。M2 擴充 rebase／cherry-pick／revert、stash 堆疊與 remote 設定復原；未支援的 sparse/submodule/bisect 狀態會拒絕快照寫入。
+所有網路／寫入使用 CLI。強制推送同時使用 lease/includes；保護分支文字確認、stale lease、hook 拒絕、信任 filters 及 AskPass Unicode 已有測試。M2 擴充 rebase／cherry-pick／revert、stash 堆疊與 remote 設定復原；M3 新增父倉庫 gitlink 與 sparse 設定／檔案復原，不覆寫子倉庫資料；bisect 以原生 reset 結束。

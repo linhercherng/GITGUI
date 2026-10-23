@@ -9,6 +9,10 @@ GITGUI 0.1.0 — Windows x64 免安裝版
 7. 「終端機」使用目前倉庫與所選 Git 的持續文字 shell；先關閉終端機再由 GUI 寫入。
    不支援 VT 全螢幕與 Ctrl+C；關閉會結束 shell 子程序。任意終端機指令不保證自動快照復原。
 
+完整操作手冊：用瀏覽器開啟與 GitGui.App.exe 同一層的 USER-GUIDE.zh-TW.html。
+另附可編輯的 USER-GUIDE.zh-TW.md。
+手冊包含 M1 日常操作、M2 進階歷史、M3 倉庫工具、快照復原與常見問題；可離線閱讀。
+
 內附 .NET 8.0.32 與完整 Portable Git 2.56.0.3，不需另外安裝。
 請一起保留 PortableGit 資料夾及其他 DLL；整個資料夾可移動。
 「Git 設定」預設自動偵測程式旁 PortableGit。若曾選過其他 Git，

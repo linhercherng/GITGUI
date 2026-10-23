@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GITGUI 操作手冊</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f7f9;--panel:#fff;--ink:#202834;--muted:#536276;--line:#d7dfe9;--link:#185ac5}
+@media(prefers-color-scheme:dark){:root{--bg:#14181e;--panel:#1c232d;--ink:#e1e8f2;--muted:#a4b2c5;--line:#374352;--link:#8ebaff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.85 "Segoe UI","Microsoft JhengHei",sans-serif}
+main{max-width:1000px;margin:32px auto;padding:40px 48px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.brand{color:var(--muted);letter-spacing:.12em;font-size:12px}h1{font-size:32px;line-height:1.4}h2{font-size:23px;margin-top:48px;padding-top:24px;border-top:1px solid var(--line);scroll-margin-top:20px}
+a{color:var(--link);text-underline-offset:3px}nav{padding:20px 24px;border:1px solid var(--line);border-radius:8px}nav ol{columns:2;margin:10px 0 0;padding:0;list-style:none}nav li{break-inside:avoid;font-size:14px}
+img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px 12px;text-align:left;border:1px solid var(--line);vertical-align:top}
+pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;line-height:1.6}code{font-family:"Cascadia Code",Consolas,monospace;font-size:.9em;overflow-wrap:anywhere}li{margin:5px 0}footer{margin-top:40px;color:var(--muted);font-size:13px}
+@media(max-width:700px){main{margin:0;padding:24px 18px;border:0;border-radius:0}nav ol{columns:1}h1{font-size:27px}table{display:block;overflow:auto}}
+@media print{body,main{background:white;color:black}main{margin:0;padding:0;border:0}nav{break-inside:avoid}h2{break-after:avoid}pre,img,table{break-inside:avoid}a{color:inherit}}
+</style>
+<main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M3</div>
+<h1 id="gitgui">GITGUI 操作手冊</h1>
+<p>適用版本：0.4.0（M3）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 常見問題與驗證範圍</a></li></ol></nav>
+<h2 id="section-0">1. 解壓縮與啟動</h2>
+<ol>
+<li>下載 <code>GITGUI-0.4.0-win-x64-portable.zip</code>。</li>
+<li>在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。</li>
+<li>開啟解壓縮資料夾，執行 <code>GitGui.App.exe</code>。請勿直接從 ZIP 內執行。</li>
+<li>第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 <code>PortableGit\cmd\git.exe</code>。</li>
+</ol>
+<p>不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。</p>
+<p>若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 <code>SHA256SUMS.txt</code>；此版本未提供程式碼簽章。</p>
+<pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.4.0-win-x64-portable.zip' -Algorithm SHA256
+</code></pre>
+<p>上方 <code>C:\下載</code> 是範例，請換成你的實際下載位置。</p>
+<h2 id="section-1">2. 畫面與外觀</h2>
+<p>主畫面左側選擇最近倉庫與 refs，中間切換工作區、提交圖與快照並輸入提交訊息，右側檢視差異、衝突與提交詳情。操作面板可查看實際 Git 指令與輸出。</p>
+<p>「外觀」可選擇 Graphite、Midnight、Forest、Porcelain 四種配色。主工具列的 EN 選項可切換繁體中文或英文。外觀設定會保留供下次啟動使用。</p>
+<p><img src="images/m3-main.png" alt="M3 主畫面" /></p>
+<h2 id="section-2">3. 開啟、建立或複製倉庫</h2>
+<ul>
+<li>已有本機倉庫：按「瀏覽」選擇工作目錄，或直接輸入路徑後按「開啟」。</li>
+<li>建立新倉庫：在「倉庫操作」選擇「初始化」，填寫全新或空白資料夾；預設初始分支為 <code>main</code>。</li>
+<li>從遠端複製：在「倉庫操作」選擇「Clone」，輸入 HTTPS、SSH 或本機倉庫來源，以及全新或空白的目的資料夾。</li>
+</ul>
+<p>首次寫入陌生倉庫前，程式會詢問是否信任，並列出可能執行外部程式的 hooks、filters、SSH 或憑證設定。確認來源後再同意。程式不會自動修改 <code>safe.directory</code>。</p>
+<p>Git 作者資料由 Git 設定提供；若尚未設定，可在內建終端機輸入：</p>
+<pre><code class="language-text">git config --local user.name &quot;你的名字&quot;
+git config --local user.email &quot;you@example.com&quot;
+</code></pre>
+<h2 id="section-3">4. 修改、暫存與提交</h2>
+<ol>
+<li>在編輯器修改工作目錄內的檔案。</li>
+<li>回到 GITGUI，按重新整理，或讓視窗重新取得焦點。</li>
+<li>選擇變更檔案，檢視差異；按「暫存」將選取檔案加入 index。</li>
+<li>文字差異可選擇 hunk 或行來暫存／取消暫存；二進位檔以整檔處理。</li>
+<li>輸入提交訊息，按「提交」。只有已暫存的內容進入提交。</li>
+</ol>
+<p>「修改上一筆」會重寫最新提交。使用前先確認這筆提交是否已分享給其他人。「略過 hooks」只對本次操作生效；預設不勾選。</p>
+<p>「捨棄變更」會替換選取的工作檔案，執行前有確認與快照。請先看清楚檔案清單。</p>
+<h2 id="section-4">5. 分支、同步與衝突</h2>
+<ul>
+<li>建立分支：輸入分支名稱後建立，再切換到該分支。</li>
+<li>切換分支：選取本機分支、遠端追蹤分支或提交；切換提交會進入 detached HEAD。</li>
+<li>Fetch：取得遠端最新 refs，不合併工作目錄。</li>
+<li>Pull：取得遠端內容後合併，遵守 <code>pull.ff</code>；若倉庫設定 rebase，程式會先確認本次改用 merge。</li>
+<li>Push：將目前分支推送到選定遠端。強制推送使用 <code>--force-with-lease --force-if-includes</code>；受保護分支需要輸入分支名稱確認。</li>
+</ul>
+<p>遇到衝突，選擇衝突檔案，使用三方編輯、整檔 ours／theirs 或外部 mergetool。檢查結果後「標記已解決」，再完成提交或到「進階」繼續操作。二進位與符號連結衝突使用整檔選擇。</p>
+<h2 id="section-5">6. 快照復原與重做</h2>
+<p>會修改歷史或替換內容的操作，依功能自動建立快照。主畫面快照清單、操作後的「復原」，或工具視窗的「還原最近快照」可還原本地狀態。</p>
+<ol>
+<li>先讀取快照的時間與操作名稱。</li>
+<li>按還原並確認。程式會先保存目前狀態作為重做快照。</li>
+<li>還原後重新整理，確認 HEAD、分支、暫存區與工作檔案。</li>
+<li>如需重做，選擇剛才還原前自動建立的快照再還原。</li>
+</ol>
+<p>快照保存在倉庫的 Git 物件與內部 refs，清單索引保存在應用程式 SQLite。它是操作復原工具，請另做獨立備份；刪除整個倉庫也會失去這些快照。遠端已推送內容不會因本地還原而撤回。</p>
+<p>子模組快照僅處理父倉庫，詳細邊界見第 9 節；工作樹、LFS 與 bisect 依各自方式處理。快照還原若遇到 index/ref 鎖或可能覆蓋未保存資料，會拒絕執行，請先處理原始原因。</p>
+<p>更新／停用子模組或移除工作樹時，若 index 有 assume-unchanged 或 skip-worktree flags，程式會保守拒絕，因為 Git status 可能隱藏未保存的內容。先另行備份並清除相關 flags，再重試。
+對使用 sparse-checkout 的工作樹，可先在該工作樹停用稀疏檢出，再確認內容並移除。</p>
+<h2 id="section-6">7. 進階歷史操作</h2>
+<p>按「進階」開啟分頁：</p>
+<ul>
+<li><strong>Stash</strong>：可包含未追蹤檔案，支援 push、apply、pop、drop。pop 成功後移除該項；發生衝突時請先處理衝突。</li>
+<li><strong>互動 Rebase</strong>：指定上游，讀取計畫後拖曳／上下移動排序，選擇 pick、reword、edit、squash、fixup、drop；檢查訊息後執行。目前限線性提交，不接受 merge commit 計畫。</li>
+<li><strong>歷史操作</strong>：選擇提交進行 cherry-pick、revert 或 reset。soft 保留暫存區與工作檔；mixed 重設暫存區；hard 會替換工作檔並要求確認。</li>
+<li><strong>標籤</strong>：建立輕量、附註或簽章標籤，或刪除本地標籤。這不會自動推送或刪除遠端標籤。</li>
+<li><strong>檔案歷史／Blame</strong>：選擇檔案查看逐行提交資訊與重新命名前的歷史。刪除的檔案仍可查看歷史。</li>
+<li><strong>Reflog／遠端</strong>：檢視本地 HEAD 移動紀錄；新增、改名、修改 URL 或移除遠端。移除遠端不會刪除遠端伺服器上的倉庫。</li>
+</ul>
+<p>Rebase、cherry-pick 或 revert 中斷時，可使用「繼續」「略過」「中止」。edit 暫停時先修改檔案、暫存並 amend，再繼續。</p>
+<h2 id="section-7">8. 內建終端機</h2>
+<p>「終端機」會使用目前倉庫與同一套選定 Git。它是持續運行的逐行 shell，可輸入 Git 指令與一般命令，也會保留目前 shell 的工作目錄／環境變化。</p>
+<p>終端機開啟時會占用該倉庫的寫入佇列；先關閉終端機，再使用圖形介面寫入。關閉會終止 shell 及其子行程。此版本尚未提供完整 VT／PTY、全螢幕互動工具或 Ctrl+C 控制；需要這些功能時請用外部終端機。</p>
+<p>終端機內自行輸入的指令不會自動建立 GUI 快照。輸入會刪除或改寫資料的指令前，請自行確認與備份。</p>
+<h2 id="section-8">9. 子模組（Submodules）</h2>
+<p>按「倉庫工具」→「子模組」。</p>
+<ol>
+<li>新增：填入父倉庫內的相對路徑及來源 URL／本機絕對路徑，按「新增子模組」。</li>
+<li>已有項目：從清單選擇，按「初始化」登記設定，再按「更新」取出父倉庫 index 所指定的提交。</li>
+<li><code>.gitmodules</code> URL 變更後，可用「同步網址」同步設定。</li>
+<li>「包含巢狀子模組」控制更新／同步的 recursive 行為；不使用 force 或 remote-tracking 更新。</li>
+<li>「停用」對應 deinit，會移除子模組工作目錄並清除父倉庫中的初始化設定；髒檔案、未追蹤或被忽略資料會阻擋移除。</li>
+</ol>
+<p><strong>父倉庫快照保存 gitlink、父倉庫 index／檔案與 submodule 設定，不保存子倉庫自己的 HEAD、refs、index、工作檔或物件資料庫。</strong> 更新子模組前，請先在子倉庫內提交或 stash；若要復原子倉庫，請另外開啟該子倉庫操作。</p>
+<p>復原「新增子模組」會還原父倉庫，但保留已 clone 的子倉庫資料夾。復原 deinit 不會自動重建子倉庫 checkout，可再初始化／更新。父倉庫一般操作不會自動遞迴切換子模組。檔案與 gitlink 的危險型態替換會被拒絕。</p>
+<p>若既有子倉庫內還有巢狀 gitlink，而欲更新的提交尚未下載，程式會要求先在該子倉庫 Fetch，才能檢查目標是否覆蓋巢狀資料。請另行開啟子倉庫取得目標提交後再重試；不會直接以「下載並 checkout」繞過檢查。</p>
+<p><img src="images/m3-tools.png" alt="子模組工具" /></p>
+<h2 id="section-9">10. 工作樹（Worktrees）</h2>
+<p>在「倉庫工具」→「工作樹」，可讓同一倉庫的不同分支同時存在於不同資料夾。</p>
+<ol>
+<li>新增：填寫全新或空白的絕對路徑、來源提交，以及新分支名稱。分支名稱留空會建立 detached 工作樹。</li>
+<li>選取項目，輸入原因後可鎖定，適合放在外接磁碟上的工作樹；需要移除前先解鎖。</li>
+<li>移除會要求確認，保留分支，且拒絕未提交／未追蹤／被忽略資料，不提供 force。</li>
+<li>「清理過期紀錄」對應 prune，只清理 Git 判定已失效且未鎖定的紀錄。</li>
+</ol>
+<p>工作樹操作沒有快照 Undo。不能從目前正在開啟的工作樹移除自己；先改開另一個工作樹。共用同一個 Git common directory 的 GUI 操作會序列化。</p>
+<h2 id="section-10">11. Git LFS</h2>
+<p>在「倉庫工具」→「Git LFS」查看版本與狀態。</p>
+<ol>
+<li>先按「安裝至此倉庫」，設定本地 filter 與 pre-push hook。</li>
+<li>每行輸入一個追蹤規則，例如 <code>*.psd</code> 或 <code>assets/*.bin</code>，按「追蹤」。</li>
+<li>檢查並提交 <code>.gitattributes</code> 與實際大型檔案。</li>
+<li>設定遠端後，可執行 LFS Fetch 下載物件，或 LFS Pull 下載並取出目前提交的物件。</li>
+<li>「取消追蹤」只修改屬性規則，不改寫既有提交中的 LFS pointer 或歷史。</li>
+</ol>
+<p>LFS 不是備份，也不自動進行歷史遷移。此工具沒有 LFS 快照 Undo；一般提交／快照仍依原有本地資料處理。遠端必須支援 LFS，登入、額度及網路錯誤會顯示在操作輸出。自訂 <code>core.hooksPath</code> 的倉庫，LFS 會依 Git 設定使用該 hooks 位置；既有不相容 hook 可能使安裝失敗。</p>
+<h2 id="section-11">12. 二分定位（Bisect）</h2>
+<p>在「倉庫工具」→「二分定位」：</p>
+<ol>
+<li>先提交或 stash 目前變更。</li>
+<li>輸入已知有問題的 bad 提交，以及較早且正常的 good 提交。good 必須是 bad 的祖先。</li>
+<li>按「開始」，Git 會取出待測提交。</li>
+<li>自行建置／執行程式判斷後，按「正常」「有問題」或「略過」。重複直到找到第一個有問題的提交。</li>
+<li>按「重設」執行 <code>git bisect reset</code>，回到原先分支／提交。關閉再開程式也能接續目前的 bisect。</li>
+</ol>
+<p>此功能不自動執行測試命令，復原方式為 bisect reset。可能被 checkout 覆蓋的未追蹤／被忽略檔案會先被擋下；請先移走或妥善保存，再開始。</p>
+<h2 id="section-12">13. 稀疏檢出（Sparse-checkout）</h2>
+<p>在「倉庫工具」→「稀疏檢出」：</p>
+<ol>
+<li>先保存目前變更。</li>
+<li>勾選 cone 模式時，每行填入一個相對目錄，例如 <code>src</code>、<code>docs</code>；Git 也會保留必要的根層／父層檔案。</li>
+<li>不勾選 cone 時，每行使用 Git sparse-checkout 的 pattern 語法。</li>
+<li>按「套用」後，未包含的已追蹤檔案會從工作目錄隱藏，仍保存在 Git 歷史內。</li>
+<li>按「停用」取回完整工作目錄，或還原操作前快照。</li>
+</ol>
+<p>快照還原保存選定工作樹的 sparse 設定、pattern、index skip flags 與實際存在的檔案。Git 啟用的 <code>extensions.worktreeConfig</code> 儲存格式升級會保留，以免破壞其他工作樹。資料夾／忽略檔案衝突會先拒絕處理。</p>
+<h2 id="section-13">14. 簽章提交與標籤</h2>
+<p>先依自己的環境設定 GPG 或 SSH 簽章；程式不產生、不儲存你的私鑰。提交時勾選「簽章」，建立標籤時勾選簽章選項並填寫訊息，即交給 Git 執行 <code>commit -S</code> 或 <code>tag -s</code>。</p>
+<p>SSH 設定範例（請換成已有的私鑰實際路徑）：</p>
+<pre><code class="language-text">git config --local gpg.format ssh
+git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&quot;
+</code></pre>
+<p>簽章需要可用的 signer／agent；硬體金鑰、密碼提示與第三方 GPG 設定依你的環境而定。簽章成功不等同遠端平台已將該金鑰認定為你的帳號，請另外完成平台金鑰登記。</p>
+<h2 id="section-14">15. 常見問題與驗證範圍</h2>
+<table>
+<thead>
+<tr>
+<th>現象</th>
+<th>處理方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>找不到 Git</td>
+<td>在 Git 設定選擇 Portable Git 資料夾或 <code>git.exe</code>；最低 Git 2.40。</td>
+</tr>
+<tr>
+<td><code>index.lock</code>／ref lock 存在</td>
+<td>確認其他 Git 行程是否仍在運作；不要直接刪除活躍行程的鎖。</td>
+</tr>
+<tr>
+<td>按鈕停用</td>
+<td>等待操作完成、解決目前衝突，或先關閉占用佇列的內建終端機。</td>
+</tr>
+<tr>
+<td>Push 遭拒絕</td>
+<td>先 Fetch 檢查差異；lease 過期時不要繞過保護直接強推。</td>
+</tr>
+<tr>
+<td>Hook／簽章失敗</td>
+<td>展開指令輸出，依 Git 回報修正工具或倉庫設定。</td>
+</tr>
+<tr>
+<td>LFS 指令不可用</td>
+<td>確認選的是完整 Portable Git；使用自己的 Git 時需另備 Git LFS。</td>
+</tr>
+<tr>
+<td>還原被資料夾／子倉庫擋下</td>
+<td>先另行備份該資料，保留原倉庫並檢查實際路徑；不要為了還原而直接刪除子倉庫。</td>
+</tr>
+</tbody>
+</table>
+<p>Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與實際 Windows ZIP／桌面測試的結果以同版 Release 的 <code>verification.json</code> 及相容性文件為準。大型效能目標、完整無障礙與 VT／PTY 屬於後續工作，尚未宣稱完成。</p>
+<p>相關文件：<a href="M3-COMPATIBILITY.md">M3 相容性</a>、<a href="M3-ARM-DECISION.md">ARM 決策</a>、<a href="specification.md">原始規格</a>、<a href="WINDOWS-RELEASE.md">Windows 打包</a>。Release：<a href="https://github.com/linhercherng/GITGUI/releases">https://github.com/linhercherng/GITGUI/releases</a>。</p>
+
+<footer>離線手冊隨同 GITGUI 提供。原始可編輯版本：<a href="USER-GUIDE.zh-TW.md">USER-GUIDE.zh-TW.md</a></footer></main></html>
