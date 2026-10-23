@@ -17,6 +17,7 @@ namespace GitGui.UI;
 public partial class MainWindow : Window, IWorkspaceInteraction
 {
     private MainWindowViewModel? viewModel;
+    private IGitRuntimeSettings? gitSettings;
     private FileSystemWatcher? worktreeWatcher;
     private FileSystemWatcher? gitWatcher;
     private FileSystemWatcher? commonWatcher;
@@ -25,9 +26,10 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private int openDialogs;
     private bool skipNextActivationRefresh;
     public MainWindow() => AvaloniaXamlLoader.Load(this);
-    public MainWindow(MainWindowViewModel vm, Control? graph = null) : this()
+    public MainWindow(MainWindowViewModel vm, Control? graph = null, IGitRuntimeSettings? gitSettings = null) : this()
     {
         viewModel = vm;
+        this.gitSettings = gitSettings;
         DataContext = vm;
         if (graph is null)
         {
@@ -161,6 +163,18 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         if (action is null) return;
         vm.RepositoryPath = path.Text ?? ""; vm.CloneUrl = url.Text ?? "";
         await vm.ActionCommand.ExecuteAsync(action);
+    }
+
+    private async void GitSettingsClick(object? sender, RoutedEventArgs args)
+    {
+        if (viewModel is not { IsBusy: false } vm || gitSettings is null) return;
+        vm.IsBusy = true; openDialogs++;
+        try
+        {
+            var result = await new GitSettingsWindow(gitSettings, vm.L).ShowDialog<GitRuntimeInfo?>(this);
+            if (result is not null) vm.Notice = result.Version + " · " + result.Executable;
+        }
+        finally { vm.IsBusy = false; openDialogs--; skipNextActivationRefresh = true; }
     }
 
     public Task<ConfirmationAnswer> ConfirmAsync(Confirmation confirmation, CancellationToken ct)

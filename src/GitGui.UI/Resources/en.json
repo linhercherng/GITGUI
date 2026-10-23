@@ -117,5 +117,12 @@
   "UseBothFile": "Keep both files",
   "UseOursFile": "Use entire ours",
   "UseTheirsFile": "Use entire theirs",
-  "SaveConflictFirst": "Save the edited merge result before marking resolved."
+  "SaveConflictFirst": "Save the edited merge result before marking resolved.",
+  "GitSettings": "Git settings",
+  "GitPathHint": "Choose git.exe or an extracted Portable Git folder (Git 2.40+). Leave blank to search PortableGit/Git next to this app, then PATH. System PATH changes are unnecessary.",
+  "GitAutomatic": "Automatic detection",
+  "GitChooseFile": "Choose Git executable",
+  "GitChooseFolder": "Choose Portable Git folder",
+  "GitCheck": "Check version and path",
+  "GitSave": "Save and apply"
 }

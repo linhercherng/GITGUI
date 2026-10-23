@@ -58,6 +58,9 @@ public sealed class DesktopApp : Application
             log.Information("GITGUI M1 started; repository content and credential logging are disabled");
             var services = new ServiceCollection();
             services.AddSingleton<GitProcessRunner>();
+            services.AddSingleton<IGitPathStore>(sp => sp.GetRequiredService<WorkspaceStorage>());
+            services.AddSingleton<GitRuntime>();
+            services.AddSingleton<IGitRuntimeSettings>(sp => sp.GetRequiredService<GitRuntime>());
             services.AddSingleton<CliRepoReader>();
             services.AddSingleton<LibHistoryReader>();
             services.AddSingleton<IHistoryReader>(sp => sp.GetRequiredService<LibHistoryReader>());
@@ -76,7 +79,8 @@ public sealed class DesktopApp : Application
             var graph = new CommitGraphControl();
             graph.Bind(CommitGraphControl.CommitsProperty, new Binding("Commits"));
             graph.Bind(CommitGraphControl.SelectedCommitProperty, new Binding("SelectedCommit") { Mode = BindingMode.TwoWay });
-            desktop.MainWindow = new MainWindow(provider.GetRequiredService<MainWindowViewModel>(), graph);
+            desktop.MainWindow = new MainWindow(provider.GetRequiredService<MainWindowViewModel>(), graph,
+                provider.GetRequiredService<IGitRuntimeSettings>());
             var bridge = new AskPassBridge(provider.GetRequiredService<IWorkspaceInteraction>());
             var runner = provider.GetRequiredService<GitProcessRunner>();
             var executable = Environment.ProcessPath!;

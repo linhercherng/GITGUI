@@ -117,5 +117,12 @@
   "UseBothFile": "整份保留兩方",
   "UseOursFile": "整份採用 ours",
   "UseTheirsFile": "整份採用 theirs",
-  "SaveConflictFirst": "請先儲存合併結果，再標記已解決。"
+  "SaveConflictFirst": "請先儲存合併結果，再標記已解決。",
+  "GitSettings": "Git 設定",
+  "GitPathHint": "選取 git.exe 或已解壓縮的 Portable Git 資料夾（Git 2.40 以上）。留空時會依序尋找程式旁的 PortableGit／Git，再使用 PATH。不需要修改系統 PATH。",
+  "GitAutomatic": "自動偵測",
+  "GitChooseFile": "選取 Git 執行檔",
+  "GitChooseFolder": "選取 Portable Git 資料夾",
+  "GitCheck": "測試版本與路徑",
+  "GitSave": "儲存並套用"
 }
