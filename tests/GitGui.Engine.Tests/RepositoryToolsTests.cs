@@ -18,7 +18,7 @@ public class RepositoryToolsTests
     public async Task Worktree_lifecycle_lists_unicode_paths_and_protects_dirty_files()
     {
         using var repo = new TemporaryRepository(); await repo.Init(); var (tools, _, prompt) = Services();
-        var path = (await repo.Git("rev-parse", "--show-toplevel")).Trim() + " 工作樹";
+        var path = Path.GetFullPath((await repo.Git("rev-parse", "--show-toplevel")).Trim()) + " 工作樹";
         try
         {
             await Do(tools, repo, new(RepositoryToolAction.WorktreeAdd) { Path = path, Name = "feature" });
