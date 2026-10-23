@@ -2,6 +2,8 @@
 
 適用版本：0.6.0（M4 效能改善候選版）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。發布狀態、下載檔名與驗證結果，請以同版 Release 為準；目前仍在進行跨平台與效能驗收，尚未宣告 M4 正式驗收通過。詳見 [效能結果](M4-PERFORMANCE.md)。
 
+第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。
+
 ## 1. 解壓縮與啟動
 
 1. 版本發布後，從本專案 Release 下載 `GITGUI-0.6.0-win-x64-portable.zip`。
@@ -30,7 +32,7 @@ Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.6.0-win-x64-portable.zip' -Algorit
 ## 3. 開啟、建立或複製倉庫
 
 - 已有本機倉庫：按「瀏覽」選擇工作目錄，或直接輸入路徑後按「開啟」。
-- 建立新倉庫：在「倉庫操作」選擇「初始化」，填寫全新或空白資料夾；預設初始分支為 `main`。
+- 建立新倉庫：按「倉庫操作」，填寫全新或空白資料夾，再按「初始化倉庫」；預設初始分支為 `main`。已有檔案的資料夾請依第 20.2 節的方法處理。
 - 從遠端複製：在「倉庫操作」選擇「Clone」，輸入 HTTPS、SSH 或本機倉庫來源，以及全新或空白的目的資料夾。
 
 首次寫入陌生倉庫前，程式會詢問是否信任，並列出可能執行外部程式的 hooks、filters、SSH 或憑證設定。確認來源後再同意。程式不會自動修改 `safe.directory`。
@@ -286,5 +288,164 @@ Windows 的應用程式資料位置：
 Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與實際 Windows ZIP／桌面測試的結果以同版 Release 的 `verification.json` 及相容性文件為準。M4 已加入鍵盤自訂、無障礙介面與分頁刷新支援；原生螢幕閱讀器人工驗證、大型效能目標及完整 VT／PTY 的完成狀態須分別確認。
 
 主程式採 MIT 授權，免安裝資料夾內的 `LICENSE` 保留著作權與免責聲明；Portable Git 與其他相依元件仍依各自授權，見 `THIRD-PARTY.txt` 與 `licenses/`。
+
+## 20. 完整範例：第一次將新專案備份到 GitHub
+
+這個範例把本機的 `hello-backup` 專案建立為 Git 倉庫，再上傳到自己的 GitHub。這裡的備份是「程式碼與提交歷史」：只有已提交並 Push 的內容會送到遠端，未提交、被忽略的檔案及 GITGUI 本機快照索引不會因此一起備份。
+
+### 20.1 準備範例與空白 GitHub 倉庫
+
+| 項目 | 本範例使用的值 |
+| --- | --- |
+| 本機專案資料夾 | `C:\Projects\hello-backup` |
+| GitHub 倉庫名稱 | `hello-backup` |
+| 分支 | `main` |
+| 遠端名稱 | `origin` |
+| 遠端 HTTPS URL | `https://github.com/YOUR-ACCOUNT/hello-backup.git` |
+
+請把 `YOUR-ACCOUNT` 換成自己的 GitHub 帳號；資料夾也可以換成自己的實際路徑。本章是操作範例，不會自動替你建立或上傳這個倉庫。
+
+1. 登入 GitHub，建立新的 repository，名稱填 `hello-backup`，選擇所需的 Public 或 Private；個人備份可選 Private。
+2. 這次先建立**空白倉庫**，不要加入 README、`.gitignore` 或 License，這些檔案稍後從本機提交，避免產生兩份不同的起始歷史。
+3. 建立後複製 HTTPS 倉庫 URL，確認擁有者與倉庫名稱正確。
+4. 開啟 GITGUI，到「Git 設定」確認選用的 Git 可正常驗證；免安裝版可使用包內的 `PortableGit\cmd\git.exe`。
+
+完成時應有一個尚無提交的 GitHub 倉庫，以及它的 HTTPS URL。GITGUI 的「初始化倉庫」只建立本機倉庫，不會建立 GitHub 倉庫。
+
+### 20.2 建立本機 Git 倉庫
+
+依資料夾目前的情況，選擇下面一種方法即可。
+
+**A. 專案資料夾尚未建立，或目前是空資料夾**
+
+1. 在 GITGUI 按「倉庫操作」。
+2. 在「目的資料夾」填入 `C:\Projects\hello-backup`；初始化本機倉庫時，URL 欄位可留空。
+3. 按「初始化倉庫」，等待完成；若尚未顯示該倉庫，將主畫面的「倉庫路徑」設為此路徑，再按「開啟」。
+4. 用自己的編輯器或檔案總管，把專案檔案建立或複製到這個資料夾。不要把另一個倉庫的 `.git` 資料夾一起複製進來。
+
+**B. 專案資料夾已經有檔案，但還不是 Git 倉庫**
+
+目前 GUI 的初始化會拒絕非空目錄。可以保留原資料夾，在外部 PowerShell 用選定的 Portable Git 初始化一次：
+
+```powershell
+& 'C:\Tools\GITGUI\PortableGit\cmd\git.exe' -C 'C:\Projects\hello-backup' init --initial-branch=main
+```
+
+上面的 `C:\Tools\GITGUI` 是示意安裝位置，請換成你解壓縮 GITGUI 的實際位置；專案路徑也須存在。這個指令建立 `.git` 管理資料，不會清空原有專案檔案。執行後在 GITGUI 輸入該專案路徑，按「開啟」。
+
+**C. 專案已經是 Git 倉庫**
+
+直接在 GITGUI 開啟原有資料夾，沿用既有歷史，不需要重新初始化。若現有分支叫 `master` 或其他名稱，後面步驟中的 `main` 請換成實際分支名稱。
+
+完成時應看到正確的倉庫路徑與目前分支；新初始化的倉庫是 `main`，尚未有提交是正常的。
+
+### 20.3 準備檔案、忽略規則與作者資料
+
+1. 例如在專案資料夾建立 `README.md`，內容如下；已有 README 的專案可保留自己的內容：
+
+   ```markdown
+   # hello-backup
+
+   這是我的第一個備份專案。
+   ```
+
+2. 在同一層建立名為 `.gitignore` 的檔案，依專案調整。以下是常見開發專案的起點，不要把需要保存的檔案誤列為忽略：
+
+   ```gitignore
+   .env
+   .env.*
+   !.env.example
+   node_modules/
+   bin/
+   obj/
+   .vs/
+   *.log
+   ```
+
+3. 確認檔名不是 `.gitignore.txt`，且帳密、Token、私鑰或真實環境設定沒有出現在準備上傳的清單中。`.gitignore` 本身需要提交；它不會自動取消已追蹤檔案的追蹤。
+4. 若這個倉庫尚未設定作者，開啟 GITGUI「終端機」，輸入以下兩行，換成自己的姓名與電子郵件；電子郵件可使用 GitHub 提供的 noreply 地址：
+
+   ```text
+   git config --local user.name "你的姓名"
+   git config --local user.email "you@example.com"
+   ```
+
+5. **關閉終端機視窗**後再繼續 GUI 操作。終端機開啟時會占用寫入佇列；若出現「信任此倉庫」，確認是自己的專案並閱讀設定後再同意。
+
+作者姓名／電子郵件用於提交紀錄，與 GitHub 登入是兩件事。
+
+### 20.4 暫存並建立第一次提交
+
+1. 按「重新整理」，在「工作區」的「未暫存」清單確認專案檔案與 `.gitignore` 都已列出。
+2. 選取檔案，檢查右側差異；需要忽略的內容不應列入提交。
+3. 檔案都確認過後按「全部暫存」；若只想備份其中幾個檔案，改為選取後按「暫存選取」。
+4. 切換到「已暫存」，再檢查一次這次將保存的內容。
+5. 在提交訊息輸入 `初始化專案：加入專案檔案與說明`，保持「修改上一筆提交」未勾選，按「提交」。
+6. 等待成功，再到「提交歷史」確認出現這筆訊息。若仍有未暫存檔案，代表那些內容尚未包含在這次提交中。
+
+**到這裡只完成本機保存，GitHub 還沒有收到檔案。** 接下來還要設定遠端並 Push。
+
+### 20.5 設定 GitHub 遠端
+
+1. 按主畫面「進階」，切換到「遠端管理」。
+2. 「遠端名稱」填 `origin`，「HTTPS / SSH 倉庫 URL」填入第 20.1 節複製的 HTTPS URL。
+3. 保持「設定 Push URL（取消則為 Fetch URL）」未勾選，按「新增遠端」。
+4. 確認清單出現 `origin`，選取後核對顯示的 URL，然後關閉進階視窗。
+5. 如果 `origin` 原本就存在，先核對其 URL；不要重複新增。確實需要改網址時，選取該遠端、填入正確 URL，再按「儲存 URL」，並核對是否另有獨立的 Push URL。
+
+### 20.6 第一次 Push 並確認備份成功
+
+1. 回主畫面，確認分支是 `main`，上方「遠端」欄位填 `origin`，保持 `Force with lease` 未勾選。
+2. 按「Push」。若出現信任或分支名稱確認，閱讀內容並核對此次目標後再確認。
+3. 若既有憑證工具開啟瀏覽器登入，依提示登入有該倉庫寫入權限的 GitHub 帳號。若要求 GitHub Username／Password，Username 填帳號，Password 使用具該倉庫寫入權限的 Personal Access Token，不是 GitHub 登入密碼。不要把 Token 放進 URL 或專案檔案。
+4. 等待成功；需要確認細節時，可展開「操作紀錄與實際 Git 指令」。第一次成功推送後會建立目前分支的 upstream，供後續同步使用。
+5. 回 GitHub 重新整理倉庫頁面，切到 `main`，確認看到 `README.md`、`.gitignore`、其他預期檔案及剛才的提交訊息。可以再比對 GitHub 的提交 SHA 與 GITGUI 顯示的同一筆提交。
+
+確認檔案與提交都已在 GitHub 出現，才算完成這次遠端備份。未追蹤、被忽略或尚未提交的內容不會因為按 Push 而自動上傳。大型素材若需要 Git LFS，請先依第 11 章設定，再檢查對應的 LFS 上傳結果。
+
+## 21. 完整範例：專案修改後再次更新上傳
+
+沿用第 20 章已備份成功的 `C:\Projects\hello-backup`、`main` 與 `origin`。之後每次更新都使用同一個倉庫，不必重新建立 GitHub 倉庫或初始化。
+
+### 21.1 修改並保存專案
+
+1. 在 GITGUI 從「最近開啟」選擇專案，或輸入原路徑再按「開啟」；確認目前分支與遠端正確。
+2. 如果還沒開始修改，先按「Fetch」檢查遠端是否有新提交；本機乾淨且遠端有更新時，先 Pull 並確認成功，再開始編輯。
+3. 用原本的編輯器修改專案。例如在 `README.md` 最後增加一行 `第二版：加入聯絡資訊。`，並儲存檔案。若你已經修改完成，直接進入下一節，不必重做這個示範修改。
+
+### 21.2 檢查、暫存與提交本次修改
+
+1. 回到 GITGUI 按「重新整理」，確認「未暫存」出現 `README.md`；新增或刪除檔案也會列為變更。
+2. 選取它，在右側檢查差異，確認新增的文字正確，沒有混入本次不想保存的修改。
+3. 按「暫存選取」；多個檔案可逐一暫存，全部檢查過才使用「全部暫存」。
+4. 切到「已暫存」核對；如果暫存後又編輯檔案，後續修改仍要再暫存，才會包含在這筆提交中。
+5. 提交訊息輸入 `更新專案說明：加入聯絡資訊`，保持「修改上一筆提交」未勾選，按「提交」。
+6. 到「提交歷史」確認多出這筆提交。提交成功但尚未 Push 時，GitHub 仍會顯示舊版本。
+
+### 21.3 檢查遠端更新，再 Push
+
+1. 確認沒有遺漏的本機修改；若需要全部備份，先把剩下的預期修改也提交。
+2. 遠端欄位使用 `origin`，按「Fetch」，檢查 `origin/main` 是否有別台電腦、其他人或 GitHub 網頁編輯所新增的提交。
+3. 只有本機新增提交、遠端沒有新提交時，可直接按「Push」，保持 `Force with lease` 未勾選。
+4. 如果遠端也有新增提交，先在本機修改已提交或妥善保存的狀態下按「Pull」。合併成功後再 Push；若出現衝突，依第 5 章解決並完成合併提交，再上傳。不要用強制推送覆蓋尚未整合的遠端內容。
+5. 如果 Push 時剛好又有別人更新而被拒絕，重新 Fetch、檢查並整合遠端更新後再試。
+6. 等待成功後，開啟 GitHub 的 `hello-backup` 倉庫，切到 `main`，確認最新提交訊息是 `更新專案說明：加入聯絡資訊`，且 README 已顯示新增文字。若剛才產生合併提交，最新一筆可能是合併訊息，請在歷史中確認本次修改也已包含。
+
+日常順序可記為：**儲存檔案 → 檢查差異 → 暫存 → 提交 → Fetch／必要時 Pull → Push → GitHub 核對。**
+
+### 21.4 更新上傳時的常見狀況
+
+| 現象 | 應該怎麼做 |
+| --- | --- |
+| 檔案改了，Push 卻顯示已是最新 | 確認編輯器已儲存，以及變更是否已暫存並提交。Push 只傳提交，不直接傳工作目錄檔案。 |
+| 新檔案沒有出現在清單 | 檢查是否存進正確專案資料夾，以及是否被 `.gitignore` 忽略。 |
+| 顯示 `origin` 已存在 | 到「進階」→「遠端管理」核對／修改既有設定，不必再次新增。 |
+| 第一次上傳時發現 GitHub 已有 README，並出現兩邊歷史無關的錯誤 | 保留原專案，將 GitHub 倉庫複製到另一個新路徑，再把要保存的專案檔案複製進去（不要覆蓋 `.git`），檢查後暫存、提交並 Push。 |
+| Push 顯示 `non-fast-forward` 或需要先 Fetch | 本機先保存修改，Fetch 並檢查遠端歷史；必要時 Pull、處理衝突後再 Push。 |
+| GitHub 提示沒有權限或驗證失敗 | 核對 URL、登入帳號與該倉庫的寫入權限；HTTPS 使用憑證工具或 Token，不使用 GitHub 登入密碼。 |
+| 已成功上傳，但 GitHub 看起來沒變 | 核對倉庫擁有者、遠端 URL、網頁目前選取的分支，以及最新提交 SHA。 |
+| 想取回另一台電腦 | 在新的空白目的路徑用「倉庫操作」→「複製倉庫」，填入同一 HTTPS URL；之後開工先 Fetch／Pull。 |
+
+GitHub 的空白倉庫與 HTTPS 驗證說明可參閱官方文件：[將本機程式碼加入 GitHub](https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github?platform=windows)、[遠端倉庫與 HTTPS 驗證](https://docs.github.com/en/get-started/git-basics/about-remote-repositories)。本範例的 GITGUI 按鈕與行為依本專案介面撰寫。
 
 相關文件：[M4 驗收](M4-ACCEPTANCE.md)、[M4 效能](M4-PERFORMANCE.md)、[M3 相容性](M3-COMPATIBILITY.md)、[ARM 決策](M3-ARM-DECISION.md)、[原始規格](specification.md)、[Windows 打包](WINDOWS-RELEASE.md)。Release：<https://github.com/linhercherng/GITGUI/releases>。
