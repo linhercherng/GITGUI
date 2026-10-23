@@ -36,7 +36,15 @@
 
 ## GitHub 與未驗證範圍
 
-工作流程包含 Windows 2022、Ubuntu 22.04、macOS 14 的 locked restore/build/test，Windows 另跑實際 AskPass apphost。推送後核對本次 commit 的 [Actions](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)。
+原始碼 commit `c00ace92b6d3f27b8b0aade8fd640441fbb13be4` 的 [三平台 CI](https://github.com/linhercherng/GITGUI/actions/runs/39897541415) 全部成功：
+
+| 平台 | Core / Engine / UI | 結果 |
+| --- | --- | --- |
+| Windows 2022 | 15 / 78 / 20 | 113 passed，實際 AskPass apphost 另通過 |
+| Ubuntu 22.04 | 15 / 78 / 20 | 113 passed |
+| macOS 14 | 15 / 78 / 20 | 113 passed |
+
+三平台皆 locked restore、Release build 0 warnings / 0 errors，Git 版本分別為 Windows 2.56.0.windows.2、Linux/macOS 2.55.0。完整 TRX 已上傳該次 Actions artifacts；本段記錄有固定 commit 的驗收證據，後續結果見 [Actions](https://github.com/linhercherng/GITGUI/actions/workflows/ci.yml)。
 
 本輪不宣稱達到大型效能指標，也未執行 BenchmarkDotNet。未驗證真實 macOS/Linux 桌面操作、Git 2.40 精確版、reftable 倉庫、各種 GCM/SSH/LFS/proxy/mergetool 組合與跨平台安裝封裝。這些與 README 所列不支援狀態留待後續里程碑。
 
