@@ -97,6 +97,7 @@ dotnet test GitGui.sln -c Release
 ## 目前限制
 
 - 快照寫入會拒絕 submodule、sparse checkout 與進行中的 bisect；已在其他 worktree 使用且需要改動的分支也會阻擋復原。
+- Hard reset 的目的檔案若被既有目錄擋住，會先拒絕並要求移開目錄，以保護其中的 ignored 資料；其他會被覆寫的 ignored 檔案會納入安全快照。
 - 為保證原子 refs 復原，M1 不允許把分支 `topic` 直接改名為 `topic/sub` 或反向操作。
 - 非 UTF-8 檔案請使用整檔暫存或 ours/theirs；不提供可能改變編碼的逐行暫存／文字衝突編輯。無效 UTF-8 檔名的寫入會安全拒絕。Commit 訊息支援 Big5 fallback。
 - 單檔 Diff 超過 1 MiB／20,000 行先摺疊；圖片預覽每側最多 8 MiB；一般 CLI 輸出上限 32 MiB。快照檔案資料另走有界串流。

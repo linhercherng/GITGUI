@@ -53,6 +53,21 @@ internal sealed class GitAccess(GitProcessRunner runner)
     public static bool SamePath(string left, string right) => string.Equals(
         Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)), Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    internal static IReadOnlyList<string> OverwriteCollisions(string root, IEnumerable<string> targetPaths)
+    {
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in targetPaths)
+        {
+            var parts = path.Split('/');
+            for (var n = 1; n <= parts.Length; n++)
+            {
+                var prefix = string.Join('/', parts.Take(n));
+                var full = FullPath(root, prefix);
+                if (File.Exists(full) || new FileInfo(full).LinkTarget is not null) { result.Add(prefix); break; }
+            }
+        }
+        return result.ToArray();
+    }
     public static string[] NullFields(byte[] bytes) => Utf8.GetString(bytes).Split('\0', StringSplitOptions.RemoveEmptyEntries);
     public static string QuotePath(string path) => "\"" + path.Replace("\\", "\\\\", StringComparison.Ordinal)
         .Replace("\"", "\\\"", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal)

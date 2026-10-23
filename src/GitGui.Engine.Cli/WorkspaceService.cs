@@ -76,6 +76,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
             await TrustAsync(root, ct);
             var state = await reader.Open(root, new(Take: 1), ct);
             await Preflight(root, state, op, ct);
+            var overwritePaths = await OperationOverwritePaths(root, state.InProgress, op, ct);
             var risk = Risk(op);
             if (risk is RiskLevel.High or RiskLevel.RemoteIrreversible)
             {
@@ -94,7 +95,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
                         await git.Text(root, ct, "log", "--oneline", "--max-count=20", "HEAD.." + tip, "--");
                 }
                 if (op.Action == GitAction.Reset && op.ResetMode == ResetMode.Hard)
-                    description += "\n\nFiles / 檔案:\n" + string.Join("\n", state.Status.Files.Select(f => f.Path)) +
+                    description += "\n\nFiles / 檔案:\n" + string.Join("\n", state.Status.Files.Select(f => f.Path).Concat(overwritePaths).Distinct()) +
                         "\n\nCommits / 提交 (up to 20):\n" + await git.Text(root, ct, "log", "--oneline", "--max-count=20",
                             await reader.Resolve(root, op.Revision ?? op.Name ?? "HEAD", ct) + "..HEAD", "--");
                 var answer = await interaction.ConfirmAsync(new(op.Action.ToString(), description, risk, protectedName), ct);
@@ -112,7 +113,7 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
             if (needsSnapshot)
             {
                 progress?.Report(new("建立安全快照 / Creating recovery snapshot"));
-                var extra = target is null ? null : await snapshots.RestorePathsAsync(root, target, ct);
+                var extra = target is null ? overwritePaths : await snapshots.RestorePathsAsync(root, target, ct);
                 snapshot = await snapshots.CreateAsync(root, op.Action.ToString(), ct, extra);
             }
             var cancellable = op.Action is GitAction.Fetch;

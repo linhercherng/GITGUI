@@ -67,7 +67,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         var operationRefs = await ReadOperationRefs(root, ct);
         var paths = GitAccess.NullFields(await git.Bytes(root, ct,
             ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]))
-            .Concat(additionalPaths ?? []).Distinct(StringComparer.Ordinal).ToArray();
+            .Concat(GitAccess.OverwriteCollisions(root, additionalPaths ?? [])).Distinct(StringComparer.Ordinal).ToArray();
         var files = new List<SavedFile>();
         var regular = new List<(string Path, string Mode)>();
         foreach (var path in paths)
@@ -221,7 +221,8 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                 p.Key.StartsWith("refs/tags/", StringComparison.Ordinal)).ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
         await CheckOtherWorktrees(root, currentRefs, saved.Refs, ct);
         var currentFiles = GitAccess.NullFields(await git.Bytes(root, ct,
-            ["ls-files", "--cached", "--others", "--exclude-standard", "-z"])).Distinct().ToArray();
+            ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]))
+            .Concat(GitAccess.OverwriteCollisions(root, saved.Files.Select(f => f.Path))).Distinct().ToArray();
         var currentSet = currentFiles.ToHashSet(StringComparer.Ordinal);
         var savedSet = saved.Files.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
         foreach (var file in saved.Files)
@@ -271,7 +272,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             {
                 var path = GitAccess.FullPath(root, file.Path);
                 if (Directory.Exists(path) && new DirectoryInfo(path).LinkTarget is null)
-                    await git.Write(root, ct, ["clean", "-fd", "--", file.Path], environment: cleanEnv);
+                    await git.Write(root, ct, ["clean", "-fdx", "--", file.Path], environment: cleanEnv);
             }
             await Materialize(root, saved.Files, ct);
             await git.Write(root, ct, ["read-tree", "--empty"], environment: env);

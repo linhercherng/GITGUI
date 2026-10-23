@@ -85,6 +85,16 @@ public sealed partial class WorkspaceService
             _ = await reader.Resolve(root, op.Revision ?? (op.Action == GitAction.CreateTag ? "HEAD" : op.Name) ?? "HEAD", ct);
         if (op.Action is GitAction.StashApply or GitAction.StashPop or GitAction.StashDrop)
             _ = await StashSelector(root, op, ct);
+        if (op.Action is GitAction.StashApply or GitAction.StashPop)
+            await EnsureNoSubmoduleTree(root, op.StashOid!, ct);
+        if (op.Action == GitAction.Reset && op.ResetMode == ResetMode.Mixed)
+            await EnsureNoSubmoduleTree(root, await reader.Resolve(root, op.Revision ?? op.Name ?? "HEAD", ct), ct);
+        if (op.Action is GitAction.CherryPick or GitAction.Revert)
+        {
+            var raw = await git.Text(root, ct, "diff-tree", "--root", "--raw", "--no-renames", "--no-commit-id", "-r", "-z",
+                await reader.Resolve(root, op.Revision ?? op.Name ?? "HEAD", ct), "--");
+            EnsureNoSubmoduleChanges(raw);
+        }
         if (op.Action is GitAction.CreateTag or GitAction.DeleteTag)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(op.Name);
@@ -108,6 +118,9 @@ public sealed partial class WorkspaceService
         {
             if (state.Status.Branch.StartsWith('(')) throw new InvalidOperationException("Switch to a local branch before rebase.");
             var expected = await GetRebasePlanAsync(root, op.Revision ?? op.Name ?? "", ct);
+            var upstream = await reader.Resolve(root, op.Revision ?? op.Name ?? "", ct);
+            await EnsureNoSubmoduleTree(root, upstream, ct);
+            EnsureNoSubmoduleChanges(await git.Text(root, ct, "log", "--format=", "--raw", "--no-renames", "-z", upstream + "..HEAD", "--"));
             if (expected.Count == 0 || expected.Count != op.RebasePlan.Count ||
                 !expected.Select(s => s.Commit).ToHashSet(StringComparer.Ordinal).SetEquals(op.RebasePlan.Select(s => s.Commit)) ||
                 op.RebasePlan.Select(s => s.Commit).Distinct(StringComparer.Ordinal).Count() != expected.Count)
@@ -124,6 +137,25 @@ public sealed partial class WorkspaceService
         if (op.Action == GitAction.Reset && !Enum.IsDefined(op.ResetMode)) throw new ArgumentException("Invalid reset mode.");
     }
 
+    private async Task EnsureNoSubmoduleTree(string root, string revision, CancellationToken ct)
+    {
+        var tree = await git.Text(root, ct, "ls-tree", "-r", "-z", revision, "--");
+        if (tree.Split('\0').Any(e => e.StartsWith("160000 ", StringComparison.Ordinal)))
+            throw new InvalidOperationException("Submodule targets are outside M2 recovery support.");
+    }
+    private static void EnsureNoSubmoduleChanges(string raw)
+    {
+        var fields = raw.Split('\0');
+        for (var n = 0; n < fields.Length; n++)
+        {
+            var header = Regex.Match(fields[n].TrimStart('\r', '\n'), @"^:([0-7]{6}) ([0-7]{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]$");
+            if (!header.Success) continue;
+            if (header.Groups[1].Value == "160000" || header.Groups[2].Value == "160000")
+                throw new InvalidOperationException("Submodule changes are outside M2 recovery support.");
+            n++; // --no-renames emits exactly one following path; it is never a header.
+        }
+    }
+
     private async Task<string> StashSelector(string root, GitOperation op, CancellationToken ct)
     {
         // Never trust an index which may have shifted since the user selected it.
@@ -131,6 +163,113 @@ public sealed partial class WorkspaceService
         var lines = (await git.Text(root, ct, "stash", "list", "--format=%H%x00%gd")).Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var match = lines.Select(l => l.TrimEnd('\r').Split('\0')).FirstOrDefault(f => f[0] == op.StashOid && (op.Name is null || f[1] == op.Name));
         return match is null ? throw new InvalidOperationException("Stash selection changed. Refresh and select again.") : match[1];
+    }
+
+    private async Task<IReadOnlyList<string>> ResetCollisionPaths(string root, GitOperation op, CancellationToken ct)
+    {
+        var target = await reader.Resolve(root, op.Revision ?? op.Name ?? "HEAD", ct);
+        var entries = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-tree", "-r", "-z", target, "--"]));
+        if (entries.Any(e => e.StartsWith("160000 ", StringComparison.Ordinal))) throw new InvalidOperationException("Submodule reset targets are outside M2 recovery support.");
+        var paths = entries.Select(e => e[(e.IndexOf('\t') + 1)..]).ToArray();
+        foreach (var path in paths)
+        {
+            var full = GitAccess.FullPath(root, path);
+            if (Directory.Exists(full) && new DirectoryInfo(full).LinkTarget is null)
+                throw new InvalidOperationException("A directory blocks the reset target. Move it aside first so its ignored contents are preserved: " + path);
+        }
+        return GitAccess.OverwriteCollisions(root, paths);
+    }
+
+    private static IReadOnlyList<string> RawChangedPaths(string raw)
+    {
+        EnsureNoSubmoduleChanges(raw);
+        var fields = raw.Split('\0'); var paths = new List<string>();
+        for (var n = 0; n + 1 < fields.Length; n++)
+            if (Regex.IsMatch(fields[n].TrimStart('\r', '\n'), @"^:[0-7]{6} [0-7]{6} [0-9a-f]+ [0-9a-f]+ [A-Z]$")) paths.Add(fields[++n]);
+        return paths;
+    }
+    private async Task<IReadOnlyList<string>> TreePaths(string root, string revision, CancellationToken ct)
+    {
+        var entries = GitAccess.NullFields(await git.Bytes(root, ct, ["ls-tree", "-r", "-z", revision, "--"]));
+        if (entries.Any(e => e.StartsWith("160000 ", StringComparison.Ordinal)))
+            throw new InvalidOperationException("Submodule targets are outside M2 recovery support.");
+        return entries.Select(e => e[(e.IndexOf('\t') + 1)..]).ToArray();
+    }
+
+    private async Task<IReadOnlyList<string>> OperationOverwritePaths(string root, InProgressState state, GitOperation op, CancellationToken ct)
+    {
+        if (op.Action == GitAction.Reset && op.ResetMode == ResetMode.Hard) return await ResetCollisionPaths(root, op, ct);
+        var paths = new List<string>();
+        if (op.Action is GitAction.CherryPick or GitAction.Revert)
+            paths.AddRange(RawChangedPaths(await git.Text(root, ct, "diff-tree", "--root", "--raw", "--no-renames", "--no-commit-id", "-r", "-z",
+                await reader.Resolve(root, op.Revision ?? op.Name ?? "HEAD", ct), "--")));
+        else if (op.Action == GitAction.RebaseInteractive)
+        {
+            var upstream = await reader.Resolve(root, op.Revision ?? op.Name ?? "", ct);
+            paths.AddRange(await TreePaths(root, upstream, ct));
+            paths.AddRange(RawChangedPaths(await git.Text(root, ct, "log", "--format=", "--raw", "--no-renames", "-z", upstream + "..HEAD", "--")));
+        }
+        else if (op.Action is GitAction.StashApply or GitAction.StashPop)
+        {
+            paths.AddRange(await TreePaths(root, op.StashOid!, ct));
+            var untracked = await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", op.StashOid + "^3^{commit}");
+            if (untracked is not null) paths.AddRange(await TreePaths(root, untracked, ct));
+        }
+        else if (op.Action is GitAction.ContinueOperation or GitAction.SkipOperation or GitAction.AbortOperation or GitAction.AbortMerge)
+            paths.AddRange(await PendingOverwritePaths(root, state, ct));
+        if (paths.Count == 0) return [];
+        var directories = paths.Distinct().Where(p =>
+        {
+            var full = GitAccess.FullPath(root, p);
+            return Directory.Exists(full) && new DirectoryInfo(full).LinkTarget is null;
+        }).ToArray();
+        if (directories.Length > 0 && (await git.Bytes(root, ct,
+            ["ls-files", "--others", "--ignored", "--exclude-standard", "-z", "--", .. directories])).Length > 0)
+            throw new InvalidOperationException("Ignored directory contents block this operation. Move them aside first to preserve them.");
+        return GitAccess.OverwriteCollisions(root, paths);
+    }
+
+    private async Task<IReadOnlyList<string>> PendingOverwritePaths(string root, InProgressState state, CancellationToken ct)
+    {
+        var commits = new HashSet<string>(StringComparer.Ordinal);
+        var trees = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var name in new[] { "HEAD", "ORIG_HEAD", "REBASE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD" })
+        {
+            var oid = await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", name + "^{commit}");
+            if (oid is null) continue;
+            commits.Add(oid); if (name is "HEAD" or "ORIG_HEAD") trees.Add(oid);
+        }
+        var directory = await git.Text(root, ct, "rev-parse", "--absolute-git-dir");
+        string? rebaseOriginal = null, rebaseOnto = null;
+        foreach (var name in new[] { "rebase-merge/orig-head", "rebase-merge/onto", "rebase-apply/orig-head", "rebase-apply/onto", "sequencer/head" })
+        {
+            var full = GitAccess.FullPath(directory, name);
+            if (!File.Exists(full)) continue;
+            if (new FileInfo(full).LinkTarget is not null) throw new InvalidOperationException("Unsafe operation state file.");
+            var value = (await File.ReadAllTextAsync(full, ct)).Trim();
+            if (!Regex.IsMatch(value, "^[0-9a-f]{40}([0-9a-f]{24})?$")) throw new InvalidOperationException("Invalid operation commit.");
+            commits.Add(value); trees.Add(value);
+            if (name.EndsWith("/orig-head", StringComparison.Ordinal)) rebaseOriginal = value;
+            if (name.EndsWith("/onto", StringComparison.Ordinal)) rebaseOnto = value;
+        }
+        foreach (var name in new[] { "rebase-merge/git-rebase-todo", "sequencer/todo" })
+        {
+            var full = GitAccess.FullPath(directory, name);
+            if (!File.Exists(full)) continue;
+            if (new FileInfo(full).LinkTarget is not null) throw new InvalidOperationException("Unsafe operation todo file.");
+            foreach (var line in (await File.ReadAllTextAsync(full, ct)).Split('\n'))
+            {
+                var match = Regex.Match(line, @"^\s*(?:pick|reword|edit|squash|fixup|drop|revert|p|r|e|s|f|d) ([0-9a-f]{4,64})(?:\s|$)");
+                if (match.Success) commits.Add(match.Groups[1].Value);
+            }
+        }
+        var paths = new List<string>();
+        foreach (var tree in trees) paths.AddRange(await TreePaths(root, tree, ct));
+        if (commits.Count > 0) paths.AddRange(RawChangedPaths(await git.Text(root, ct,
+            ["log", "--no-walk=unsorted", "--format=", "--raw", "--no-renames", "-z", .. commits, "--"])));
+        if (state.Kind == "rebase" && rebaseOriginal is not null && rebaseOnto is not null)
+            paths.AddRange(RawChangedPaths(await git.Text(root, ct, "log", "--format=", "--raw", "--no-renames", "-z", rebaseOnto + ".." + rebaseOriginal, "--")));
+        return paths;
     }
 
     private async Task ExecuteAdvanced(string root, WorkspaceState state, GitOperation op, CancellationToken ct, IProgress<OperationProgress>? progress)
