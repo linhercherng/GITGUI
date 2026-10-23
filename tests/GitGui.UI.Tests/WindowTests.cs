@@ -507,6 +507,15 @@ public sealed class WindowTests
         var backend = new SampleWorkspace { HasConflict = true };
         using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
         var window = new MainWindow(vm); window.Show(); await vm.RefreshCommand.ExecuteAsync(null); Dispatcher.UIThread.RunJobs();
+        if (vm.RefreshCommand.ExecutionTask is { } initialRefresh) await initialRefresh.WaitAsync(TimeSpan.FromSeconds(5));
+        backend.DeferredOpen = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.UIThread.Post(window.Activate); Dispatcher.UIThread.RunJobs();
+        Assert.NotNull(backend.DeferredOpenState); Assert.True(vm.IsBusy);
+        var activationRefresh = vm.RefreshCommand.ExecutionTask;
+        Assert.NotNull(activationRefresh); Assert.False(activationRefresh.IsCompleted);
+        backend.DeferredOpen.SetResult(backend.DeferredOpenState); backend.DeferredOpen = null;
+        // Pumping dispatcher jobs starts an activation refresh; fence its real asynchronous completion before testing conflict-only loading.
+        await activationRefresh.WaitAsync(TimeSpan.FromSeconds(5));
         vm.SelectedChange = vm.Changes[1];
         backend.DeferredConflict = new();
         vm.SelectedChange = vm.Changes[0];
@@ -564,6 +573,8 @@ public sealed class WindowTests
         public string? LastExecutionRoot { get; private set; }
         public OperationOutcome NextOutcome { get; set; } = new(true, "Done");
         public TaskCompletionSource<OperationOutcome>? PendingOperation { get; set; }
+        public TaskCompletionSource<WorkspaceState>? DeferredOpen { get; set; }
+        public WorkspaceState? DeferredOpenState { get; private set; }
         public bool AllowCancellation { get; set; }
         public CancellationToken ActiveToken { get; private set; }
         public bool HasConflict { get; set; }
@@ -582,7 +593,9 @@ public sealed class WindowTests
             if (HasConflict) files[0] = new(files[0].Path, "U", "U", []);
             CommitInfo[] commits = [new("a1b2c3d4e5", "Complete safe workspace operations", "Will Lin", DateTimeOffset.Now, ["f2a3b4c5", "b3c4d5e6"]), new("f2a3b4c5", "Build virtualized commit graph", "Will Lin", DateTimeOffset.Now.AddHours(-1), ["c4d5e6f7"]), new("b3c4d5e6", "Protect work with reversible snapshots", "Alex Chen", DateTimeOffset.Now.AddHours(-2), ["c4d5e6f7"]), new("c4d5e6f7", "Initialize cross-platform Git workspace", "Will Lin", DateTimeOffset.Now.AddDays(-1), [])];
             RefInfo[] refs = [new("main", "refs/heads/main", commits[0].Hash, "origin/main", "↑ 2  ↓ 0", true), new("feature/graph", "refs/heads/feature/graph", commits[1].Hash), new("origin/main", "refs/remotes/origin/main", commits[2].Hash)];
-            return Task.FromResult(new WorkspaceState(path, new("main", commits[0].Hash, files), commits, refs, [new("origin", "https://example.org/team/project.git")], HasConflict ? new("merge", true) : InProgressState.None, true, []));
+            var state = new WorkspaceState(path, new("main", commits[0].Hash, files), commits, refs, [new("origin", "https://example.org/team/project.git")], HasConflict ? new("merge", true) : InProgressState.None, true, []);
+            if (DeferredOpen is { } pending) { DeferredOpenState = state; return pending.Task; }
+            return Task.FromResult(state);
         }
         public Task<string> GetDiffAsync(string root, DiffRequest request, CancellationToken ct) => DeferredDiffs.TryGetValue(request.Path, out var deferred) ? deferred.Task : Task.FromResult(DiffText);
         public Task<ConflictContent> GetConflictAsync(string root, string path, CancellationToken ct) => DeferredConflict?.Task ?? Task.FromResult(Conflict);
