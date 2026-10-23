@@ -138,6 +138,7 @@ public sealed class AdvancedSnapshotTests
         await File.WriteAllTextAsync(Path.Combine(repo.Root, "tracked.txt"), "second\n");
         await repo.Git("commit", "-am", "second");
         var second = (await repo.Git("rev-parse", "HEAD")).Trim();
+        await repo.Git("config", "core.abbrev", "4");
         if (command == "cherry-pick")
         {
             await repo.Git("switch", "main");
@@ -145,12 +146,16 @@ public sealed class AdvancedSnapshotTests
             await repo.Git("commit", "-am", "different");
         }
         await Assert.ThrowsAsync<InvalidOperationException>(() => repo.Git(command, first, second));
+        if (command == "cherry-pick") await repo.Git("branch", "-D", "topic");
         var markerTarget = await repo.Git("rev-parse", "--verify", marker);
         var state = StateFiles(repo, "sequencer");
         var index = await repo.Git("ls-files", "--stage", "-z");
         var manager = new SnapshotManager(new GitProcessRunner(), new MemoryCatalog());
         var snapshot = await manager.CreateAsync(repo.Root, "paused " + command, default);
         await repo.Git(command, "--abort");
+        await repo.Git("reflog", "expire", "--expire=now", "--all");
+        await repo.Git("gc", "--prune=now");
+        Assert.Equal("commit", (await repo.Git("cat-file", "-t", second)).Trim());
         await manager.RestoreAsync(repo.Root, snapshot, default);
         Assert.Equal(markerTarget, await repo.Git("rev-parse", "--verify", marker));
         Assert.Equal(state, StateFiles(repo, "sequencer"));
