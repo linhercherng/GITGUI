@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/GitGui.App/CompositionProbeSettings.cs" Link="Probe/CompositionProbeSettings.cs" />
+    <Compile Include="../../src/GitGui.App/NativePerformanceMetrics.cs" Link="Probe/NativePerformanceMetrics.cs" />
+    <Compile Include="../../src/GitGui.App/ScrollRenderEvidence.cs" Link="Probe/ScrollRenderEvidence.cs" />
     <ProjectReference Include="../../src/GitGui.UI/GitGui.UI.csproj" />
     <ProjectReference Include="../../src/GitGui.Controls/GitGui.Controls.csproj" />
     <PackageReference Include="Avalonia.Headless.XUnit" />

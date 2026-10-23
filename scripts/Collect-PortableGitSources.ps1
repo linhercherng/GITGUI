@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$PortableGit,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.5.0'
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.6.0'
 )
 $ErrorActionPreference = 'Stop'
 $output = [IO.Path]::GetFullPath($OutputDirectory)

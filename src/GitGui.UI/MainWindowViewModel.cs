@@ -34,6 +34,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private int historyLimit = 500;
     private string? historyGeneration;
     private bool applyingReadState;
+    private bool openingHistoryPreview;
     private IReadOnlyList<FileChange> unstaged = [];
     private IReadOnlyList<FileChange> staged = [];
     private CommitMessageEncoding selectedEncoding = CommitMessageEncoding.Utf8;
@@ -181,7 +182,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         if (SelectedChange is null || !visible.Contains(SelectedChange)) SelectedChange = visible.FirstOrDefault();
         IsHistoryDiff = false; _ = LoadDiffAsync();
     }
-    partial void OnSelectedCommitChanged(CommitInfo? value) { if (!applyingReadState && value is not null) { HasConflict = false; CancelRead(ref conflictRequest); ConflictLoading = false; _ = LoadCommitAsync(value); } }
+    partial void OnSelectedCommitChanged(CommitInfo? value) { if (!applyingReadState && !openingHistoryPreview && value is not null) { HasConflict = false; CancelRead(ref conflictRequest); ConflictLoading = false; _ = LoadCommitAsync(value); } }
     private void InvalidateCommitSelection()
     {
         CancelRead(ref commitRequest);
@@ -207,10 +208,42 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     }
     private async Task RefreshStateAsync()
     {
+        try { await ReadStateAsync(); }
+        catch { ClearState(); throw; }
+    }
+    private async Task ReadStateAsync()
+    {
         if (string.IsNullOrWhiteSpace(RepositoryPath)) throw new InvalidOperationException(L["PathRequired"]);
         var previous = state?.Root;
         var wasHistoryDiff = IsHistoryDiff;
-        var opened = await workspace.OpenAsync(RepositoryPath.Trim(), CurrentFilter(), lifetime.Token);
+        var previousSelectedPath = SelectedChange?.Path;
+        var previousSelectedHash = SelectedCommit?.Hash;
+        var requestedPath = RepositoryPath.Trim();
+        WorkspaceHistoryPreview? preview = null;
+        WorkspaceState opened;
+        openingHistoryPreview = true;
+        try
+        {
+            opened = workspace is IProgressiveWorkspaceService progressive
+                ? await progressive.OpenWithHistoryAsync(requestedPath, CurrentFilter(), PublishHistory, lifetime.Token)
+                : await workspace.OpenAsync(requestedPath, CurrentFilter(), lifetime.Token);
+            lifetime.Token.ThrowIfCancellationRequested();
+        }
+        finally { openingHistoryPreview = false; }
+        async Task PublishHistory(WorkspaceHistoryPreview value)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (disposed || lifetime.IsCancellationRequested || RepositoryPath.Trim() != requestedPath) return;
+                if (previous == value.Root && historyGeneration is not null && historyGeneration == value.Page.Generation) return;
+                // This is a display-only preview: state/trust and all write controls stay pending.
+                CancelRead(ref commitRequest);
+                applyingReadState = true;
+                try { SelectedCommit = null; Replace(Commits, value.Page.Commits); }
+                finally { applyingReadState = false; }
+                preview = value;
+            });
+        }
         var groups = await Task.Run(() => GroupStatus(opened.Status.Files), lifetime.Token);
         state = opened;
         RepositoryPath = state.Root;
@@ -221,8 +254,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         TrustDetails = string.Join("\n", state.RiskySettings);
         InProgress = state.InProgress.IsActive;
         InProgressText = state.InProgress.IsActive ? $"{state.InProgress.Kind} · {L[state.InProgress.HasConflicts ? "ResolveConflicts" : "ReadyToContinue"]}" : "";
-        var selectedPath = previous == state.Root ? SelectedChange?.Path : null;
-        var selectedHash = previous == state.Root ? SelectedCommit?.Hash : null;
+        var selectedPath = previous == state.Root ? previousSelectedPath : null;
+        var selectedHash = previous == state.Root ? previousSelectedHash : null;
         var savedSnapshots = await workspace.GetSnapshotsAsync(Root, lifetime.Token);
         applyingReadState = true;
         Replace(Changes, state.Status.Files);
@@ -230,7 +263,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(UnstagedChanges)); OnPropertyChanged(nameof(StagedChanges));
         SelectedFiles.Clear();
         SelectedChange = Changes.FirstOrDefault(f => f.Path == selectedPath) ?? (ShowStaged ? staged : unstaged).FirstOrDefault();
-        if (historyGeneration is null || historyGeneration != state.HistoryGeneration || previous != state.Root)
+        if (!ReferenceEquals(preview?.Page.Commits, state.Commits) &&
+            (historyGeneration is null || historyGeneration != state.HistoryGeneration || previous != state.Root))
             Replace(Commits, state.Commits);
         historyGeneration = state.HistoryGeneration;
         Replace(Refs, state.Refs);
@@ -473,9 +507,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task LoadDiffAsync()
     {
         var identity = CurrentDiffIdentity();
+        var retainedIdentity = sourceIdentity;
+        var retainDocument = identity is not null && identity == retainedIdentity;
         OnPropertyChanged(nameof(DiffTitle));
         var request = StartSelectionRequest();
-        sourceIdentity = null; ShowDiff(""); IsDiffLoading = false;
+        sourceIdentity = null;
+        if (!retainDocument) ShowDiff("");
+        IsDiffLoading = false;
         BeforeSize = AfterSize = null; BeforeImage = AfterImage = null; PreviewNotice = "";
         if (identity is null || state is null) return;
         IsDiffLoading = true;
@@ -484,7 +522,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             var output = await workspace.GetDiffAsync(identity.Root, new(identity.Path, identity.Staged, identity.Commit), request.Token);
             if (!request.IsCancellationRequested && identity == CurrentDiffIdentity())
-            { sourceIdentity = identity; await ShowDiffAsync(output, identity, request.Token); }
+            {
+                sourceIdentity = identity;
+                if (!retainDocument || output != sourceDiff) await ShowDiffAsync(output, identity, request.Token);
+            }
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { if (!request.IsCancellationRequested) { Notice = ex.Message; ShowDiff(ex.Message); } }

@@ -39,6 +39,7 @@ internal static class Program
         }
         try { Performance = DesktopPerformanceProbe.Parse(args); }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException) { Environment.ExitCode = 2; return; }
+        Performance?.StartupCheckpoint("Main parsed probe arguments");
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
     public static AppBuilder BuildAvaloniaApp()
@@ -47,6 +48,8 @@ internal static class Program
         // An explicit probe-only experiment; normal desktop sessions retain platform defaults.
         if (Performance?.SoftwareRendering == true)
             builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
+        else if (Performance?.DirectComposition == true)
+            builder.With(new Win32PlatformOptions { CompositionMode = [Win32CompositionMode.DirectComposition, Win32CompositionMode.RedirectionSurface] });
         return builder;
     }
 }
@@ -56,16 +59,19 @@ public sealed class DesktopApp : Application
     private AppearanceManager? appearance;
     public override void Initialize()
     {
+        Program.Performance?.StartupCheckpoint("DesktopApp.Initialize enter");
         RequestedThemeVariant = ThemeVariant.Dark;
         Styles.Add(new FluentTheme());
         appearance = new AppearanceManager(new AppearancePreferences(Path.Combine(
             Program.Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui"), "appearance.json")));
+        Program.Performance?.StartupCheckpoint("DesktopApp.Initialize exit");
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            Program.Performance?.StartupCheckpoint("OnFrameworkInitializationCompleted enter");
             var directory = Program.Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
             var log = AppLogging.Create(directory);
             log.Information("GITGUI M4 started; repository content and credential logging are disabled");
@@ -96,6 +102,7 @@ public sealed class DesktopApp : Application
                 sp.GetRequiredService<WorkspaceService>().AcquireTerminalLeaseAsync, sp.GetRequiredService<GitProcessRunner>()));
             services.AddTransient<MainWindowViewModel>();
             var provider = services.BuildServiceProvider();
+            Program.Performance?.StartupCheckpoint("Dependency provider built");
             var graph = new CommitGraphControl();
             graph.Bind(CommitGraphControl.CommitsProperty, new Binding("Commits"));
             graph.Bind(CommitGraphControl.SelectedCommitProperty, new Binding("SelectedCommit") { Mode = BindingMode.TwoWay });
@@ -104,8 +111,10 @@ public sealed class DesktopApp : Application
             var mainModel = provider.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow(mainModel, graph,
                 provider.GetRequiredService<IGitRuntimeSettings>(), appearance, provider.GetRequiredService<IWorkspaceService>(), provider.GetRequiredService<ITerminalService>(), provider.GetRequiredService<IRepositoryToolsService>(), provider.GetRequiredService<ShortcutManager>());
+            Program.Performance?.StartupCheckpoint("MainWindow constructed");
             Program.Performance?.Attach(desktop, (MainWindow)desktop.MainWindow, mainModel, graph,
                 provider.GetRequiredService<GitProcessRunner>(), provider.GetRequiredService<WorkspaceStorage>(), provider.GetRequiredService<IGitRuntimeSettings>());
+            Program.Performance?.StartupCheckpoint("Probe attached");
             var bridge = new AskPassBridge(provider.GetRequiredService<IWorkspaceInteraction>());
             var runner = provider.GetRequiredService<GitProcessRunner>();
             runner.CommandExecuted += (_, entry) => AppLogging.Command(log, entry);

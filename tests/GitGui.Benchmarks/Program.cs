@@ -3,6 +3,12 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using GitGui.Engine.Cli;
 
+#if NET10_0_OR_GREATER
+if (args.FirstOrDefault() == "--describe-read-jobs")
+{
+    RepositoryReadBenchmarks.DescribeResolvedJobs(); return;
+}
+#endif
 if (args.FirstOrDefault() == "--prepare")
 {
     await LargeRepositoryBenchmark.Prepare(args[1], args.Length > 2 ? int.Parse(args[2]) : 100_000,

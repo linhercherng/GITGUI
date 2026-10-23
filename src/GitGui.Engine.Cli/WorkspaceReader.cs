@@ -10,41 +10,68 @@ internal sealed partial class WorkspaceReader(GitProcessRunner runner, IReposito
     private readonly GitAccess git = new(runner);
     private readonly CliRepoReader statusReader = new(runner);
 
-    public async Task<WorkspaceState> Open(string path, LogFilter filter, CancellationToken ct, bool presentation = true)
+    public async Task<WorkspaceState> Open(string path, LogFilter filter, CancellationToken ct, bool presentation = true,
+        Func<WorkspaceHistoryPreview, Task>? publishHistory = null)
     {
-        var root = presentation ? (await Descriptor(path, ct)).Root : await git.Root(path, ct);
+        var descriptor = presentation ? await Descriptor(path, ct) : null;
+        var root = descriptor?.Root ?? await git.Root(path, ct);
+        var configurationTask = descriptor?.FreshConfiguration is { } fresh
+            ? Task.FromResult(fresh) : ReadConfigurationSnapshot(root, ct);
         var trusted = await settings.IsTrustedAsync(root, ct);
         var statusTask = statusReader.GetStatusAsync(root, trusted, ct);
-        var refsTask = Refs(root, ct);
-        var remoteTask = runner.RunAsync(root, ["config", "-z", "--get-regexp", "^remote\\..*\\.url$"], ct);
-        var riskyTask = RiskySettings(root, ct);
-        var textTask = new TextConfigurationReader(runner).ReadAsync(root, ct);
+        var refsTask = ReadRefs();
         var pageTask = ReadPage();
-        await Task.WhenAll(statusTask, refsTask, remoteTask, riskyTask, textTask, pageTask);
+        await Task.WhenAll(statusTask, refsTask, configurationTask, pageTask);
         var status = await statusTask; var refs = await refsTask; var page = await pageTask;
         RememberStatus(root, status);
         var commits = page?.Commits ?? [];
-        var remoteResult = await remoteTask;
-        if (remoteResult.ExitCode is not (0 or 1)) throw new GitCommandException(remoteResult);
-        var remotes = GitAccess.NullFields(remoteResult.Output).Select(field =>
-        { var at = field.IndexOf('\n'); return new RemoteInfo(field[7..(at - 4)], GitProcessRunner.Redact(field[(at + 1)..])); })
-            .DistinctBy(r => r.Name).ToArray();
+        var configuration = await configurationTask;
+        var remotes = configuration.Remotes;
         return new(root, status, commits, refs, remotes, await InProgress(root, status, ct, presentation),
-            trusted, await riskyTask)
+            trusted, configuration.Risky)
         { HistoryGeneration = page?.Generation, HasMoreHistory = page?.HasMore ?? false,
-            TextSettings = await textTask };
+            TextSettings = configuration.Text };
+        async Task<IReadOnlyList<RefInfo>> ReadRefs()
+        {
+            // A changed include is already being resolved by this Open. Share
+            // that fresh snapshot before the native read checks its context.
+            var allowNative = presentation && (await configurationTask).Cacheable;
+            return await Refs(root, ct, allowNative);
+        }
         async Task<HistoryPage?> ReadPage()
         {
             if (!presentation) return null;
             var visible = await refsTask;
             var descriptor = await Descriptor(root, ct);
             var head = await Head(descriptor, visible, ct);
-            return await History(root, filter, new("", head ?? "(initial)", []), visible, null, ct);
+            var page = await History(root, filter, new("", head ?? "(initial)", []), visible, null, ct);
+            ct.ThrowIfCancellationRequested();
+            if (publishHistory is not null) await publishHistory(new(root, page));
+            return page;
         }
     }
 
-    public async Task<IReadOnlyList<RefInfo>> Refs(string root, CancellationToken ct)
+    public async Task<IReadOnlyList<RefInfo>> Refs(string root, CancellationToken ct, bool allowNative = true)
     {
+        ct.ThrowIfCancellationRequested();
+        if (allowNative && history is INativeReadBackend native &&
+            ReadBackendPolicy.CanUseLibrary((await Descriptor(root, ct)).Format) && !RepositoryObjectView.Read(root).RequiresCli)
+        {
+            try
+            {
+                var configuration = await ConfigurationForNativeRead(root, ct);
+                var start = await runner.CreateStartInfoAsync(root, ct);
+                string? EnvironmentValue(string key) => start.Environment.TryGetValue(key, out var value) ? value : null;
+                if (configuration.Cacheable && GitReadEnvironment.SupportsNativeRepositoryView(start))
+                {
+                    var context = new NativeReadContext(configuration.Entries, start.FileName,
+                        GitReadEnvironment.EffectiveHome(start), EnvironmentValue("XDG_CONFIG_HOME"), EnvironmentValue("GIT_ATTR_NOSYSTEM") != "1");
+                    if (await native.TryReadRefsAsync(root, context, ct) is { } values) return values;
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception) { /* Unsupported native semantics retry the selected Git CLI. */ }
+        }
         var text = await git.Text(root, ct, "for-each-ref",
             "--format=%(refname)%00%(refname:short)%00%(objectname)%00%(upstream:short)%00%(upstream:track)%00%(HEAD)",
             "refs/heads", "refs/remotes", "refs/tags");
@@ -76,16 +103,18 @@ internal sealed partial class WorkspaceReader(GitProcessRunner runner, IReposito
         var args = new List<string> { "log", "--topo-order", "--branches", "--remotes", "--tags", "-z",
             "--encoding=UTF-8", "--format=%H%x00%x00%an%x00%aI%x00%P", "--max-count=" + Math.Clamp(filter.Take, 1, 100_000),
             "--skip=" + Math.Max(0, filter.Skip), "--fixed-strings", "--regexp-ignore-case" };
+        string[]? revisionTips = null;
         if (visibleRefs is not null)
         {
             args.RemoveAll(a => a is "--branches" or "--remotes" or "--tags");
-            args.AddRange(VisibleTips(visibleRefs, status));
+            revisionTips = VisibleTips(visibleRefs, status);
         }
         var searchedCommit = Regex.IsMatch(filter.Search, "^[0-9a-fA-F]{7,64}$")
             ? await git.TryText(root, ct, "rev-parse", "--verify", "--quiet", "--end-of-options", filter.Search + "^{commit}") : null;
         if (searchedCommit is not null)
         {
-            args.RemoveAll(arg => arg is "--branches" or "--remotes" or "--tags" || visibleRefs is not null && VisibleTips(visibleRefs, status).Contains(arg));
+            args.RemoveAll(arg => arg is "--branches" or "--remotes" or "--tags");
+            revisionTips = null;
             args.Add("--no-walk"); args.Add(searchedCommit);
         }
         else if (filter.Search.Length > 0) args.Add("--grep=" + filter.Search);
@@ -98,9 +127,19 @@ internal sealed partial class WorkspaceReader(GitProcessRunner runner, IReposito
             args.Add(flag + date.ToString("O"));
         }
         if (visibleRefs is null && searchedCommit is null && status.Head is not (null or "(initial)")) args.Add("HEAD");
+        byte[]? revisionInput = null;
+        if (revisionTips is not null)
+        {
+            // Preserve the exact captured full-OID tips without exceeding the
+            // Windows process command-line limit in repositories with many refs.
+            if (revisionTips.Sum(tip => (long)tip.Length + 1) > 32 * 1024 * 1024)
+                throw new InvalidOperationException("The visible revision list exceeds the history input limit.");
+            args.Add("--stdin");
+            revisionInput = Encoding.ASCII.GetBytes(string.Join('\n', revisionTips) + "\n");
+        }
         args.Add("--");
         if (filter.Path.Length > 0) { GitAccess.FullPath(root, filter.Path); args.Add(filter.Path); }
-        var fields = Decode(await git.Bytes(root, ct, args.ToArray())).Split('\0');
+        var fields = Decode(await git.Bytes(root, ct, args.ToArray(), revisionInput is null ? null : new() { Input = revisionInput })).Split('\0');
         var result = new List<CommitInfo>();
         for (var n = 0; n + 4 < fields.Length; n += 5)
             result.Add(new(fields[n], fields[n + 1], fields[n + 2], DateTimeOffset.Parse(fields[n + 3], CultureInfo.InvariantCulture),
@@ -165,6 +204,26 @@ internal sealed partial class WorkspaceReader(GitProcessRunner runner, IReposito
     {
         ValidateReadablePath(root, request.Path);
         GitAccess.FullPath(root, request.Path);
+        if (history is INativeReadBackend native && ReadBackendPolicy.CanUseLibrary((await Descriptor(root, ct)).Format) &&
+            !RepositoryObjectView.Read(root).RequiresCli)
+        {
+            try
+            {
+                var configuration = await ConfigurationForNativeRead(root, ct);
+                if (!configuration.Cacheable) throw new NotSupportedException("Opaque Git configuration requires CLI reads.");
+                var start = await runner.CreateStartInfoAsync(root, ct);
+                if (GitReadEnvironment.SupportsNativeRepositoryView(start))
+                {
+                    string? EnvironmentValue(string key) => start.Environment.TryGetValue(key, out var value) ? value : null;
+                    var context = new NativeReadContext(configuration.Entries, start.FileName,
+                        GitReadEnvironment.EffectiveHome(start),
+                        EnvironmentValue("XDG_CONFIG_HOME"), EnvironmentValue("GIT_ATTR_NOSYSTEM") != "1");
+                    if (await native.TryReadDiffAsync(root, request, context, ct) is { } nativeResult) return nativeResult;
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception) { /* Unsupported native reads retry using the selected Git CLI. */ }
+        }
         var args = new List<string> { "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames", "--unified=3" };
         var acceptedOne = false;
         if (request.Commit is not null)
@@ -239,6 +298,27 @@ internal sealed partial class WorkspaceReader(GitProcessRunner runner, IReposito
     public async Task<FilePreview> Preview(string root, DiffRequest request, CancellationToken ct)
     {
         ValidateReadablePath(root, request.Path);
+        GitAccess.FullPath(root, request.Path);
+        if (history is INativeReadBackend native && ReadBackendPolicy.CanUseLibrary((await Descriptor(root, ct)).Format) &&
+            !RepositoryObjectView.Read(root).RequiresCli)
+        {
+            try
+            {
+                var configuration = await ConfigurationForNativeRead(root, ct);
+                if (!configuration.Cacheable) throw new NotSupportedException("Opaque Git configuration requires CLI reads.");
+                var start = await runner.CreateStartInfoAsync(root, ct);
+                if (GitReadEnvironment.SupportsNativeRepositoryView(start))
+                {
+                    string? EnvironmentValue(string key) => start.Environment.TryGetValue(key, out var value) ? value : null;
+                    var context = new NativeReadContext(configuration.Entries, start.FileName,
+                        GitReadEnvironment.EffectiveHome(start),
+                        EnvironmentValue("XDG_CONFIG_HOME"), EnvironmentValue("GIT_ATTR_NOSYSTEM") != "1");
+                    if (await native.TryReadPreviewAsync(root, request, context, ct) is { } nativeResult) return nativeResult;
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception) { /* Unsupported native reads retry using the selected Git CLI. */ }
+        }
         const int imageLimit = 8 * 1024 * 1024;
         var full = GitAccess.FullPath(root, request.Path);
         var image = new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico" }

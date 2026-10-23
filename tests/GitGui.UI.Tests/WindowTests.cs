@@ -28,6 +28,43 @@ public class TestApplication : Application
 public sealed class WindowTests
 {
     [AvaloniaFact]
+    public void Diff_loading_keeps_the_visible_editor_viewport_document_and_scroll_position_stable()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent())
+        {
+            Diff = string.Join('\n', Enumerable.Range(1, 600).Select(line => $" context line {line}"))
+        };
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            void Arrange()
+            {
+                window.UpdateLayout(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            }
+            Arrange();
+            var viewer = window.FindControl<DiffEditor>("DiffViewer")!;
+            var editor = Assert.Single(viewer.GetVisualDescendants().OfType<CodeEditor>(), e => e.IsEffectivelyVisible);
+            editor.ScrollToLine(100); Arrange();
+            var bounds = viewer.Bounds; var editorBounds = editor.Bounds; var textViewBounds = editor.TextArea.TextView.Bounds;
+            var document = editor.Document; var offset = editor.TextArea.TextView.ScrollOffset;
+            Assert.True(bounds.Height > 0); Assert.True(offset.Y > 0);
+            ProgressBar? progress = null;
+            foreach (var loading in new[] { true, false, true, false })
+            {
+                vm.IsDiffLoading = loading; Arrange();
+                Assert.Equal(bounds, viewer.Bounds);
+                Assert.Equal(editorBounds, editor.Bounds); Assert.Equal(textViewBounds, editor.TextArea.TextView.Bounds);
+                Assert.Same(document, editor.Document); Assert.Equal(vm.Diff, editor.Document.Text);
+                Assert.Equal(offset, editor.TextArea.TextView.ScrollOffset);
+                if (loading) progress = Assert.Single(window.GetVisualDescendants().OfType<ProgressBar>(), p => p.IsEffectivelyVisible);
+                Assert.NotNull(progress); Assert.Equal(loading, progress.IsVisible); Assert.Equal(loading, progress.IsIndeterminate);
+            }
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Rejected_commit_hook_offers_explicit_one_time_bypass_with_confirmation_and_scope_guards()
     {
         var backend = new SampleWorkspace { NextOutcome = new(false, "pre-commit hook failed", GitErrorKind.HookRejected) };

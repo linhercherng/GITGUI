@@ -5,7 +5,7 @@ using GitGui.Core;
 
 namespace GitGui.Engine.Cli;
 
-public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorkspaceService
+public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAdvancedWorkspaceService
 {
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Queues = new(
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
@@ -31,6 +31,9 @@ public sealed partial class WorkspaceService : IWorkspaceService, IAdvancedWorks
 
     public Task<WorkspaceState> OpenAsync(string path, LogFilter filter, CancellationToken ct)
         => Task.Run(() => reader.Open(path, filter, ct), ct);
+    public Task<WorkspaceState> OpenWithHistoryAsync(string path, LogFilter filter,
+        Func<WorkspaceHistoryPreview, Task> publishHistory, CancellationToken ct)
+        => Task.Run(() => reader.Open(path, filter, ct, publishHistory: publishHistory), ct);
     public Task<WorkspaceStatus> RefreshStatusAsync(string root, CancellationToken ct)
         => Task.Run(() => reader.Status(root, ct), ct);
     public Task<HistoryPage> GetHistoryPageAsync(string root, LogFilter filter, string? generation, CancellationToken ct)

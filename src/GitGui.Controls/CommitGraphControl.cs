@@ -5,10 +5,13 @@ using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Threading;
+using Avalonia.Utilities;
 using GitGui.Core;
 
 namespace GitGui.Controls;
@@ -42,6 +45,15 @@ public sealed class CommitGraphControl : Control
     private static readonly Typeface Mono = new("Cascadia Code,Consolas,Menlo,monospace");
     private static readonly Typeface Normal = new("Segoe UI,Inter,Microsoft JhengHei,PingFang TC,Noto Sans TC,sans-serif");
     private INotifyCollectionChanged? observed;
+    private const int MaximumTextEntries = 256, MaximumTextCharacters = 65536, MaximumEntryCharacters = 4096;
+    private readonly Dictionary<(int Row, int Column), LinkedListNode<CachedText>> textCache = new();
+    private readonly LinkedList<CachedText> recentText = new();
+    private int textCharacters;
+    private TextContext? textContext;
+    private sealed record CachedText((int Row, int Column) Key, TextLayout Layout, int Characters);
+    private readonly record struct TextContext(double Width, double GraphWidth, IBrush Foreground, IBrush Muted,
+        string Culture, FontFamily StyledFamily, double StyledSize, FontStyle StyledStyle, FontWeight StyledWeight,
+        FontStretch StyledStretch, double Scaling);
 
     public CommitGraphControl()
     {
@@ -60,6 +72,7 @@ public sealed class CommitGraphControl : Control
         base.OnPropertyChanged(change);
         if (change.Property == CommitsProperty)
         {
+            ClearTextCache();
             if (observed is not null) observed.CollectionChanged -= CollectionChanged;
             observed = Commits as INotifyCollectionChanged;
             if (observed is not null) observed.CollectionChanged += CollectionChanged;
@@ -71,6 +84,7 @@ public sealed class CommitGraphControl : Control
             InvalidateVisual();
         }
         if (change.Property == AccessibleNameProperty) AutomationProperties.SetName(this, AccessibleName);
+        if (change.Property == EmptyTextProperty) ClearTextCache();
         if (change.Property == IsKeyboardFocusWithinProperty || change.Property == EmptyTextProperty) InvalidateVisual();
     }
 
@@ -87,6 +101,7 @@ public sealed class CommitGraphControl : Control
         var commits = Commits?.Cast<CommitInfo>().ToArray() ?? [];
         var layout = await Task.Run(() => CommitGraphLayout.Build(commits));
         if (version != layoutVersion) return;
+        ClearTextCache();
         rows = layout;
         graphWidth = Math.Max(50, rows.Select(r => r.Lane).DefaultIfEmpty().Max() * 16 + 30);
         MinWidth = Math.Max(420, graphWidth + 390);
@@ -99,6 +114,13 @@ public sealed class CommitGraphControl : Control
     {
         base.Render(context);
         var background = GetValue(GraphBackgroundProperty);
+        // Immutable snapshots also detect changes inside an existing mutable brush.
+        var foreground = GetValue(GraphForegroundProperty).ToImmutable();
+        var muted = GetValue(GraphMutedProperty).ToImmutable();
+        var current = new TextContext(Bounds.Width, graphWidth, foreground, muted, System.Globalization.CultureInfo.CurrentCulture.Name,
+            GetValue(TextElement.FontFamilyProperty), GetValue(TextElement.FontSizeProperty), GetValue(TextElement.FontStyleProperty),
+            GetValue(TextElement.FontWeightProperty), GetValue(TextElement.FontStretchProperty), TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
+        if (textContext != current) { ClearTextCache(); textContext = current; }
         context.FillRectangle(background, Bounds.WithX(0).WithY(0));
         var visible = (int)Math.Ceiling(Bounds.Height / RowHeight);
         for (var i = offset; i < Math.Min(rows.Count, offset + visible); i++)
@@ -112,20 +134,52 @@ public sealed class CommitGraphControl : Control
                     context.DrawLine(new Pen(LaneBrush(edge.FromLane), 1.5), new Point(12 + edge.FromLane * 16, y + edge.FromY * RowHeight), new Point(12 + edge.ToLane * 16, y + edge.ToY * RowHeight));
                 context.DrawEllipse(LaneBrush(row.Lane), new Pen(background, 2), new Point(12 + row.Lane * 16, y + RowHeight / 2), 4, 4);
             }
-            DrawText(context, row.Commit.Hash[..Math.Min(7, row.Commit.Hash.Length)], graphWidth, y + 4, Mono, GetValue(GraphMutedProperty), 65);
-            DrawText(context, row.Commit.Subject, graphWidth + 70, y + 4, Normal, GetValue(GraphForegroundProperty), Math.Max(30, Bounds.Width - graphWidth - 200));
-            if (Bounds.Width > 470) DrawText(context, row.Commit.Author, Bounds.Width - 120, y + 4, Normal, GetValue(GraphMutedProperty), 110);
+            DrawText(context, i, 0, row.Commit.Hash, graphWidth, y + 4, Mono, muted, 65);
+            DrawText(context, i, 1, row.Commit.Subject, graphWidth + 70, y + 4, Normal, foreground, Math.Max(30, Bounds.Width - graphWidth - 200));
+            if (Bounds.Width > 470) DrawText(context, i, 2, row.Commit.Author, Bounds.Width - 120, y + 4, Normal, muted, 110);
         }
-        if (rows.Count == 0) DrawText(context, EmptyText, 16, 24, Normal, GetValue(GraphMutedProperty), Bounds.Width - 30);
+        if (rows.Count == 0) DrawText(context, -1, 3, EmptyText, 16, 24, Normal, muted, Bounds.Width - 30);
         if (IsKeyboardFocusWithin) context.DrawRectangle(new Pen(GetValue(GraphForegroundProperty), 2), new Rect(1, 1, Math.Max(0, Bounds.Width - 2), Math.Max(0, Bounds.Height - 2)));
     }
 
     private IBrush LaneBrush(int lane) => this.FindResource("GraphLane" + lane % Palette.Length) as IBrush ?? Palette[lane % Palette.Length];
 
-    private static void DrawText(DrawingContext context, string text, double x, double y, Typeface typeface, IBrush brush, double width)
+    private void DrawText(DrawingContext context, int row, int column, string text, double x, double y, Typeface typeface, IBrush brush, double width)
     {
-        var formatted = new FormattedText(text, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 12, brush) { MaxTextWidth = Math.Max(1, width), MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
-        context.DrawText(formatted, new Point(x, y));
+        var key = (row, column);
+        if (textCache.TryGetValue(key, out var cached))
+        {
+            recentText.Remove(cached); recentText.AddFirst(cached);
+            cached.Value.Layout.Draw(context, new Point(x, y)); return;
+        }
+        if (column == 0) text = text[..Math.Min(7, text.Length)];
+        // FormattedText.Draw reshapes its lines each time in Avalonia11.3.
+        // TextLayout owns retained shaped lines and can be drawn without formatting again.
+        var properties = new GenericTextRunProperties(typeface, 12, foregroundBrush: brush, cultureInfo: System.Globalization.CultureInfo.CurrentCulture);
+        var layout = new TextLayout(text, typeface, 12, brush, textWrapping: TextWrapping.WrapWithOverflow,
+            textTrimming: TextTrimming.CharacterEllipsis, maxWidth: Math.Max(1, width), maxLines: 1,
+            textStyleOverrides: text.Length == 0 ? null : new[] { new ValueSpan<TextRunProperties>(0, text.Length, properties) });
+        if (text.Length > MaximumEntryCharacters)
+        {
+            using (layout) layout.Draw(context, new Point(x, y)); return;
+        }
+        while (textCache.Count >= MaximumTextEntries || textCharacters + text.Length > MaximumTextCharacters)
+        {
+            var oldest = recentText.Last!;
+            recentText.RemoveLast(); textCache.Remove(oldest.Value.Key);
+            textCharacters -= oldest.Value.Characters; oldest.Value.Layout.Dispose();
+        }
+        textCache.Add(key, recentText.AddFirst(new CachedText(key, layout, text.Length))); textCharacters += text.Length;
+        layout.Draw(context, new Point(x, y));
+    }
+    private void ClearTextCache()
+    {
+        foreach (var entry in recentText) entry.Layout.Dispose();
+        textCache.Clear(); recentText.Clear(); textCharacters = 0;
+    }
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        ClearTextCache(); textContext = null; base.OnDetachedFromVisualTree(e);
     }
     private int IndexOf(string? hash)
     {

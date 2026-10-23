@@ -18,7 +18,8 @@ internal sealed partial class WorkspaceReader
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, AdminDescriptor> descriptors = new(
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
-    private sealed record AdminDescriptor(string Root, string GitDir, string CommonDir, RepoFormat Format, string Fingerprint);
+    private sealed record AdminDescriptor(string Root, string GitDir, string CommonDir, RepoFormat Format, string Fingerprint,
+        RepositoryReadConfiguration? FreshConfiguration = null);
     private sealed class HistoryCache
     {
         public List<CommitInfo> Items { get; } = [];
@@ -67,12 +68,14 @@ internal sealed partial class WorkspaceReader
     {
         var full = GitAccess.NormalizeSystemPath(Path.GetFullPath(path));
         if (descriptors.TryGetValue(full, out var cached) && Directory.Exists(cached.Root) && cached.Fingerprint == Fingerprint(cached)) return cached;
-        var root = await git.Root(path, ct);
-        var directories = (await git.Text(root, ct, "rev-parse", "--path-format=absolute", "--absolute-git-dir", "--git-common-dir")).Split('\n');
-        var descriptor = new AdminDescriptor(root, directories[0].TrimEnd('\r'), directories[1].TrimEnd('\r'), await statusReader.GetFormatAsync(root, ct), "");
+        var directories = (await git.Text(path, ct, "rev-parse", "--path-format=absolute", "--show-toplevel", "--absolute-git-dir", "--git-common-dir")).Split('\n');
+        if (directories.Length != 3) throw new FormatException("Git did not return three repository administration paths.");
+        var root = GitAccess.NormalizeSystemPath(Path.GetFullPath(directories[0].TrimEnd('\r')));
+        var configuration = await ReadConfigurationSnapshot(root, ct);
+        var descriptor = new AdminDescriptor(root, directories[1].TrimEnd('\r'), directories[2].TrimEnd('\r'), configuration.Format, "");
         descriptor = descriptor with { Fingerprint = Fingerprint(descriptor) };
         descriptors[full] = descriptor; descriptors[root] = descriptor;
-        return descriptor;
+        return descriptor with { FreshConfiguration = configuration };
     }
 
     public async Task<WorkspaceStatus> Status(string root, CancellationToken ct)

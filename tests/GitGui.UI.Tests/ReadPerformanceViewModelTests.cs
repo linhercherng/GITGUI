@@ -8,6 +8,37 @@ namespace GitGui.UI.Tests;
 public sealed class ReadPerformanceViewModelTests
 {
     [AvaloniaFact]
+    public async Task Unchanged_progressive_refresh_preserves_loaded_pages_and_selected_commit()
+    {
+        var backend = new ReadWorkspace();
+        using var vm = new MainWindowViewModel(backend, new NoRecent()) { RepositoryPath = backend.Root };
+        await vm.RefreshCommand.ExecuteAsync(null); await vm.LoadMoreCommand.ExecuteAsync(null);
+        var selected = vm.Commits[1000]; vm.SelectedCommit = selected;
+        await vm.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal(1500, vm.Commits.Count); Assert.Equal(selected.Hash, vm.SelectedCommit?.Hash);
+    }
+
+    [AvaloniaFact]
+    public async Task Refreshing_the_same_diff_keeps_the_document_while_freshness_is_pending_and_avoids_an_identical_rebuild()
+    {
+        var backend = new ReadWorkspace { FileCount = 1, DiffText = "diff --git a/file-0 b/file-0\n--- a/file-0\n+++ b/file-0\n@@ -1 +1 @@\n-old\n+new\n" };
+        using var vm = new MainWindowViewModel(backend, new NoRecent()) { RepositoryPath = backend.Root };
+        await vm.RefreshCommand.ExecuteAsync(null);
+        var firstRow = vm.PatchRows[0]; firstRow.Selected = true;
+        var changes = new List<string>(); vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.Diff)) changes.Add(vm.Diff); };
+        backend.PendingDiff = new();
+        var refresh = vm.RefreshStatusAsync();
+        try
+        {
+            await backend.PendingDiffEntered.Task;
+            Assert.True(vm.IsDiffLoading); Assert.False(vm.CanApplyPatch);
+            Assert.Equal(backend.DiffText, vm.Diff);
+        }
+        finally { backend.PendingDiff.TrySetResult(backend.DiffText); await refresh; }
+        Assert.Same(firstRow, vm.PatchRows[0]); Assert.True(firstRow.Selected); Assert.Empty(changes);
+        Assert.False(vm.IsDiffLoading); Assert.True(vm.CanApplyPatch);
+    }
+    [AvaloniaFact]
     public async Task Applying_filters_during_pending_write_keeps_history_generation_so_next_page_resets_instead_of_mixing()
     {
         var backend = new ReadWorkspace { PendingWrite = new(), ResetChangedSearch = true };
@@ -60,7 +91,7 @@ public sealed class ReadPerformanceViewModelTests
         public Task<IReadOnlyList<string>> ListAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<string>>([]);
         public Task RememberAsync(string path, CancellationToken ct) => Task.CompletedTask;
     }
-    private sealed class ReadWorkspace : IWorkspaceService
+    private sealed class ReadWorkspace : IProgressiveWorkspaceService
     {
         public string Root { get; } = Path.Combine(Path.GetTempPath(), "gitgui-read-view");
         public int FileCount { get; init; }
@@ -72,13 +103,22 @@ public sealed class ReadPerformanceViewModelTests
         public string? PageGeneration { get; private set; }
         public bool ResetChangedSearch { get; init; }
         public TaskCompletionSource<OperationOutcome>? PendingWrite { get; init; }
+        public string DiffText { get; init; } = "";
+        public TaskCompletionSource<string>? PendingDiff { get; set; }
+        public TaskCompletionSource PendingDiffEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public event EventHandler<CommandEntry>? CommandExecuted { add { } remove { } }
         private static CommitInfo Commit(int i) => new(i.ToString("x40"), "Commit " + i, "Author", DateTimeOffset.UnixEpoch, []);
         public Task<WorkspaceState> OpenAsync(string path, LogFilter filter, CancellationToken ct)
         {
             Opens++; FirstFilter ??= filter;
             var files = Enumerable.Range(0, FileCount).Select(i => new FileChange("file-" + i, ".", "M", [])).ToArray();
-            return Task.FromResult(new WorkspaceState(Root, new("main", "head", files), Enumerable.Range(0, filter.Take).Select(Commit).ToArray(), [], [], InProgressState.None, true, []));
+            return Task.FromResult(new WorkspaceState(Root, new("main", "head", files), Enumerable.Range(0, filter.Take).Select(Commit).ToArray(), [], [], InProgressState.None, true, []) { HistoryGeneration = "generation" });
+        }
+        public async Task<WorkspaceState> OpenWithHistoryAsync(string path, LogFilter filter, Func<WorkspaceHistoryPreview, Task> publishHistory, CancellationToken ct)
+        {
+            var state = await OpenAsync(path, filter, ct);
+            await publishHistory(new(Root, new(state.Commits, state.HistoryGeneration!, filter.Take, true)));
+            return state;
         }
         public Task<HistoryPage> GetHistoryPageAsync(string root, LogFilter filter, string? generation, CancellationToken ct)
         {
@@ -92,7 +132,11 @@ public sealed class ReadPerformanceViewModelTests
             return Task.FromResult(new WorkspaceStatus(Root, new("main", "head", Enumerable.Range(0, FileCount + 1)
                 .Select(i => new FileChange("file-" + i, ".", "M", [])).ToArray()), InProgressState.None));
         }
-        public Task<string> GetDiffAsync(string root, DiffRequest request, CancellationToken ct) => Task.FromResult("");
+        public Task<string> GetDiffAsync(string root, DiffRequest request, CancellationToken ct)
+        {
+            if (PendingDiff is not null) { PendingDiffEntered.TrySetResult(); return PendingDiff.Task; }
+            return Task.FromResult(DiffText);
+        }
         public Task<FilePreview> GetPreviewAsync(string root, DiffRequest request, CancellationToken ct) => Task.FromResult(new FilePreview(null, null, null, null));
         public Task<CommitDetails> GetCommitAsync(string root, string commit, CancellationToken ct) => throw new NotSupportedException();
         public Task<ConflictContent> GetConflictAsync(string root, string path, CancellationToken ct) => throw new NotSupportedException();

@@ -3,7 +3,7 @@ using LibGit2Sharp;
 
 namespace GitGui.Engine.Lib;
 
-public sealed class LibHistoryReader : IHistoryReader, IStableGraphHistoryReader, IFileHistoryReader, IDisposable
+public sealed partial class LibHistoryReader : IHistoryReader, IStableGraphHistoryReader, IFileHistoryReader, IDisposable
 {
     private readonly object graphSync = new();
     private readonly Dictionary<string, GraphSession> graphs = [];

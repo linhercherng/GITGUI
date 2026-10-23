@@ -95,10 +95,24 @@ internal static class LargeRepositoryBenchmark
         var native = new LibHistoryReader(); var snapshots = new SnapshotManager(runner, store);
         var workspace = new WorkspaceService(runner, store, store, snapshots, new ReadOnlyInteraction(), native, native);
         var allocated = GC.GetTotalAllocatedBytes(true);
-        var clock = Stopwatch.StartNew(); var first = await workspace.OpenAsync(root, new(Take: 500), default);
-        var openMs = clock.Elapsed.TotalMilliseconds;
+        var clock = Stopwatch.StartNew();
+        double? publishedMs = null;
+        int? publishedCommands = null;
+#if NET10_0_OR_GREATER
+        var first = await workspace.OpenWithHistoryAsync(root, new(Take: 500), preview =>
+        {
+            if (preview.Page.Commits.Count != 500 && manifest.GetProperty("commits").GetInt32() >= 500)
+                throw new InvalidOperationException("Published graph page is not500 commits.");
+            publishedMs = clock.Elapsed.TotalMilliseconds; publishedCommands = commands.Count;
+            return Task.CompletedTask;
+        }, default);
+#else
+        var first = await workspace.OpenAsync(root, new(Take: 500), default);
+#endif
+        var openTotalReadyMs = clock.Elapsed.TotalMilliseconds;
+        var openMs = publishedMs ?? openTotalReadyMs;
         if (first.Commits.Count != 500 && manifest.GetProperty("commits").GetInt32() >= 500) throw new InvalidOperationException("First graph page is not500 commits.");
-        var firstCommands = commands.Count;
+        var firstCommands = publishedCommands ?? commands.Count;
         var status = new List<double>(); var diffs = new List<double>(); var graph = new List<double>();
         var statusCommands = new List<int>();
         const int layoutIterations = 1000;
@@ -132,6 +146,7 @@ internal static class LargeRepositoryBenchmark
             metrics = new Dictionary<string, double> { ["openFirst500Ms"] = openMs, ["statusMedianMs"] = Median(status),
                 ["diff10kLinesMedianMs"] = Median(diffs), ["layout500MedianMs"] = Median(graph) },
             samples = new { status, diff = diffs, layout = graph, layoutIterations, statusCommandCounts = statusCommands }, firstCommands,
+            openTotalReadyMs, firstGraphBoundary = publishedMs is null ? "Full workspace returned (backend has no progressive history)" : "First history page published; complete workspace readiness retained separately",
             allocatedBytes = GC.GetTotalAllocatedBytes(true) - allocated, processWorkingSetBytes = Process.GetCurrentProcess().WorkingSet64,
             scope = "Engine reads and graph layout only. Desktop startup, scrolling frames, UI blocking and app resident memory require separate native desktop instrumentation." };
         await File.WriteAllTextAsync(output, JsonSerializer.Serialize(report, Json));
