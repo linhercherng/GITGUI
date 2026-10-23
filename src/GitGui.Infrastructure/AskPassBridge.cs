@@ -11,7 +11,8 @@ public sealed class AskPassBridge : IDisposable
     private readonly CancellationTokenSource lifetime = new();
     private readonly Task loop;
     private int disposed;
-    public string PipeName { get; } = "gitgui-askpass-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
+    // macOS adds a long per-user temp prefix and limits Unix socket paths to 104 bytes.
+    public string PipeName { get; } = "gg-" + Guid.NewGuid().ToString("N");
     public AskPassBridge(IWorkspaceInteraction interaction) => loop = Serve(interaction);
 
     private async Task Serve(IWorkspaceInteraction interaction)

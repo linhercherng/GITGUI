@@ -32,7 +32,7 @@
 
 延遲 backend 測試驗證回應過期時不套用舊 patch、不切回舊 commit，且儲存期間較新的草稿不被清除。UI 審查修復後核准；後端未發現剩餘阻擋問題。
 
-首次 Linux CI 發現無效 AskPass 請求結束時重建 listener 會重設已排隊連線；已改為重用 listener 並 Disconnect，回歸案例連續混合 10 次無效／有效請求及 5 個並行正常請求。本機 InfrastructureTests 3 項重跑通過。
+首次 Linux CI 發現無效 AskPass 請求結束時重建 listener 會重設已排隊連線；已改為重用 listener 並 Disconnect，回歸案例連續混合 10 次無效／有效請求及 5 個並行正常請求。本機 InfrastructureTests 3 項重跑通過，修正後 Linux 全部 113 項通過。macOS 另發現暫存路徑加上 named pipe 名稱超過 104 bytes，已縮短名稱並保留完整 128-bit 隨機識別碼。
 
 ## GitHub 與未驗證範圍
 
