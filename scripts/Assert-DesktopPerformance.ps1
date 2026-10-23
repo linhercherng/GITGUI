@@ -136,7 +136,14 @@ function SurfaceValid($e,$report,$elapsedMs) {
     $started=Integer $e.StartedQpc 1;$requested=Integer $e.RequestedQpc 1;$updated=Integer $e.SceneUpdatedQpc 1;$completed=Integer $e.CompletedQpc 1;$render=Integer $e.RenderPassQpc 1
     True $e.CompletedSuccessfully 'Surface batch did not complete'
     Require ($started -le $requested -and $requested -le $updated -and $updated -le $render -and $render -le $completed) 'Surface operation/request/scene/render/completion order invalid'
-    Require (-not [string]::IsNullOrWhiteSpace($e.RepaintTargetType)) 'Missing existing visible repaint target identity'
+    Require ($e.RepaintTargetType -ceq 'Avalonia.Rendering.Composition.CompositionCustomVisual') 'Missing own-window composition ink target identity'
+    $ink=$e.ProbeInkMarker
+    Require ($ink -is [Collections.IDictionary]) 'Missing own-window opaque ink render evidence'
+    SameNumber $ink.devicePixels 1
+    foreach($field in @('X','Y')) { Require ((Number $ink[$field]) -ge 0) "Invalid marker coordinate: $field" }
+    foreach($field in @('Width','Height')) { Require ((Number $ink[$field]) -gt 0) "Invalid marker size: $field" }
+    $inkRendered=Integer $ink.renderedQpc 1
+    Require ($updated -le $inkRendered -and $inkRendered -le $render -and $inkRendered -le $completed) 'Own-window ink was not rendered inside its scene/render/completion batch'
     SameNumber $elapsedMs (($completed-$started)*1000.0/$frequency) 0.001
     $passes=@($report.avaloniaMetrics.samplesInOrder|Where-Object {$_.Instrument -ceq 'avalonia.comp.render.time' -and $_.RecordedQpc -eq $render})
     Require ($passes.Count -eq 1 -and $passes[0].Unit -ceq 'ms') 'Surface batch missing unique genuine render histogram'

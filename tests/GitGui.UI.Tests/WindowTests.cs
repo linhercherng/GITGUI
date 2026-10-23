@@ -100,14 +100,22 @@ public sealed class WindowTests
             var files = window.FindControl<ListBox>("ChangesList")!; Assert.True(files.IsKeyboardFocusWithin, $"repository={vm.HasRepository},busy={vm.IsBusy},staged={vm.ShowStaged},focus={window.FocusManager?.GetFocusedElement()},visible={files.IsEffectivelyVisible},keys={string.Join(',', window.KeyBindings.Select(b => b.Gesture))}");
             var item = Assert.Single(files.GetRealizedContainers());
             Assert.Equal(filename, Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(item)!.GetName());
+            backend.PendingOperation = new(TaskCreationOptions.RunContinuationsAsynchronously);
             Press(PhysicalKey.T, RawInputModifiers.Control); Assert.Equal(GitAction.Stage, Assert.Single(backend.Executed).Action);
+            var staging = vm.ActionCommand.ExecutionTask;
+            Assert.NotNull(staging); Assert.False(staging.IsCompleted); Assert.True(vm.IsBusy);
+            backend.PendingOperation.SetResult(new(true, "Staged")); backend.PendingOperation = null;
+            // Real keyboard commands may still be refreshing after the backend records the write.
+            await staging.WaitAsync(TimeSpan.FromSeconds(5)); Assert.False(vm.IsBusy);
             Press(PhysicalKey.Digit2, RawInputModifiers.Control); var input = window.FindControl<TextBox>("CommitMessageInput")!; Assert.True(input.IsKeyboardFocusWithin);
             window.KeyTextInput("Keyboard commit"); Assert.Equal("Keyboard commit", vm.CommitMessage);
             Press(PhysicalKey.P, RawInputModifiers.Control | RawInputModifiers.Shift); var dialog = Assert.Single(window.OwnedWindows);
             var paletteTask = ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)window.KeyBindings.Single(b => b.Gesture!.ToString() == "Ctrl+Shift+P").Command!).ExecutionTask;
             dialog.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None); if (paletteTask is not null) await paletteTask; Dispatcher.UIThread.RunJobs();
             Assert.True(input.IsKeyboardFocusWithin, $"After palette focus={window.FocusManager?.GetFocusedElement()}, busy={vm.IsBusy},enabled={input.IsEffectivelyEnabled}, owned={window.OwnedWindows.Count}");
-            Press(PhysicalKey.Enter, RawInputModifiers.Control); Assert.Equal(GitAction.Commit, backend.Executed[^1].Action);
+            Press(PhysicalKey.Enter, RawInputModifiers.Control);
+            Assert.NotNull(vm.ActionCommand.ExecutionTask); await vm.ActionCommand.ExecutionTask.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(GitAction.Commit, backend.Executed[^1].Action);
             Assert.Equal("Keyboard commit", backend.Executed[^1].Message);
         }
         finally { window.Close(); }

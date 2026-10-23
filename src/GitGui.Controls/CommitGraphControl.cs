@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using Avalonia;
+using Avalonia.Collections;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
@@ -8,6 +9,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Threading;
@@ -44,16 +46,71 @@ public sealed class CommitGraphControl : Control
     private static readonly IBrush[] Palette = [Brush.Parse("#6EA8FE"), Brush.Parse("#B49BFF"), Brush.Parse("#52CCA3"), Brush.Parse("#E9B76C"), Brush.Parse("#E581AC")];
     private static readonly Typeface Mono = new("Cascadia Code,Consolas,Menlo,monospace");
     private static readonly Typeface Normal = new("Segoe UI,Inter,Microsoft JhengHei,PingFang TC,Noto Sans TC,sans-serif");
+    private readonly ImmutablePen?[] lanePens = new ImmutablePen?[Palette.Length];
+    private ImmutablePen? nodeOutlinePen, focusPen;
+    private readonly IBrush?[] observedBrushes = new IBrush?[Palette.Length + 3];
+    private readonly BrushObserver?[] brushObservers = new BrushObserver?[Palette.Length + 3];
     private INotifyCollectionChanged? observed;
     private const int MaximumTextEntries = 256, MaximumTextCharacters = 65536, MaximumEntryCharacters = 4096;
-    private readonly Dictionary<(int Row, int Column), LinkedListNode<CachedText>> textCache = new();
+    private readonly Dictionary<TextKey, LinkedListNode<CachedText>> textCache = new();
     private readonly LinkedList<CachedText> recentText = new();
     private int textCharacters;
     private TextContext? textContext;
-    private sealed record CachedText((int Row, int Column) Key, TextLayout Layout, int Characters);
+    private sealed record CachedText(TextKey Key, TextLayout Layout, int Characters);
+    private readonly record struct TextKey(int Column, string Text, int Length, Typeface Typeface, double Width, IBrush Brush)
+    {
+        public bool Equals(TextKey other) => Column == other.Column && Length == other.Length && Typeface.Equals(other.Typeface) &&
+            Width.Equals(other.Width) && Brush.Equals(other.Brush) && Text.AsSpan(0, Length).SequenceEqual(other.Text.AsSpan(0, other.Length));
+        public override int GetHashCode() => HashCode.Combine(Column, Length, Typeface, Width, Brush,
+            string.GetHashCode(Text.AsSpan(0, Length), StringComparison.Ordinal));
+    }
     private readonly record struct TextContext(double Width, double GraphWidth, IBrush Foreground, IBrush Muted,
         string Culture, FontFamily StyledFamily, double StyledSize, FontStyle StyledStyle, FontWeight StyledWeight,
         FontStretch StyledStretch, double Scaling);
+
+    // Immutable drawing resources need an explicit repaint when their mutable sources change.
+    private sealed class BrushObserver(IBrush brush, Action invalidate) : IDisposable
+    {
+        private IMutableTransform? transform;
+        private GradientStops? stops;
+        private IDisposable? stopProperties;
+        public void Start()
+        {
+            if (brush is AvaloniaObject source) source.PropertyChanged += Changed;
+            UpdateChildren();
+        }
+        private void Changed(object? sender, AvaloniaPropertyChangedEventArgs e) { UpdateChildren(); invalidate(); }
+        private void TransformChanged(object? sender, EventArgs e) => invalidate();
+        private void StopsChanged(object? sender, NotifyCollectionChangedEventArgs e) => invalidate();
+        private void UpdateChildren()
+        {
+            var nextTransform = brush.Transform as IMutableTransform;
+            if (!ReferenceEquals(transform, nextTransform))
+            {
+                if (transform is not null) transform.Changed -= TransformChanged;
+                transform = nextTransform;
+                if (transform is not null) transform.Changed += TransformChanged;
+            }
+            var nextStops = (brush as GradientBrush)?.GradientStops;
+            if (!ReferenceEquals(stops, nextStops))
+            {
+                if (stops is not null) stops.CollectionChanged -= StopsChanged;
+                stopProperties?.Dispose(); stopProperties = null; stops = nextStops;
+                if (stops is not null)
+                {
+                    stops.CollectionChanged += StopsChanged;
+                    stopProperties = stops.TrackItemPropertyChanged(_ => invalidate());
+                }
+            }
+        }
+        public void Dispose()
+        {
+            if (brush is AvaloniaObject source) source.PropertyChanged -= Changed;
+            if (transform is not null) transform.Changed -= TransformChanged;
+            if (stops is not null) stops.CollectionChanged -= StopsChanged;
+            stopProperties?.Dispose();
+        }
+    }
 
     public CommitGraphControl()
     {
@@ -65,6 +122,7 @@ public sealed class CommitGraphControl : Control
         this.Bind(GraphForegroundProperty, new DynamicResourceExtension("TextBrush"));
         this.Bind(GraphMutedProperty, new DynamicResourceExtension("MutedBrush"));
         this.Bind(GraphSelectionProperty, new DynamicResourceExtension("SelectionBrush"));
+        ResourcesChanged += (_, _) => InvalidateVisual();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -115,12 +173,19 @@ public sealed class CommitGraphControl : Control
         base.Render(context);
         var background = GetValue(GraphBackgroundProperty);
         // Immutable snapshots also detect changes inside an existing mutable brush.
-        var foreground = GetValue(GraphForegroundProperty).ToImmutable();
-        var muted = GetValue(GraphMutedProperty).ToImmutable();
+        var foregroundSource = GetValue(GraphForegroundProperty); var mutedSource = GetValue(GraphMutedProperty);
+        var foreground = foregroundSource.ToImmutable();
+        var muted = mutedSource.ToImmutable();
         var current = new TextContext(Bounds.Width, graphWidth, foreground, muted, System.Globalization.CultureInfo.CurrentCulture.Name,
             GetValue(TextElement.FontFamilyProperty), GetValue(TextElement.FontSizeProperty), GetValue(TextElement.FontStyleProperty),
             GetValue(TextElement.FontWeightProperty), GetValue(TextElement.FontStretchProperty), TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
         if (textContext != current) { ClearTextCache(); textContext = current; }
+        for (var lane = 0; lane < lanePens.Length; lane++)
+        {
+            var source = LaneBrush(lane); ObserveBrush(lane, source); RetainPen(ref lanePens[lane], source, 1.5);
+        }
+        ObserveBrush(Palette.Length, background); ObserveBrush(Palette.Length + 1, foregroundSource); ObserveBrush(Palette.Length + 2, mutedSource);
+        var outline = RetainPen(ref nodeOutlinePen, background, 2);
         context.FillRectangle(background, Bounds.WithX(0).WithY(0));
         var visible = (int)Math.Ceiling(Bounds.Height / RowHeight);
         for (var i = offset; i < Math.Min(rows.Count, offset + visible); i++)
@@ -131,28 +196,50 @@ public sealed class CommitGraphControl : Control
             using (context.PushClip(new Rect(0, y, graphWidth - 4, RowHeight)))
             {
                 foreach (var edge in row.Segments)
-                    context.DrawLine(new Pen(LaneBrush(edge.FromLane), 1.5), new Point(12 + edge.FromLane * 16, y + edge.FromY * RowHeight), new Point(12 + edge.ToLane * 16, y + edge.ToY * RowHeight));
-                context.DrawEllipse(LaneBrush(row.Lane), new Pen(background, 2), new Point(12 + row.Lane * 16, y + RowHeight / 2), 4, 4);
+                    context.DrawLine(lanePens[edge.FromLane % lanePens.Length]!, new Point(12 + edge.FromLane * 16, y + edge.FromY * RowHeight), new Point(12 + edge.ToLane * 16, y + edge.ToY * RowHeight));
+                context.DrawEllipse(lanePens[row.Lane % lanePens.Length]!.Brush, outline, new Point(12 + row.Lane * 16, y + RowHeight / 2), 4, 4);
             }
-            DrawText(context, i, 0, row.Commit.Hash, graphWidth, y + 4, Mono, muted, 65);
-            DrawText(context, i, 1, row.Commit.Subject, graphWidth + 70, y + 4, Normal, foreground, Math.Max(30, Bounds.Width - graphWidth - 200));
-            if (Bounds.Width > 470) DrawText(context, i, 2, row.Commit.Author, Bounds.Width - 120, y + 4, Normal, muted, 110);
+            DrawText(context, 0, row.Commit.Hash, graphWidth, y + 4, Mono, muted, 65);
+            DrawText(context, 1, row.Commit.Subject, graphWidth + 70, y + 4, Normal, foreground, Math.Max(30, Bounds.Width - graphWidth - 200));
+            if (Bounds.Width > 470) DrawText(context, 2, row.Commit.Author, Bounds.Width - 120, y + 4, Normal, muted, 110);
         }
-        if (rows.Count == 0) DrawText(context, -1, 3, EmptyText, 16, 24, Normal, muted, Bounds.Width - 30);
-        if (IsKeyboardFocusWithin) context.DrawRectangle(new Pen(GetValue(GraphForegroundProperty), 2), new Rect(1, 1, Math.Max(0, Bounds.Width - 2), Math.Max(0, Bounds.Height - 2)));
+        if (rows.Count == 0) DrawText(context, 3, EmptyText, 16, 24, Normal, muted, Bounds.Width - 30);
+        if (IsKeyboardFocusWithin) context.DrawRectangle(RetainPen(ref focusPen, foreground, 2), new Rect(1, 1, Math.Max(0, Bounds.Width - 2), Math.Max(0, Bounds.Height - 2)));
     }
 
     private IBrush LaneBrush(int lane) => this.FindResource("GraphLane" + lane % Palette.Length) as IBrush ?? Palette[lane % Palette.Length];
 
-    private void DrawText(DrawingContext context, int row, int column, string text, double x, double y, Typeface typeface, IBrush brush, double width)
+    private void ObserveBrush(int index, IBrush source)
     {
-        var key = (row, column);
-        if (textCache.TryGetValue(key, out var cached))
+        if (ReferenceEquals(observedBrushes[index], source)) return;
+        brushObservers[index]?.Dispose(); observedBrushes[index] = source;
+        brushObservers[index] = source is AvaloniaObject ? new BrushObserver(source, InvalidateVisual) : null;
+        brushObservers[index]?.Start();
+    }
+
+    private static ImmutablePen RetainPen(ref ImmutablePen? previous, IBrush brush, double thickness)
+    {
+        if (previous?.Brush is { } snapshot && (ReferenceEquals(snapshot, brush) ||
+            snapshot is ISolidColorBrush old && brush is ISolidColorBrush current && old.Color == current.Color &&
+            old.Opacity.Equals(current.Opacity) && Nullable.Equals(old.Transform?.Value, current.Transform?.Value) &&
+            old.TransformOrigin.Equals(current.TransformOrigin))) return previous;
+        var immutable = brush.ToImmutable();
+        if (previous is null || !Equals(previous.Brush, immutable)) previous = new ImmutablePen(immutable, thickness);
+        return previous;
+    }
+
+    private void DrawText(DrawingContext context, int column, string text, double x, double y, Typeface typeface, IBrush brush, double width)
+    {
+        var length = column == 0 ? Math.Min(7, text.Length) : text.Length;
+        var key = new TextKey(column, text, length, typeface, Math.Max(1, width), brush);
+        if (length <= MaximumEntryCharacters && textCache.TryGetValue(key, out var cached))
         {
             recentText.Remove(cached); recentText.AddFirst(cached);
             cached.Value.Layout.Draw(context, new Point(x, y)); return;
         }
-        if (column == 0) text = text[..Math.Min(7, text.Length)];
+        // Probe with a span over the existing OID; allocate the visible abbreviation only on a miss.
+        if (length < text.Length) text = text[..length];
+        key = key with { Text = text };
         // FormattedText.Draw reshapes its lines each time in Avalonia11.3.
         // TextLayout owns retained shaped lines and can be drawn without formatting again.
         var properties = new GenericTextRunProperties(typeface, 12, foregroundBrush: brush, cultureInfo: System.Globalization.CultureInfo.CurrentCulture);
@@ -179,7 +266,10 @@ public sealed class CommitGraphControl : Control
     }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        ClearTextCache(); textContext = null; base.OnDetachedFromVisualTree(e);
+        ClearTextCache(); textContext = null; Array.Clear(lanePens); nodeOutlinePen = focusPen = null;
+        foreach (var observer in brushObservers) observer?.Dispose();
+        Array.Clear(brushObservers); Array.Clear(observedBrushes);
+        base.OnDetachedFromVisualTree(e);
     }
     private int IndexOf(string? hash)
     {

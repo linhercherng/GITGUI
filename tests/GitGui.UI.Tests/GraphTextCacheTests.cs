@@ -10,6 +10,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Threading;
 using GitGui.Controls;
@@ -30,15 +31,162 @@ public sealed class GraphTextCacheTests(ITestOutputHelper output)
     }
     private static object Entry(CommitGraphControl graph, int row = 0, int column = 1)
     {
-        var node = Cache(graph)[(row, column)]; Assert.NotNull(node);
-        return node.GetType().GetProperty("Value")!.GetValue(node)!;
+        var entry = FindEntry(graph, row, column); Assert.NotNull(entry); return entry;
     }
-    private static TextLayout Layout(CommitGraphControl graph, int row = 0) => Assert.IsType<TextLayout>(Entry(graph, row).GetType().GetProperty("Layout")!.GetValue(Entry(graph, row)));
+    private static object? FindEntry(CommitGraphControl graph, int row, int column)
+    {
+        var commit = row < 0 ? null : graph.Commits!.Cast<CommitInfo>().ElementAt(row);
+        var text = column switch { 0 => commit!.Hash[..Math.Min(7, commit.Hash.Length)], 1 => commit!.Subject, 2 => commit!.Author, _ => graph.EmptyText };
+        foreach (var node in Cache(graph).Values)
+        {
+            var entry = node!.GetType().GetProperty("Value")!.GetValue(node)!;
+            var key = entry.GetType().GetProperty("Key")!.GetValue(entry)!;
+            if ((int)key.GetType().GetProperty("Column")!.GetValue(key)! == column && (string)key.GetType().GetProperty("Text")!.GetValue(key)! == text) return entry;
+        }
+        return null;
+    }
+    private static TextLayout Layout(CommitGraphControl graph, int row = 0, int column = 1)
+        => Assert.IsType<TextLayout>(Entry(graph, row, column).GetType().GetProperty("Layout")!.GetValue(Entry(graph, row, column)));
     private static async Task<(Window Window, CommitGraphControl Graph)> Open(params CommitInfo[] commits)
     {
         var graph = new CommitGraphControl { Commits = commits, Width = 600, Height = 120 };
         var window = new Window { Content = graph, Width = 640, Height = 180 }; window.Show(); await graph.LayoutReady;
         window.UpdateLayout(); Draw(graph); return (window, graph);
+    }
+
+    [AvaloniaFact]
+    public async Task Identical_visible_labels_reuse_one_shaped_layout_across_rows_and_scroll()
+    {
+        var commits = Enumerable.Range(0, 1500).Select(i => Commit(i, "Repeated title")).ToArray();
+        var (window, graph) = await Open(commits);
+        try
+        {
+            var subject = Layout(graph, 0);
+            var author = Layout(graph, 0, 2);
+            var hash = Layout(graph, 0, 0);
+            Assert.Same(subject, Layout(graph, 1));
+            Assert.Same(author, Layout(graph, 1, 2));
+            Assert.Same(hash, Layout(graph, 1, 0));
+            var provider = ControlAutomationPeer.CreatePeerForElement(graph)!.GetProvider<IScrollProvider>()!;
+            provider.SetScrollPercent(-1, 50); Draw(graph);
+            var row = (int)typeof(CommitGraphControl).GetField("offset", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(graph)!;
+            Assert.Same(subject, Layout(graph, row));
+            Assert.Same(author, Layout(graph, row, 2));
+            Assert.Equal(3, Cache(graph).Count);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Graph_strokes_reuse_immutable_pens_and_preserve_mutable_brush_updates_and_pixels()
+    {
+        var first = Commit(0) with { Parents = [Commit(1).Hash] };
+        var second = Commit(1) with { Parents = [Commit(2).Hash] };
+        var (window, graph) = await Open(first, second, Commit(2));
+        try
+        {
+            var lane = new SolidColorBrush(Colors.Red, .8);
+            var background = new SolidColorBrush(Colors.Black);
+            graph.Resources["GraphLane0"] = lane;
+            graph.SetValue(CommitGraphControl.GraphBackgroundProperty, background);
+            var drawing = Recorded(graph); var original = Pens(drawing).ToArray();
+            var repeated = Pens(Recorded(graph)).ToArray();
+            Assert.NotEmpty(original); Assert.Equal(original.Length, repeated.Length);
+            for (var i = 0; i < original.Length; i++)
+            {
+                Assert.Same(original[i], repeated[i]);
+                Assert.IsType<ImmutablePen>(original[i]);
+                var defaults = new Pen(original[i].Brush, original[i].Thickness);
+                Assert.Equal(defaults.LineCap, original[i].LineCap); Assert.Equal(defaults.LineJoin, original[i].LineJoin);
+                Assert.Equal(defaults.MiterLimit, original[i].MiterLimit); Assert.Null(original[i].DashStyle);
+            }
+            Assert.Equal(Pixels(context => MutablePenOracle(drawing).Draw(context)), Pixels(drawing.Draw));
+            var oldLane = original.First(p => p.Thickness == 1.5);
+            lane.Color = Colors.Lime; lane.Opacity = .4; background.Color = Colors.Navy;
+            var changed = Recorded(graph); var changedPens = Pens(changed).ToArray();
+            var newLane = changedPens.First(p => p.Thickness == 1.5);
+            Assert.NotSame(oldLane, newLane);
+            Assert.Equal(Colors.Red, Assert.IsAssignableFrom<ISolidColorBrush>(oldLane.Brush).Color);
+            Assert.Equal(Colors.Lime, Assert.IsAssignableFrom<ISolidColorBrush>(newLane.Brush).Color);
+            Assert.Equal(.4, newLane.Brush!.Opacity);
+            Assert.Contains(changedPens, p => p.Thickness == 2 && p.Brush is ISolidColorBrush solid && solid.Color == Colors.Navy);
+            Assert.Equal(Pixels(context => MutablePenOracle(changed).Draw(context)), Pixels(changed.Draw));
+            graph.Resources["GraphLane0"] = Brushes.Blue;
+            Assert.Equal(Colors.Blue, Assert.IsAssignableFrom<ISolidColorBrush>(Pens(Recorded(graph)).First(p => p.Thickness == 1.5).Brush).Color);
+        }
+        finally { window.Close(); }
+    }
+
+    private static DrawingGroup Recorded(CommitGraphControl graph)
+    {
+        var drawing = new DrawingGroup(); using (var context = drawing.Open()) graph.Render(context); return drawing;
+    }
+    private static IEnumerable<IPen> Pens(Drawing drawing)
+    {
+        if (drawing is GeometryDrawing { Pen: { } pen }) yield return pen;
+        if (drawing is DrawingGroup group)
+            foreach (var child in group.Children)
+                foreach (var item in Pens(child)) yield return item;
+    }
+    private static Drawing MutablePenOracle(Drawing drawing)
+    {
+        if (drawing is GeometryDrawing geometry)
+            return new GeometryDrawing { Geometry = geometry.Geometry, Brush = geometry.Brush,
+                Pen = geometry.Pen is { } pen ? new Pen(pen.Brush, pen.Thickness) : null };
+        if (drawing is DrawingGroup group)
+        {
+            var result = new DrawingGroup { Opacity = group.Opacity, Transform = group.Transform,
+                ClipGeometry = group.ClipGeometry, OpacityMask = group.OpacityMask };
+            foreach (var child in group.Children) result.Children.Add(MutablePenOracle(child));
+            return result;
+        }
+        return drawing;
+    }
+
+    [AvaloniaFact]
+    public async Task Mutable_lane_updates_repaint_without_a_scroll_or_manual_graph_render()
+    {
+        var (window, graph) = await Open(Commit(0) with { Parents = [Commit(1).Hash] }, Commit(1));
+        try
+        {
+            var lane = new SolidColorBrush(Colors.Red); graph.Resources["GraphLane0"] = lane;
+            graph.InvalidateVisual(); PumpFrame(window);
+            var field = typeof(CommitGraphControl).GetField("lanePens", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var oldPen = Assert.IsType<ImmutablePen>(((Array)field.GetValue(graph)!).GetValue(0));
+            lane.Color = Colors.Lime; PumpFrame(window);
+            var newPen = Assert.IsType<ImmutablePen>(((Array)field.GetValue(graph)!).GetValue(0));
+            Assert.NotSame(oldPen, newPen);
+            Assert.Equal(Colors.Lime, Assert.IsAssignableFrom<ISolidColorBrush>(newPen.Brush).Color);
+            graph.Resources["GraphLane0"] = Brushes.Blue; PumpFrame(window);
+            Assert.Equal(Colors.Blue, Assert.IsAssignableFrom<ISolidColorBrush>(((ImmutablePen)((Array)field.GetValue(graph)!).GetValue(0)!).Brush).Color);
+            var gradient = new LinearGradientBrush { GradientStops = new GradientStops
+                { new(Colors.Red, 0), new(Colors.Blue, 1) } };
+            graph.Resources["GraphLane0"] = gradient; PumpFrame(window);
+            var gradientPen = (ImmutablePen)((Array)field.GetValue(graph)!).GetValue(0)!;
+            gradient.GradientStops[0].Color = Colors.Gold; PumpFrame(window);
+            var changedGradient = (ImmutablePen)((Array)field.GetValue(graph)!).GetValue(0)!;
+            Assert.NotSame(gradientPen, changedGradient);
+            Assert.Equal(Colors.Gold, Assert.IsAssignableFrom<IGradientBrush>(changedGradient.Brush).GradientStops[0].Color);
+            var transform = new TranslateTransform(1, 2); gradient.Transform = transform; PumpFrame(window);
+            transform.X = 3; PumpFrame(window);
+            Assert.Equal(transform.Value, ((ImmutablePen)((Array)field.GetValue(graph)!).GetValue(0)!).Brush!.Transform!.Value);
+            var matrix = new MatrixTransform(Matrix.CreateTranslation(1, 2));
+            var nested = new TransformGroup { Children = new Transforms { matrix } };
+            var outer = new TransformGroup { Children = new Transforms { nested } };
+            gradient.Transform = outer; PumpFrame(window);
+            var beforeMatrix = outer.Value;
+            matrix.Matrix = Matrix.CreateTranslation(5, 6); PumpFrame(window);
+            Assert.NotEqual(beforeMatrix, outer.Value);
+            Assert.Equal(outer.Value, ((ImmutablePen)((Array)field.GetValue(graph)!).GetValue(0)!).Brush!.Transform!.Value);
+        }
+        finally { window.Close(); }
+        Assert.All(((Array)typeof(CommitGraphControl).GetField("brushObservers", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(graph)!).Cast<object?>(), observer => Assert.Null(observer));
+    }
+
+    private static void PumpFrame(Window window)
+    {
+        Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        using var bitmap = window.CaptureRenderedFrame(); Assert.NotNull(bitmap);
     }
 
     [AvaloniaFact]
@@ -109,7 +257,7 @@ public sealed class GraphTextCacheTests(ITestOutputHelper output)
             }
             graph.Commits = new[] { Commit(0, new string('界', 5000)) }; await graph.LayoutReady;
             provider.SetScrollPercent(-1, 0); Draw(graph);
-            Assert.False(Cache(graph).Contains((0, 1))); Assert.True(Cache(graph).Contains((0, 0)));
+            Assert.Null(FindEntry(graph, 0, 1)); Assert.NotNull(FindEntry(graph, 0, 0));
         }
         finally { window.Close(); }
     }

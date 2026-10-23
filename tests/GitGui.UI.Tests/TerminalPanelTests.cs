@@ -22,9 +22,21 @@ public sealed class TerminalPanelTests
         var send = panel.Children.OfType<Grid>().Last().Children.OfType<Button>().Single(b => b.Name == "TerminalSend");
         send.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Assert.Equal("git status", Assert.Single(service.Session.Lines)); Assert.Empty(input.Text!);
-        service.Session.Emit("output from child process\n");
-        await Task.Delay(100); Dispatcher.UIThread.RunJobs();
-        Assert.Contains("output from child process", panel.Children.OfType<TextBox>().Single().Text);
+        var transcript = panel.Children.OfType<TextBox>().Single();
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void TranscriptChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs change)
+        {
+            if (change.Property == TextBox.TextProperty && transcript.Text?.Contains("output from child process", StringComparison.Ordinal) == true)
+                rendered.TrySetResult();
+        }
+        transcript.PropertyChanged += TranscriptChanged;
+        try
+        {
+            service.Session.Emit("output from child process\n");
+            await rendered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Contains("output from child process", transcript.Text);
+        }
+        finally { transcript.PropertyChanged -= TranscriptChanged; }
         window.Close(); await service.Session.Completion;
         Assert.False(panel.IsRunning); Assert.True(service.Session.Disposed);
     }

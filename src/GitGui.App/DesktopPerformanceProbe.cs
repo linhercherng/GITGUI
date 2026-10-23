@@ -32,6 +32,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
     private readonly DateTime processStarted = Process.GetCurrentProcess().StartTime.ToUniversalTime();
     private readonly NativePerformanceMetrics nativeMetrics = new();
     private readonly ConcurrentQueue<object> startupCheckpoints = new();
+    private readonly ConcurrentQueue<object> surfaceBarrierWindowFailures = new();
     public string DataPath { get; } = dataPath;
     public bool SoftwareRendering { get; private init; }
     private CompositionProbeSettings Composition { get; init; } = new(false);
@@ -197,6 +198,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             values["phaseTimeline"] = trace.Phases.ToArray();
             values["uiSynchronousSpans"] = trace.Spans.ToArray();
             values["startupCheckpoints"] = startupCheckpoints.ToArray();
+            values["surfaceBarrierWindowFailures"] = surfaceBarrierWindowFailures.ToArray();
             var surfaceErrors = renderingErrors.Snapshot();
             if (!renderingErrors.IsStillInstalled) surfaceErrors = [.. surfaceErrors, new(Stopwatch.GetTimestamp(), "Avalonia error observer was replaced during measurement.")];
             values["surfaceSubmissionErrors"] = surfaceErrors;
@@ -258,7 +260,10 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         return Composition.Observe(graphics?.GetType().FullName, factory?.GetType().FullName);
     }
 
-    private sealed record SurfaceSubmission(long StartedQpc, long RequestedQpc, long SceneUpdatedQpc, long CompletedQpc, long RenderPassQpc, double RenderDurationMs, bool CompletedSuccessfully, string RepaintTargetType);
+    private sealed record SurfaceSubmission(long StartedQpc, long RequestedQpc, long SceneUpdatedQpc, long CompletedQpc, long RenderPassQpc, double RenderDurationMs, bool CompletedSuccessfully, string RepaintTargetType)
+    {
+        public object? ProbeInkMarker { get; init; }
+    }
     private sealed record UiPhase(double PublishedMs, double FrameCallbackMs, double SurfaceSubmissionMs, double TotalReadyMs, SurfaceSubmission SurfaceSubmission);
     private sealed record DiffPhase(double FrameCallbackMs, double SurfaceSubmissionMs, SurfaceSubmission SurfaceSubmission);
     private async Task<UiPhase> CollectionFrameAsync<T>(Window window, ObservableCollection<T> collection, Func<Task> start,
@@ -357,43 +362,60 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
     }
     private async Task<SurfaceSubmission> SurfaceSubmissionAsync(Window window, long startedQpc, CancellationToken ct)
     {
-        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, ct);
-        window.UpdateLayout();
-        var compositor = ElementComposition.GetElementVisual(window)?.Compositor
-            ?? throw new InvalidOperationException("Native window compositor unavailable.");
-        // Window.Render has no own ink. Invalidating that empty draw list can
-        // legitimately produce no dirty target/render scope. Repaint existing
-        // on-screen ink without changing its content, geometry or renderer.
-        var target = window.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(text =>
-            text.IsEffectivelyVisible && text.Opacity > 0 && text.Bounds.Width > 0 && text.Bounds.Height > 0 && !string.IsNullOrWhiteSpace(text.Text) &&
-            text.TranslatePoint(default, window) is { } point && point.X >= 0 && point.Y >= 0 && point.X < window.ClientSize.Width && point.Y < window.ClientSize.Height)
-            ?? throw new InvalidOperationException("No existing on-screen text repaint target.");
-        var requested = Stopwatch.GetTimestamp();
-        target.InvalidateVisual();
-        var scene = new TaskCompletionSource<(long UpdatedQpc, Task<long> Completion)>(TaskCreationOptions.RunContinuationsAsynchronously);
-        // AddDirty queues CompositingRenderer.Update first. This public callback
-        // then runs in CommitCore, before serialization of that same batch.
-        compositor.RequestCompositionUpdate(() =>
+        try
         {
-            var updated = Stopwatch.GetTimestamp();
-            var batch = compositor.RequestCompositionBatchCommitAsync();
-            // Attach before this batch can be serialized/rendered, so even a fast
-            // render records its completion on the render thread, not a later UI continuation.
-            var completion = batch.Rendered.ContinueWith(task =>
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, ct);
+            window.UpdateLayout();
+            var compositor = ElementComposition.GetElementVisual(window)?.Compositor
+                ?? throw new InvalidOperationException("Native window compositor unavailable.");
+            var requested = Stopwatch.GetTimestamp();
+            // A visible text control may legitimately have an empty draw list. The
+            // opt-in probe supplies exactly one opaque device pixel to dirty this target.
+            // Its lease retains existing composition content and restores it in finally.
+            using var ink = new SurfaceInkMarker(window);
+            var scene = new TaskCompletionSource<(long UpdatedQpc, Task<long> Completion)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            // RecalculateChildren queues CompositingRenderer.Update first. This public callback
+            // then runs in CommitCore, before serialization of that same batch.
+            compositor.RequestCompositionUpdate(() =>
             {
-                task.GetAwaiter().GetResult(); return Stopwatch.GetTimestamp();
-            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            scene.TrySetResult((updated, completion));
-        });
-        var prepared = await scene.Task.WaitAsync(ct);
-        var completed = await prepared.Completion.WaitAsync(ct);
-        var render = nativeMetrics.Snapshot().LastOrDefault(sample => sample.Instrument == ScrollRenderEvidence.RenderInstrument && sample.RecordedQpc >= prepared.UpdatedQpc && sample.RecordedQpc <= completed)
-            ?? throw new InvalidOperationException($"Rendered batch has no matching real render histogram (request={requested}, scene={prepared.UpdatedQpc}, completed={completed}).");
-        if (render.Unit != "ms" || !double.IsFinite(render.Value) || render.Value < 0)
-            throw new InvalidOperationException("Invalid rendered batch histogram.");
-        // Rendered completes from finally. The enclosing error observer separately
-        // invalidates measurements on any render/session-disposal failure.
-        return new(startedQpc, requested, prepared.UpdatedQpc, completed, render.RecordedQpc, render.Value, true, target.GetType().FullName!);
+                var updated = Stopwatch.GetTimestamp();
+                var batch = compositor.RequestCompositionBatchCommitAsync();
+                // Attach before this batch can be serialized/rendered, so even a fast
+                // render records its completion on the render thread, not a later UI continuation.
+                var completion = batch.Rendered.ContinueWith(task =>
+                {
+                    task.GetAwaiter().GetResult(); return Stopwatch.GetTimestamp();
+                }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                scene.TrySetResult((updated, completion));
+            });
+            var prepared = await scene.Task.WaitAsync(ct);
+            var completed = await prepared.Completion.WaitAsync(ct);
+            var inkRenderedQpc = ink.RequireRendered(prepared.UpdatedQpc, completed);
+            var render = nativeMetrics.Snapshot().LastOrDefault(sample => sample.Instrument == ScrollRenderEvidence.RenderInstrument && sample.RecordedQpc >= inkRenderedQpc && sample.RecordedQpc <= completed)
+                ?? throw new InvalidOperationException($"Rendered batch has no matching real render histogram (request={requested}, scene={prepared.UpdatedQpc}, completed={completed}).");
+            if (render.Unit != "ms" || !double.IsFinite(render.Value) || render.Value < 0)
+                throw new InvalidOperationException("Invalid rendered batch histogram.");
+            // Rendered completes from finally. The enclosing error observer separately
+            // invalidates measurements on any render/session-disposal failure.
+            return new(startedQpc, requested, prepared.UpdatedQpc, completed, render.RecordedQpc, render.Value, true, ink.RepaintTargetType)
+            {
+                ProbeInkMarker = new { ink.Bounds.X, ink.Bounds.Y, ink.Bounds.Width, ink.Bounds.Height,
+                    devicePixels = 1, renderedQpc = inkRenderedQpc,
+                    purpose = "Probe-only opaque composition ink in the product scene batch; detached and previous child restored after the batch completes." }
+            };
+        }
+        catch
+        {
+            surfaceBarrierWindowFailures.Enqueue(new
+            {
+                recordedQpc = Stopwatch.GetTimestamp(), window.IsActive, window.IsVisible, window.IsEffectivelyVisible,
+                state = window.WindowState.ToString(), window.Opacity, window.RenderScaling,
+                bounds = new { window.Bounds.X, window.Bounds.Y, window.Bounds.Width, window.Bounds.Height },
+                clientSize = new { window.ClientSize.Width, window.ClientSize.Height },
+                boundary = "Own probe window state only; IsActive is not proof of occlusion or physical display."
+            });
+            throw;
+        }
     }
     private sealed record FrameSampling(object Report, long StartQpc, long EndQpc);
     private static async Task<FrameSampling> SampleFramesAsync(Window window, Action scroll, TimeSpan duration, CancellationToken ct)

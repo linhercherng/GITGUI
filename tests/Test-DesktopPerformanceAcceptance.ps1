@@ -60,7 +60,8 @@ $cold.avaloniaMetrics=@{timestampFrequency=$frequency;samplesInOrder=@()}
 function Surface($report,[long]$started,[double]$elapsedMs) {
     $completed=$started+[long]($elapsedMs*$frequency/1000);$render=$completed-1000
     $report.avaloniaMetrics.samplesInOrder+=@{Instrument='avalonia.comp.render.time';Unit='ms';Value=1.0;RecordedQpc=$render;Phase='synthetic-operation'}
-    return @{StartedQpc=$started;RequestedQpc=$completed-2000;SceneUpdatedQpc=$completed-1500;CompletedQpc=$completed;RenderPassQpc=$render;RenderDurationMs=1.0;CompletedSuccessfully=$true;RepaintTargetType='Avalonia.Controls.TextBlock'}
+    return @{StartedQpc=$started;RequestedQpc=$completed-2000;SceneUpdatedQpc=$completed-1500;CompletedQpc=$completed;RenderPassQpc=$render;RenderDurationMs=1.0;CompletedSuccessfully=$true;RepaintTargetType='Avalonia.Rendering.Composition.CompositionCustomVisual';
+        ProbeInkMarker=@{X=10.0;Y=10.0;Width=1.0;Height=1.0;devicePixels=1;renderedQpc=$completed-1200}}
 }
 $large.startupSurfaceSubmission=Surface $large 100000 850
 $cold.startupSurfaceSubmission=Surface $cold 100000 850
@@ -164,6 +165,8 @@ RunCase 'missing canonical surface evidence' $false {param($s,$r) $r.Remove('ope
 RunCase 'surface renderer error' $false {param($s,$r) $r.surfaceSubmissionErrors=@(@{RecordedQpc=1100000L;Message='EndDraw failed'})}
 RunCase 'surface batch lacks real render' $false {param($s,$r) $r.openPhases.SurfaceSubmission.RenderPassQpc+=100}
 RunCase 'surface batch lacks scene barrier' $false {param($s,$r) $r.openPhases.SurfaceSubmission.Remove('SceneUpdatedQpc')}
+RunCase 'surface marker missing' $false {param($s,$r) $r.openPhases.SurfaceSubmission.Remove('ProbeInkMarker')}
+RunCase 'surface marker outside scene batch' $false {param($s,$r) $r.openPhases.SurfaceSubmission.ProbeInkMarker.renderedQpc=$r.openPhases.SurfaceSubmission.SceneUpdatedQpc-1}
 RunCase 'steady memory single outlier' $false {param($s,$r) $r.steadyMemory.samplesInOrder[12].WorkingSetBytes=300000001;$r.steadyMemory.maximumWorkingSetBytes=300000001}
 RunCase 'missing steady memory' $false {param($s,$r) $r.Remove('steadyMemory')}
 RunCase 'memory does not cover end of scroll' $false {param($s,$r) $r.steadyMemory.samplesInOrder=$r.steadyMemory.samplesInOrder[0..20]}
