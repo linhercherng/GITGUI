@@ -2,6 +2,10 @@
 
 M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.5.0為M4預覽版；0.6.0效能改善候選版仍在驗收中。來源1f95807的Windows／macOS／Linux × Git2.40／2.56六格CI已通過，包含Windows免安裝包功能驗證；但首次新二進位啟動、持續捲動及嚴格16ms回應目標仍未完整通過，M4正式關卡仍未完成。完整測試、套件雜湊及發行狀態以同版 Release 的 `verification.json`、`SHA256SUMS.txt` 及對應來源 commit 的六格 CI 為準；原始規格保持不變。
 
+本輪實際候選包來源為 `b34dc8a4fe6c8053cf854ace95a8180ec12d949f`，已完成五組原生量測與配對 dispatcher profiler，正式判定仍為失敗：首次啟動4,074.56ms、捲動cadence僅1/5通過、單次UI工作18.9497ms；首批歷史、status、Diff及記憶體該組符合目標。真實git.git與合成倉庫的BDN六個case／30個actual樣本全部完成，但不取代原生關卡。詳見 [逐項結果](M4-PERFORMANCE.md)。
+
+該來源的 [CI run39993166764](https://github.com/linhercherng/GITGUI/actions/runs/39993166764) 為五格成功、一格macOS／Git2.56的UI測試同步失敗；Core33、Engine284均通過。失敗已在隔離測試受控重現：衝突編輯測試未等待Activated啟動的實際刷新，儲存因忙碌被正確拒絕。修正只等待正確的工作完成，不放寬儲存與復原斷言；最終修正來源的完整矩陣尚待確認。早期來源的六格成功不得當成最終來源已通過。
+
 | 範圍 | 實作 | 驗證方式 |
 | --- | --- | --- |
 | 大型倉庫 | 首批500筆、續載1000筆、依 refs 世代的有界提交快取、原生游標、狀態獨立刷新 | 100k提交／50k檔案實體fixture、SHA-1/SHA-256分頁與外部改refs、取消後重試、寫入重新檢查 |

@@ -556,26 +556,49 @@ public sealed class WindowTests
     {
         var backend = new SampleWorkspace { HasConflict = true };
         using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
-        var window = new MainWindow(vm); window.Show(); await vm.RefreshCommand.ExecuteAsync(null);
-        Assert.True(vm.HasConflict); Assert.True(vm.CanSaveConflict); Assert.Equal("base\n", vm.ConflictBase);
-        Assert.Equal(2, vm.ConflictSections.Count);
-        if (Environment.GetEnvironmentVariable("GITGUI_SCREENSHOT") is { } screenshot)
-            await Capture(window, Path.Combine(Path.GetDirectoryName(screenshot)!, Path.GetFileNameWithoutExtension(screenshot) + "-conflict.png"));
-        vm.UseConflictSectionCommand.Execute("Ours"); Assert.Single(vm.ConflictSections);
-        vm.UseConflictSectionCommand.Execute("Theirs"); Assert.Empty(vm.ConflictSections);
-        Assert.Equal("before\nours one\nbetween\ntheirs two\nafter\n", vm.ConflictResult);
-        window.FindControl<TabControl>("DetailTabs")!.SelectedIndex = 3;
-        var editor = window.FindControl<CodeEditor>("ConflictResultInput")!;
-        Assert.False(editor.IsReadOnly); editor.Text += "manual edit\n"; Dispatcher.UIThread.RunJobs();
-        Assert.EndsWith("manual edit\n", vm.ConflictResult);
-        await vm.RefreshCommand.ExecuteAsync(null); Assert.EndsWith("manual edit\n", vm.ConflictResult);
-        vm.SelectedChange = vm.Changes[1]; vm.SelectedChange = vm.Changes[0];
-        Assert.EndsWith("manual edit\n", vm.ConflictResult);
-        Assert.Throws<InvalidOperationException>(() => vm.CreateOperation("MarkResolved"));
-        await vm.ActionCommand.ExecuteAsync("WriteConflictResult");
-        var save = Assert.Single(backend.Executed); Assert.Equal(GitAction.WriteConflictResult, save.Action); Assert.EndsWith("manual edit\n", save.Message);
-        await vm.ActionCommand.ExecuteAsync("MarkResolved"); Assert.False(vm.HasConflict);
-        window.Close();
+        var window = new MainWindow(vm); window.Show();
+        Task? activationRefresh = null;
+        try
+        {
+            if (vm.InitializeCommand.ExecutionTask is { } initialization) await initialization.WaitAsync(TimeSpan.FromSeconds(5));
+            await vm.RefreshCommand.ExecuteAsync(null);
+            Assert.True(vm.HasConflict); Assert.True(vm.CanSaveConflict); Assert.Equal("base\n", vm.ConflictBase);
+            Assert.Equal(2, vm.ConflictSections.Count);
+            if (Environment.GetEnvironmentVariable("GITGUI_SCREENSHOT") is { } screenshot)
+                await Capture(window, Path.Combine(Path.GetDirectoryName(screenshot)!, Path.GetFileNameWithoutExtension(screenshot) + "-conflict.png"));
+            vm.UseConflictSectionCommand.Execute("Ours"); Assert.Single(vm.ConflictSections);
+            vm.UseConflictSectionCommand.Execute("Theirs"); Assert.Empty(vm.ConflictSections);
+            Assert.Equal("before\nours one\nbetween\ntheirs two\nafter\n", vm.ConflictResult);
+            window.FindControl<TabControl>("DetailTabs")!.SelectedIndex = 3;
+            var editor = window.FindControl<CodeEditor>("ConflictResultInput")!;
+            backend.DeferredOpen = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Dispatcher.UIThread.Post(window.Activate);
+            Assert.False(editor.IsReadOnly); editor.Text += "manual edit\n"; Dispatcher.UIThread.RunJobs();
+            Assert.NotNull(backend.DeferredOpenState); Assert.True(vm.IsBusy);
+            activationRefresh = vm.RefreshCommand.ExecutionTask;
+            Assert.NotNull(activationRefresh); Assert.False(activationRefresh.IsCompleted);
+            Assert.EndsWith("manual edit\n", vm.ConflictResult);
+            // RunJobs can start the window's Activated refresh. Await that exact task:
+            // invoking Refresh again while busy only returns a no-op task, not its completion.
+            backend.DeferredOpen.SetResult(backend.DeferredOpenState); backend.DeferredOpen = null;
+            await activationRefresh.WaitAsync(TimeSpan.FromSeconds(5)); Assert.False(vm.IsBusy);
+            await vm.RefreshCommand.ExecuteAsync(null); Assert.EndsWith("manual edit\n", vm.ConflictResult);
+            vm.SelectedChange = vm.Changes[1]; vm.SelectedChange = vm.Changes[0];
+            Assert.EndsWith("manual edit\n", vm.ConflictResult);
+            Assert.Throws<InvalidOperationException>(() => vm.CreateOperation("MarkResolved"));
+            await vm.ActionCommand.ExecuteAsync("WriteConflictResult");
+            var save = Assert.Single(backend.Executed); Assert.Equal(GitAction.WriteConflictResult, save.Action); Assert.EndsWith("manual edit\n", save.Message);
+            await vm.ActionCommand.ExecuteAsync("MarkResolved"); Assert.False(vm.HasConflict);
+        }
+        finally
+        {
+            if (backend.DeferredOpen is { } pending)
+            {
+                pending.TrySetResult(backend.DeferredOpenState!); backend.DeferredOpen = null;
+            }
+            if (activationRefresh is not null) await activationRefresh.WaitAsync(TimeSpan.FromSeconds(5));
+            window.Close();
+        }
     }
 
     [AvaloniaFact]

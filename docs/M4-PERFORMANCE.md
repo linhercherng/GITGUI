@@ -28,7 +28,29 @@
 
 這組已使用依文字內容重用的有界文字快取、保留的不可變繪圖筆，以及同視窗一個實體像素的 composition marker。marker 確認所等待批次確有本視窗的繪製，不能單憑成功的空批次任務宣告顯示完成。這些修正消除了既有量測盲點，但未使全部原始效能關卡通過。
 
+### 實際免安裝候選包 2
+
+來源 `b34dc8a4fe6c8053cf854ace95a8180ec12d949f` 再將四個進階歷史篩選欄位改成使用者首次展開才建立，保留原搜尋命令、條件值、鍵盤與無障礙操作；完整 UI 測試 135 項通過。實際自含 Windows ZIP 已內附 Portable Git 2.56.0.windows.3，SHA-256 為 `108886fa101d29b4433f47d241587ea88ad5646052eb1c7f84fae2c0c59f621e`。這是本機驗證用候選包，沒有發布到 GitHub Release。
+
+從該 ZIP 解壓到新的中文空白路徑，以包內 Git 執行五組原生量測，保留第一次啟動；再以相同二進位配對外部 profiler：
+
+| 原始目標 | 候選包 2 的實測 | 判定 |
+| --- | --- | --- |
+| 冷啟動 ≤1,500ms | 首次 4,074.56ms；其餘九次 892.74–1,129.94ms | 未通過 |
+| 首批 500 筆 ≤1,000ms | 五次 601.00–676.02ms | 通過該組 |
+| status ≤300ms | 全部 15 次 176.80–246.54ms | 通過該組 |
+| 10k 行 Diff ≤200ms | 全部 15 次 80.82–129.46ms | 通過該組 |
+| 常駐 ≤300,000,000 bytes | 捲動期間最大 268,263,424 bytes | 通過該組 |
+| 持續捲動 60fps | 嚴格 cadence 通過 1/5，仍有起始與內部長空檔 | 未通過 |
+| UI 單次阻塞 ≤16ms | `open500.await-native-frame` 的 dispatcher 工作 18.9497ms | 未通過 |
+
+完整輸入、逐筆上限與七個 DLL／profiler 身分配對判定保存在 `artifacts/m4-v060-candidate2-desktop-verdict.json`，總判定仍為 `false`。不以其他九次較快啟動或平均 FPS 抵銷失敗，也不從這兩組未配對的首次數值宣稱啟動尾端已改善多少。
+
+同一 ZIP 另通過隔離系統 Git／.NET 的套件功能驗證：2,224 次真實 Git 指令、原版 24 筆快照目錄的還原／重做與原狀復原、SQLite／libgit2／LFS／SSH、UTF-8 AskPass、中文空白解壓路徑及正常桌面關閉。此功能測試只要求 30 秒內可互動；該次正常桌面 Readiness 為 4,657.67ms，不能被稱為通過 1,500ms 效能關卡。套件功能收據與總判定分開保存於 `artifacts/releases/v0.6.0-candidate2`，總判定仍為未通過、未發布。
+
 首次新二進位啟動的既有 5–14 秒離群值亦保留。candidate7 的首次 EventPipe 診斷為 6,285.7ms，沒有事件遺失；大部分已觀察時間位於同步 assembly loader 區間，JIT 只占較小部分。CLR 首個事件之前約 1,569ms 為追蹤盲區。Loader 區間可能包含其他底層工作，現有證據不能判定 Windows、安全軟體、磁碟或 GPU 是根因；追蹤本身會改變耗時，不能拿來代替未注入工具的正式量測。
+
+另以固定來源的獨立 0.6.2 診斷二進位做一次自有程序 native stack 取樣：245 個樣本全部保留，啟動前 166 個樣本中 116 個位於 `NtCreateSection+20`，與先前 managed loader 區間一致，支持繼續調查載入路徑。取樣有暫停、符號查核成本與 CreateProcess 盲區，且沒有擷取 syscall 參數；無法由此確認特定檔案、單次呼叫耗時、安全軟體或磁碟根因。該次 5,839.52ms 是診斷值，不是正式效能成績；也不是發布版本 0.6.2。
 
 Read 路徑已加入設定批次查詢、保守失效快取、格式可用時的原生 refs／Diff／preview，以及獨立首批 history 發布；所有寫入仍走 CLI，重新取得完整狀態與安全前置檢查。SHA-256、reftable、特殊 attributes／encoding／Git 環境等不支援原生讀取的情況保留 CLI fallback。提交圖快取已成形的文字行，Diff 刷新保留相同文件與視窗幾何；這些功能測試結果不等於正式效能通過。
 
@@ -64,6 +86,19 @@ dotnet run --project tests/GitGui.Benchmarks -c Release -- --filter '*Repository
 ```
 
 預設 1 launch、1 warmup、5 actual iterations，每 iteration 只呼叫一次，保留所有離群值且不更改電源計畫。每次建立全新 service／native reader／暫存資料庫。`CompleteOpenFirst500` 計完整 Open task，與 progressive 首屏不同；另外測 status、合成工作檔 Diff 及實際 HEAD 的歷史 Diff。完整協定見 儲存庫的 `tests/GitGui.Benchmarks/README.md`。BDN 必須確認所有 case 與實際樣本成功；程序 exit 0 本身不足以證明成功。
+
+來源 `b34dc8a` 的最終 BDN 六個 case 均完成，共 30 個 actual 樣本；實際 job 的 launch／warmup／iteration／invocation／unroll、保留離群值、包內 Git、兩個 fixture HEAD 及電源計畫皆已逐一核對。下表採未扣 overhead 的原始 WorkloadActual（ms）：
+
+| Fixture | 引擎工作 | 平均 | 中位數 | 最大 |
+| --- | --- | ---: | ---: | ---: |
+| git.git | 完整 OpenAsync | 688.03 | 698.34 | 709.09 |
+| git.git | status | 120.81 | 120.80 | 126.44 |
+| git.git | HEAD 歷史 Diff | 447.29 | 448.38 | 461.54 |
+| 100k／50k 合成 | 完整 OpenAsync | 447.70 | 451.15 | 456.24 |
+| 100k／50k 合成 | status | 140.57 | 136.55 | 153.49 |
+| 100k／50k 合成 | 工作檔 Diff | 41.86 | 41.91 | 43.00 |
+
+git.git 的歷史 Diff 為 `Documentation/RelNotes/2.98.0.adoc`，與合成 10k 行工作檔及原生 UI 顯示計時不同；447ms 不標為 UI 的 200ms 關卡通過。原始五個值、完整 BDN JSON 與六份 fixture 收據保存在 `artifacts/m4-v060-bdn-final`。先前 `--cli` 產生不同預設迭代次數的中止嘗試另存，未納入統計；正式命令明確指定原本 1／1／5 次數並核對執行中的 job 描述。BDN 成功不能取代仍失敗的原生啟動、捲動與 16ms 關卡。
 
 ## 原生視窗驗證
 
