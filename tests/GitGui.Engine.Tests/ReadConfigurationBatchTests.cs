@@ -18,7 +18,8 @@ public sealed class ReadConfigurationBatchTests
         var runner = new GitProcessRunner(); var catalog = new MemoryCatalog();
         var service = new WorkspaceService(runner, new TestSettings(), catalog, new(runner, catalog), new TestInteraction());
         var state = await service.OpenAsync(repo.Root, new(), default);
-        Assert.Equal(repo.Root, state.Root); Assert.Single(state.Commits);
+        var expectedRoot = Path.GetFullPath((await repo.Git("rev-parse", "--show-toplevel")).Trim());
+        Assert.Equal(expectedRoot, state.Root); Assert.Single(state.Commits);
     }
 
     [Theory]

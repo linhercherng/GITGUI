@@ -7,6 +7,7 @@ internal sealed partial class WorkspaceReader
     private readonly ConcurrentDictionary<string, RepositoryReadConfiguration> readConfigurations = new(GitAccess.CollisionComparer);
     private async Task<RepositoryReadConfiguration> ReadConfigurationSnapshot(string root, CancellationToken ct)
     {
+        root = GitAccess.NormalizeSystemPath(root);
         var start = await runner.CreateStartInfoAsync(root, ct);
         // Git resolves includes, scope priority and the selected installation's system configuration.
         // Full configuration may contain credentials: never place its values in command history/logs.
@@ -20,6 +21,7 @@ internal sealed partial class WorkspaceReader
     }
     private async Task<RepositoryReadConfiguration> ConfigurationForNativeRead(string root, CancellationToken ct)
     {
+        root = GitAccess.NormalizeSystemPath(root);
         var start = await runner.CreateStartInfoAsync(root, ct);
         return readConfigurations.TryGetValue(root, out var cached) && cached.IsCurrent(start)
             ? cached : await ReadConfigurationSnapshot(root, ct);

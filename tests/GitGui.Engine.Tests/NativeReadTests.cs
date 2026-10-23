@@ -9,6 +9,22 @@ namespace GitGui.Engine.Tests;
 public sealed class NativeReadTests
 {
     [Fact]
+    public async Task Native_reads_reuse_fresh_configuration_for_equivalent_repository_paths()
+    {
+        using var repo = new TemporaryRepository(); await repo.Init();
+        const string changed = "changed through equivalent root\n";
+        await File.WriteAllTextAsync(Path.Combine(repo.Root, "tracked.txt"), changed);
+        var runner = new GitProcessRunner(); var catalog = new MemoryCatalog(); using var native = new LibHistoryReader();
+        var service = new WorkspaceService(runner, new TestSettings(), catalog, new(runner, catalog), new TestInteraction(), native);
+        await service.OpenAsync(repo.Root, new(), default);
+        var commands = new List<CommandEntry>(); runner.CommandExecuted += (_, entry) => commands.Add(entry);
+        var equivalent = Path.Combine(repo.Root, ".");
+        Assert.Contains("+changed through equivalent root", await service.GetDiffAsync(equivalent, new("tracked.txt"), default));
+        Assert.Equal(Encoding.UTF8.GetByteCount(changed), (await service.GetPreviewAsync(equivalent, new("tracked.txt"), default)).AfterSize);
+        Assert.Empty(commands);
+    }
+
+    [Fact]
     public async Task Native_attribute_guard_reads_index_fallback_after_worktree_attribute_deletion()
     {
         using var repo = new TemporaryRepository(); await repo.Init();
