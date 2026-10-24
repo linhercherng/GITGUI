@@ -28,6 +28,48 @@ public class TestApplication : Application
 public sealed class WindowTests
 {
     [AvaloniaFact]
+    public void Collapsed_operation_panel_keeps_logs_without_creating_or_updating_its_text_editor()
+    {
+        var backend = new SampleWorkspace();
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent());
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            var panel = window.FindControl<Expander>("MainOperationPanel")!;
+            Assert.Null(panel.Content);
+            backend.Emit(new(DateTimeOffset.Now, "git status", "first output", 0, TimeSpan.Zero));
+            Assert.Contains("first output", vm.Commands);
+            panel.IsExpanded = true; window.UpdateLayout();
+            var output = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "CommandOutput");
+            Assert.Equal(vm.Commands, output.Text);
+            panel.IsExpanded = false;
+            var previous = output.Text;
+            backend.Emit(new(DateTimeOffset.Now, "git log", "second output", 0, TimeSpan.Zero));
+            Assert.Equal(previous, output.Text);
+            Assert.Contains("second output", vm.Commands);
+            panel.IsExpanded = true; window.UpdateLayout();
+            Assert.Same(output, Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "CommandOutput"));
+            Assert.Equal(vm.Commands, output.Text);
+            Assert.True(output.IsReadOnly);
+            vm.English = true;
+            Assert.Equal(vm.L["OperationPanel"], Avalonia.Automation.AutomationProperties.GetName(output));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void Oversized_command_output_is_bounded_before_notifying_bindings()
+    {
+        var backend = new SampleWorkspace();
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent());
+        var lengths = new List<int>();
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.Commands)) lengths.Add(vm.Commands.Length); };
+        backend.Emit(new(DateTimeOffset.Now, "git log", new string('x', 600000), 0, TimeSpan.Zero));
+        Assert.Equal(400000, Assert.Single(lengths));
+        Assert.EndsWith("[exit 0 · 0 ms]\n\n", vm.Commands);
+    }
+
+    [AvaloniaFact]
     public void Diff_loading_keeps_the_visible_editor_viewport_document_and_scroll_position_stable()
     {
         using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent())

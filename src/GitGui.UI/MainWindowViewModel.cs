@@ -619,8 +619,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         void Append()
         {
             if (disposed) return;
-            Commands += $"[{entry.Time:HH:mm:ss}] $ {entry.Command}\n{entry.Output}\n[exit {entry.ExitCode} · {entry.Duration.TotalMilliseconds:0} ms]\n\n";
-            if (Commands.Length > 500000) Commands = Commands[^400000..];
+            var updated = Commands + $"[{entry.Time:HH:mm:ss}] $ {entry.Command}\n{entry.Output}\n[exit {entry.ExitCode} · {entry.Duration.TotalMilliseconds:0} ms]\n\n";
+            Commands = updated.Length > 500000 ? updated[^400000..] : updated;
         }
         if (Dispatcher.UIThread.CheckAccess()) Append(); else Dispatcher.UIThread.Post(Append);
     }

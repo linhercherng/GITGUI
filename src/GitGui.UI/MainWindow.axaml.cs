@@ -28,6 +28,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private RepositoryToolsWindow? toolsWindow;
     private ShortcutManager shortcuts = new();
     private Control? historyGraph;
+    private TextBox? commandOutput;
+    private IDisposable? commandOutputBinding;
     private FileSystemWatcher? worktreeWatcher;
     private FileSystemWatcher? gitWatcher;
     private FileSystemWatcher? commonWatcher;
@@ -71,7 +73,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         this.shortcuts.Attach(this, "Main", vm.L, ShortcutManager.Definitions.Where(d => d.Scope == "Main").Select(d => new UiCommand(d.Id[5..], () => ExecuteUiCommand(d.Id[5..]), () => CanExecuteUiCommand(d.Id[5..]))).ToArray());
         Closed += (_, _) => this.shortcuts.CultureChanged -= CultureChanged;
         Opened += async (_, _) => await vm.InitializeCommand.ExecuteAsync(null);
-        Closed += (_, _) => { closed = true; debounce.Stop(); worktreeWatcher?.Dispose(); gitWatcher?.Dispose(); commonWatcher?.Dispose(); vm.RepositoryOpened -= RepositoryOpened; vm.PropertyChanged -= ViewModelChanged; vm.Dispose(); };
+        Closed += (_, _) => { closed = true; debounce.Stop(); commandOutputBinding?.Dispose(); worktreeWatcher?.Dispose(); gitWatcher?.Dispose(); commonWatcher?.Dispose(); vm.RepositoryOpened -= RepositoryOpened; vm.PropertyChanged -= ViewModelChanged; vm.Dispose(); };
         Activated += async (_, _) =>
         {
             if (openDialogs > 0) return;
@@ -280,6 +282,30 @@ public partial class MainWindow : Window, IWorkspaceInteraction
             vm.L.Bind(input, Avalonia.Automation.AutomationProperties.NameProperty, label);
             Grid.SetRow(input, row); Grid.SetColumn(input, column); grid.Children.Add(input);
         }
+    }
+    private void OperationPanelExpanding(object? sender, CancelRoutedEventArgs args)
+    {
+        if (sender is not Expander panel || viewModel is not { } vm) return;
+        if (commandOutput is null)
+        {
+            var grid = new Grid { RowDefinitions = new("Auto,*"), RowSpacing = 6, Margin = new(8) };
+            var copy = new ActionButton { Icon = "Copy", HorizontalAlignment = HorizontalAlignment.Right };
+            vm.L.Bind(copy, ContentControl.ContentProperty, "Copy"); copy.Click += CopyCommandsClick;
+            commandOutput = new TextBox { Name = "CommandOutput", IsReadOnly = true, AcceptsReturn = true,
+                FontFamily = new("Cascadia Code,Consolas,Menlo,monospace"), FontSize = 11, MinHeight = 100 };
+            vm.L.Bind(commandOutput, Avalonia.Automation.AutomationProperties.NameProperty, "OperationPanel");
+            ScrollViewer.SetHorizontalScrollBarVisibility(commandOutput, Avalonia.Controls.Primitives.ScrollBarVisibility.Auto);
+            ScrollViewer.SetVerticalScrollBarVisibility(commandOutput, Avalonia.Controls.Primitives.ScrollBarVisibility.Auto);
+            Grid.SetRow(commandOutput, 1); grid.Children.Add(copy); grid.Children.Add(commandOutput); panel.Content = grid;
+        }
+        commandOutputBinding?.Dispose();
+        commandOutputBinding = commandOutput.Bind(TextBox.TextProperty, new Binding(nameof(vm.Commands)) { Source = vm, Mode = BindingMode.OneWay });
+    }
+    private void OperationPanelCollapsing(object? sender, CancelRoutedEventArgs args)
+    {
+        // Retain the log in the model. A hidden TextBox must not format each Git
+        // command's output; expansion rebinds the same editor to the latest text.
+        commandOutputBinding?.Dispose(); commandOutputBinding = null;
     }
     private void RepositoryOpened(object? sender, EventArgs args)
     {
