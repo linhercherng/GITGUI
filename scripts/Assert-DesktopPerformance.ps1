@@ -237,6 +237,11 @@ function MemoryValid($report) {
     $previous=$null;$maximum=0.0;$largestGap=0.0
     foreach($sample in $m.samplesInOrder) {
         $qpc=Integer $sample.RecordedQpc 1;$bytes=Limit $sample.WorkingSetBytes 300000000;Require ($bytes -gt 0) 'Invalid zero working set'
+        if($report.Contains('nativeHostIdentity')) {
+            $desktop=Limit $sample.DesktopWorkingSetBytes 300000000;$launcher=Limit $sample.LauncherWorkingSetBytes 300000000
+            Require ($desktop -gt 0 -and $launcher -gt 0) 'Native memory must include the live launcher'
+            SameNumber $bytes ($desktop+$launcher)
+        }
         $maximum=[Math]::Max($maximum,$bytes)
         if($null -ne $previous){Require ($qpc -gt $previous) 'Memory samples are not ordered';$gap=($qpc-$previous)*1000.0/$frequency;$largestGap=[Math]::Max($largestGap,$gap);Require ($gap -le 200) "Memory sampling gap $gap ms exceeds 200ms coverage protocol"}
         $previous=$qpc
@@ -362,7 +367,17 @@ if($null -ne $summaryData -and $summaryData.Contains('reports') -and $summaryDat
             Require ((Number $raw.startupInteractiveAfterInitializationMs) -ge 0 -and $raw.startupInteractiveAfterInitializationMs -le $n) 'Surface startup predates initialization/RAF diagnostic'
             SurfaceValid $raw.startupSurfaceSubmission $raw $n;return $n
         }
-        Check $scope 'resident-bytes<=300000000' { Limit $raw.workingSetBytes 300000000 }
+        Check $scope 'resident-bytes<=300000000' {
+            $bytes=Limit $raw.workingSetBytes 300000000
+            if($raw.Contains('nativeHostIdentity')) {
+                $m=$raw.memoryProcesses
+                Require ($m.desktopProcessId -eq $raw.launchOrigin.ProcessId -and $m.launcherProcessId -eq $raw.launchOrigin.LauncherProcessId) 'Wrong resident-memory processes'
+                $desktop=Limit $m.desktopWorkingSetBytes 300000000;$launcher=Limit $m.launcherWorkingSetBytes 300000000
+                Require ($desktop -gt 0 -and $launcher -gt 0) 'Native memory must include the live launcher'
+                SameNumber $bytes ($desktop+$launcher)
+            }
+            return $bytes
+        }
         if($row['mode'] -ceq 'large') {
             Check $scope 'fixture-consistency' { FixtureValid $raw; return $raw.fixture.fingerprint }
             Check $scope 'first500-surface-ms<=1000' {

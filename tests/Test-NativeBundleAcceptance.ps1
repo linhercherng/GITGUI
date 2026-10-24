@@ -34,6 +34,8 @@ $cases=[ordered]@{
     'different-os-script-host'={param($s,$r,$p) $r.nativeHostIdentity.scriptHostSha256='0'*64}
     'different-launcher-process'={param($s,$r,$p) $r.launchOrigin.LauncherProcessId+=1}
     'different-launcher-creation-time'={param($s,$r,$p) $r.launchOrigin.StartedUtc=([DateTime]$r.launchOrigin.StartedUtc).AddTicks(1)}
+    'omitted-launcher-memory'={param($s,$r,$p) $r.steadyMemory.samplesInOrder[0].LauncherWorkingSetBytes=0}
+    'different-memory-launcher-process'={param($s,$r,$p) $r.memoryProcesses.launcherProcessId+=1}
     'different-product-bundle-offset'={param($s,$r,$p) $r.productAssemblies['GitGui.UI'].offset+=1}
     'sidecar-is-not-loaded-bundle-evidence'={param($s,$r,$p) $r.productAssemblies['GitGui.UI'].storage='file'}
     'foreign-profile-process'={param($s,$r,$p) $p.targetProcessId+=1}

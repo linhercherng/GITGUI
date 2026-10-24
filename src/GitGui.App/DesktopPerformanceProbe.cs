@@ -122,7 +122,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 heartbeat = "Worker timer to UI Dispatcher callback delay during product open/status/diff/scroll or idle sampling, including OS scheduling and dispatcher backlog. Excludes probe runtime/fixture validation/trust setup and startup. This estimates responsiveness, not exact duration of every UI callback.",
                 instrumentation = "Ordered heartbeat timestamps/phase, worker16ms timer elapsed and GC deltas are retained. Bound-property spans measure VM PropertyChanging through PropertyChanged observers registered after normal bindings; they include synchronous setter/earlier-subscriber work, exclude deferred layout and are not a full UI callback profiler. Explicit UpdateLayout spans are separate. Instrumentation does not change renderer/GC/thread-pool settings.",
                 avaloniaMetrics = "Avalonia 11.3.22 built-in Diagnostic.Meter histograms for layout measure/arrange/render/input and compositor update/render, enabled before framework startup only in this probe. Every measurement is retained without a duration threshold. RecordedQpc is the synchronous measurement callback timestamp (after the measured scope), not its start; Phase is the phase at that callback. NativeThreadId is GetCurrentThreadId on Windows, otherwise null. Observable counters are sampled once at report time. These scopes do not cover every DispatcherOperation; neither these samples nor heartbeat delays prove that every UI callback is <=16ms. Collection itself adds diagnostic overhead.",
-                memory = "Worker samples Process.WorkingSet64 every100ms throughout exact five-second graph scrolling, with samples bracketing both QPC endpoints; all samples and maximum retained. Ending working set is separate; no forced GC or per-frame UI process queries."
+                memory = "Worker samples desktop plus the live WScript launcher's WorkingSet64 every100ms throughout exact five-second scrolling. Per-process values, their sum, both endpoints and every maximum are retained. Native launcher overhead is included in the unchanged300MB gate. No forced GC or per-frame UI process queries."
             }
         };
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
@@ -192,7 +192,14 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                     return ElementComposition.GetElementVisual(window)!.Compositor.RequestCompositionBatchCommitAsync().Rendered;
                 }, TimeSpan.FromSeconds(2), timeout.Token)).Report;
             }
-            using var process = Process.GetCurrentProcess(); process.Refresh(); values["workingSetBytes"] = process.WorkingSet64; values["privateBytes"] = process.PrivateMemorySize64;
+            using var process = Process.GetCurrentProcess(); process.Refresh();
+            using var launcher = launchOrigin.NativeHostPath is null ? null : Process.GetProcessById(launchOrigin.LauncherProcessId);
+            launcher?.Refresh();
+            var desktopBytes = process.WorkingSet64; var launcherBytes = launcher?.WorkingSet64 ?? 0;
+            values["workingSetBytes"] = checked(desktopBytes + launcherBytes);
+            values["privateBytes"] = checked(process.PrivateMemorySize64 + (launcher?.PrivateMemorySize64 ?? 0));
+            values["memoryProcesses"] = new { desktopProcessId = process.Id, launcherProcessId = launcher?.Id,
+                desktopWorkingSetBytes = desktopBytes, launcherWorkingSetBytes = launcherBytes };
         }
         catch (Exception ex) { exitCode = 1; values["failure"] = ex.GetType().Name + ": " + ex.Message; }
         finally
@@ -453,7 +460,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             startQpc, endQpc, timestampFrequency = Stopwatch.Frequency }, startQpc, endQpc);
     }
 
-    private sealed record MemorySample(long RecordedQpc, long WorkingSetBytes);
+    private sealed record MemorySample(long RecordedQpc, long WorkingSetBytes, long DesktopWorkingSetBytes, long LauncherWorkingSetBytes);
     private async Task<(object Callbacks, object Rendering, object Memory)> SampleScrollFramesAsync(Window window, Action scroll, ProbeTrace trace, CancellationToken ct)
     {
         var platform = window.PlatformImpl ?? throw new InvalidOperationException("Native window platform unavailable.");
@@ -478,7 +485,13 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             try
             {
                 using var process = Process.GetCurrentProcess();
-                void Sample() { process.Refresh(); var bytes = process.WorkingSet64; memory.Enqueue(new(Stopwatch.GetTimestamp(), bytes)); }
+                using var launcher = launchOrigin.NativeHostPath is null ? null : Process.GetProcessById(launchOrigin.LauncherProcessId);
+                void Sample()
+                {
+                    process.Refresh(); launcher?.Refresh();
+                    var desktopBytes = process.WorkingSet64; var launcherBytes = launcher?.WorkingSet64 ?? 0;
+                    memory.Enqueue(new(Stopwatch.GetTimestamp(), checked(desktopBytes + launcherBytes), desktopBytes, launcherBytes));
+                }
                 Sample(); memoryReady.TrySetResult();
                 while (!memoryCancellation.IsCancellationRequested)
                 {
