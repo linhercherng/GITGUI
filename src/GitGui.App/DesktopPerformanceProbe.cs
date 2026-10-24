@@ -117,7 +117,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 graph = "Repository-path assignment through first500 publication, queued graph rebuild/LayoutReady, visible History layout, RAF diagnostic, then a requested rendered batch and native surface-update return. Full refresh completion remains separate. Setup/validation excluded. Surface submission is a conservative completed batch, not physical display.",
                 status = "RefreshStatusAsync through Changes.Reset, visible working-tree layout, diagnostic RAF and completed rendered batch/surface update. Total status+selected-file diff/conflict readiness is retained separately.",
                 diff = "Selecting generated big.txt after clearing selection through IsDiffLoading=false, active inline editor equality, layout, diagnostic RAF and completed rendered batch/surface update. Includes Git read, projection, bindings and editor layout; source file has10000lines.",
-                frames = "Native scrolling driver protocol2: every ScrollProvider update awaits both its RequestAnimationFrame callback and requested CompositionBatch.Rendered before sending the next update. Prevents empty RAF callbacks from creating an unbounded input busy loop. No pre-scroll warmup; QPC starts before the first update. Callback/loop intervals remain diagnostic; the separate real-render histogram/batch cadence gate is unchanged.",
+                frames = "Native scrolling driver protocol2: each ScrollProvider update invalidates the actual graph and awaits its RAF callback plus requested CompositionBatch.Rendered before the next update. No additional whole-window invalidation, empty-RAF input busy loop or pre-scroll warmup. QPC starts before the first update. Loop intervals remain diagnostic; the real-render histogram/batch cadence gate is unchanged.",
                 scrollRendering = "Real avalonia.comp.render.time scopes correlated with distinct public CompositionBatch.Rendered notifications after drawing-context/session disposal and native surface EndDraw. Exact QPC interval excludes drain and report work. This measures application rendering plus returned surface-update submission, not GPU completion, Windows compositor commit completion, physical display or photons. Histogram scopes end before surface disposal; batch notifications occur in finally, so render errors are captured separately and invalidate the gate. Nominal60 includes60000/1001Hz; endpoint allowance is floor(duration*60000/1001)-1, with every internal gap>=1.5frames failing even if average recovers.",
                 heartbeat = "Worker timer to UI Dispatcher callback delay during product open/status/diff/scroll or idle sampling, including OS scheduling and dispatcher backlog. Excludes probe runtime/fixture validation/trust setup and startup. This estimates responsiveness, not exact duration of every UI callback.",
                 instrumentation = "Ordered heartbeat timestamps/phase, worker16ms timer elapsed and GC deltas are retained. Bound-property spans measure VM PropertyChanging through PropertyChanged observers registered after normal bindings; they include synchronous setter/earlier-subscriber work, exclude deferred layout and are not a full UI callback profiler. Explicit UpdateLayout spans are separate. Instrumentation does not change renderer/GC/thread-pool settings.",
@@ -380,11 +380,13 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         return manifest.Clone();
     }
 
-    private static Task FrameAsync(Window window, CancellationToken ct)
+    private static Task FrameAsync(Window window, CancellationToken ct, bool invalidateWindow = true)
     {
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var registration = ct.Register(() => completion.TrySetCanceled(ct));
-        window.RequestAnimationFrame(_ => { registration.Dispose(); completion.TrySetResult(); }); window.InvalidateVisual(); return completion.Task;
+        window.RequestAnimationFrame(_ => { registration.Dispose(); completion.TrySetResult(); });
+        if (invalidateWindow) window.InvalidateVisual();
+        return completion.Task;
     }
     private async Task<SurfaceSubmission> SurfaceSubmissionAsync(Window window, long startedQpc, CancellationToken ct)
     {
@@ -451,7 +453,9 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         while (clock.Elapsed < duration)
         {
             var started = Stopwatch.GetTimestamp(); var rendered = scroll(); callbackDurations.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-            await ScrollFramePacing.WaitAsync(FrameAsync(window, ct), rendered, ct);
+            // The scroll action invalidates the graph exactly as normal input does.
+            // Do not additionally repaint the unchanged diff/editor and whole window.
+            await ScrollFramePacing.WaitAsync(FrameAsync(window, ct, invalidateWindow: false), rendered, ct);
             var now = clock.Elapsed.TotalMilliseconds; intervals.Add(now - previous); previous = now;
         }
         var endQpc = Stopwatch.GetTimestamp();
