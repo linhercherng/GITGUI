@@ -132,7 +132,7 @@ public sealed class DesktopApp : Application
             static string Quote(string value) => OperatingSystem.IsWindows()
                 ? "\"" + value.Replace("\"", "\\\"", StringComparison.Ordinal) + "\""
                 : "'" + value.Replace("'", "'\"'\"'", StringComparison.Ordinal) + "'";
-            runner.AskPassCommand = Quote(executable) +
+            runner.AskPassCommand = Quote(executable) + (WindowsNativeHost.ActivePath() is { } nativeHost ? " " + Quote(nativeHost) + ",RunW" : "") +
                 (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase)
                     ? " " + Quote(typeof(DesktopApp).Assembly.Location) : "") + " --askpass";
             runner.AskPassPipe = bridge.PipeName;

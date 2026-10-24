@@ -6,6 +6,7 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/Shared/AssemblyImage.cs" Link="AssemblyImage.cs" />
     <PackageReference Include="Lib.Harmony" />
     <PackageReference Include="Avalonia" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>

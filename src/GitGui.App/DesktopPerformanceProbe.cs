@@ -29,7 +29,8 @@ namespace GitGui.App;
 internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath, string? repository)
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
-    private readonly DateTime processStarted = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+    private readonly LaunchOrigin launchOrigin = WindowsNativeHost.Origin();
+    private DateTime processStarted => launchOrigin.StartedUtc;
     private readonly NativePerformanceMetrics nativeMetrics = new();
     private readonly ConcurrentQueue<object> startupCheckpoints = new();
     private readonly ConcurrentQueue<object> surfaceBarrierWindowFailures = new();
@@ -103,7 +104,8 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             ["schema"] = 1, ["recordedAt"] = DateTimeOffset.UtcNow,
             ["timelineOriginUtc"] = trace.OriginUtc,
             ["timelineOriginQpc"] = trace.OriginQpc,
-            ["renderingModeRequested"] = SoftwareRendering ? "Windows Software framebuffer" : "Platform default (Windows ANGLE EGL with Software fallback)",
+            ["renderingModeRequested"] = SoftwareRendering ? "Windows Software framebuffer (probe override)" :
+                OperatingSystem.IsWindows() && !DirectComposition ? "Windows Software framebuffer (product default)" : "Platform graphics default",
             ["compositionModeRequested"] = Composition.Requested,
             ["host"] = new { os = RuntimeInformation.OSDescription, framework = RuntimeInformation.FrameworkDescription,
                 architecture = RuntimeInformation.ProcessArchitecture.ToString(), processors = Environment.ProcessorCount,
@@ -221,6 +223,14 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 // startup, operation, scroll or working-set measurements end.
                 var backend = ObserveCompositionBackend();
                 values["compositionBackend"] = backend;
+                values["launchOrigin"] = launchOrigin;
+                if (launchOrigin.NativeHostPath is { } nativeHost)
+                {
+                    static string HashImage(string path) { using var image = File.OpenRead(path); return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(image)).ToLowerInvariant(); }
+                    values["nativeHostIdentity"] = new { processPath = Environment.ProcessPath, processSha256 = HashImage(Environment.ProcessPath!),
+                        hostSha256 = HashImage(nativeHost), bundleSha256 = HashImage(Path.Combine(AppContext.BaseDirectory, "GitGui.App.exe")),
+                        launcherSha256 = HashImage(Path.Combine(AppContext.BaseDirectory, "GITGUI.vbs")), scriptHostSha256 = HashImage(launchOrigin.LauncherPath) };
+                }
                 if (DirectComposition && backend.RequestedBackendMatched != true)
                 {
                     values["compositionFailure"] = "DirectComposition with D3D11 ANGLE was requested, but the actual registered backend differs.";
@@ -231,9 +241,9 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                     .ToDictionary(name => name, name =>
                     {
                         var assembly = loaded.Single(a => a.GetName().Name == name);
-                        using var stream = File.OpenRead(assembly.Location);
-                        return new { fileName = Path.GetFileName(assembly.Location), sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream)).ToLowerInvariant(),
-                            mvid = assembly.ManifestModule.ModuleVersionId.ToString("D"), version = assembly.GetName().Version!.ToString() };
+                        var image = GitGui.Diagnostics.AssemblyImage.Read(assembly);
+                        return new { fileName = image.FileName, sha256 = image.Sha256,
+                            mvid = image.Mvid.ToString("D"), version = image.Version.ToString(), storage = image.Storage, offset = image.Offset };
                     });
             }
             catch (Exception exception) { values["provenanceFailure"] = exception.GetType().Name + ": " + exception.Message; if (exitCode == 0) exitCode = 1; }

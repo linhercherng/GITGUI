@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <Compile Include="../Shared/AssemblyImage.cs" Link="AssemblyImage.cs" />
     <ProjectReference Include="../GitGui.Core/GitGui.Core.csproj" />
     <ProjectReference Include="../GitGui.Engine.Cli/GitGui.Engine.Cli.csproj" />
     <ProjectReference Include="../GitGui.Engine.Lib/GitGui.Engine.Lib.csproj" />

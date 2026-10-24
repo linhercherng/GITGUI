@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/GitGui.App/WindowsNativeHost.cs" Link="WindowsNativeHost.cs" />
+    <Compile Include="../../src/Shared/AssemblyImage.cs" Link="AssemblyImage.cs" />
     <Compile Include="../../src/GitGui.App/WindowsHighResolutionRenderClock.cs" Link="WindowsHighResolutionRenderClock.cs" />
     <Compile Include="../../src/GitGui.App/CompositionProbeSettings.cs" Link="Probe/CompositionProbeSettings.cs" />
     <Compile Include="../../src/GitGui.App/NativePerformanceMetrics.cs" Link="Probe/NativePerformanceMetrics.cs" />

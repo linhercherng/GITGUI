@@ -89,11 +89,12 @@ internal static class Profiler
     private static void Patch(Harmony harmony, MethodInfo method, Type patch)
     {
         if (method is null || method.GetMethodBody() is null) throw new InvalidOperationException("Expected shipping method with IL not found.");
-        using var image = new PEReader(File.OpenRead(method.Module.FullyQualifiedName));
+        var identity = GitGui.Diagnostics.AssemblyImage.Read(method.Module.Assembly);
+        using var image = new PEReader(new MemoryStream(identity.Bytes, writable: false));
         Patches.Add(new { method = method.DeclaringType!.FullName + "." + method.Name, token = method.MetadataToken,
-            mvid = method.Module.ModuleVersionId, module = method.Module.FullyQualifiedName,
+            mvid = method.Module.ModuleVersionId, module = Path.Combine(AppContext.BaseDirectory, identity.FileName),
             managedNativeHeaderSize = image.PEHeaders.CorHeader?.ManagedNativeHeaderDirectory.Size ?? 0,
-            sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(method.Module.FullyQualifiedName))) });
+            sha256 = identity.Sha256, storage = identity.Storage, offset = identity.Offset });
         harmony.Patch(method, new HarmonyMethod(patch.GetMethod("Prefix")!), finalizer: new HarmonyMethod(patch.GetMethod("Finalizer")!));
     }
     public static SpanState Enter(long started, string seam, string? callback = null)
@@ -183,7 +184,7 @@ internal static class Profiler
             schema = 1, runtime = RuntimeInformation.FrameworkDescription, originQpc = OriginQpc, timestampFrequency = Stopwatch.Frequency,
             targetProcessId = Environment.ProcessId,
             targetExecutableSha256 = HashFile(Environment.ProcessPath),
-            targetAppAssemblySha256 = HashFile(Assembly.GetEntryAssembly()?.Location),
+            targetAppAssemblySha256 = Assembly.GetEntryAssembly() is { } entry ? GitGui.Diagnostics.AssemblyImage.Read(entry).Sha256 : null,
             hookAssemblySha256 = HashFile(typeof(StartupHook).Assembly.Location),
             desktopProbeReportPath, desktopProbeReportSha256,
             harmony = new { version = typeof(Harmony).Assembly.GetName().Version?.ToString(),
