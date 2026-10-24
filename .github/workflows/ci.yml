@@ -46,7 +46,7 @@ jobs:
         shell: pwsh
         run: ./tests/PreparePortableGit.ps1
       - name: Test
-        run: dotnet test GitGui.sln -c Release --no-build --logger trx --results-directory TestResults
+        run: dotnet test GitGui.sln -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame-hang-timeout 5m --blame-hang-dump-type mini --results-directory TestResults
       - name: Verify JSON contracts without runtime reflection
         if: matrix.git == '2.56.0'
         shell: pwsh
@@ -55,6 +55,7 @@ jobs:
         shell: pwsh
         run: |
           ./tests/Test-PerformanceComparison.ps1
+          ./tests/Test-NativePhaseIndex.ps1
           ./tests/Test-DesktopPerformanceAcceptance.ps1
       - name: Build independent dispatcher diagnostic
         run: |

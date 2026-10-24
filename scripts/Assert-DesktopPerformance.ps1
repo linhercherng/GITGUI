@@ -489,31 +489,20 @@ if($ProfileReports.Count -eq 0 -and $ProfileProbeReports.Count -eq 0) {
                 $phases+=@{at=$origin+[long][Math]::Truncate($elapsed*$frequency/1000);name=$phase.phase}
             }
             $productPattern='^(?:(?:open500|status[123]|diff[123])\.[a-z-]+|show-status-tab|load-more|graph-scroll(?:\.(?:draining|complete))?)$'
+            foreach($entry in $phases){$entry.isProduct=$entry.name -cmatch $productPattern}
             foreach($required in @('open500.wait-publication','open500.complete','status1.wait-publication','status1.complete','status2.wait-publication','status2.complete','status3.wait-publication','status3.complete',
                 'diff1.clear-selection','diff1.complete','diff2.clear-selection','diff2.complete','diff3.clear-selection','diff3.complete','load-more','graph-scroll','probe-report')) {
                 Require (@($phases|Where-Object name -CEQ $required).Count -eq 1) "Missing/duplicate operation phase $required"
             }
-            $ids=@{};$seams=@{};$classifications=@{};$maximum=0.0;$productCount=0;$crossingCount=0
-            foreach($span in $p.spans) {
-                $id=Integer $span.Id 1;Require (-not $ids.ContainsKey($id)) 'Duplicate span id';$ids[$id]=$true
-                True $span.Completed 'Incomplete UI span';$enter=Integer $span.EnterQpc 1;$exit=Integer $span.ExitQpc 1
-                Require ($exit -ge $enter) 'Negative UI span';$null=Integer $span.NativeTid 1
-                Require ($span.Seam -cin @('DispatcherOperation.Execute','Dispatcher.Invoke UI Send','WindowImpl.AppWndProc')) 'Unknown profiler seam'
-                $enterPhase=@($phases|Where-Object {$_.at -le $enter}|Select-Object -Last 1)
-                $exitPhase=@($phases|Where-Object {$_.at -le $exit}|Select-Object -Last 1)
-                $expectedEnter=if($enterPhase.Count){$enterPhase[0].name}else{$null};$expectedExit=if($exitPhase.Count){$exitPhase[0].name}else{$null}
-                Require ($span.ProductPhaseAtEnter -ceq $expectedEnter -and $span.ProductPhaseAtExit -ceq $expectedExit) 'UI/product phase association mismatch'
-                if($span.NativeTid -ne $tid){continue}
-                $seams[$span.Seam]=$true;$overlap=0L
-                for($j=0;$j -lt $phases.Count-1;$j++) {
-                    if($phases[$j].name -cmatch $productPattern) { $overlap += [Math]::Max(0,[Math]::Min($exit,$phases[$j+1].at)-[Math]::Max($enter,$phases[$j].at)) }
-                }
-                $classification=if($overlap -gt 0){if($expectedEnter -cne $expectedExit){'cross-phase-product'}else{'product'}}else{'setup-startup-report-only'}
-                if(-not $classifications.ContainsKey($classification)){$classifications[$classification]=0};$classifications[$classification]++
-                if($overlap -gt 0){$productCount++;if($classification -eq 'cross-phase-product'){$crossingCount++};$ms=$overlap*1000.0/$frequency;$maximum=[Math]::Max($maximum,$ms);Require ($ms -le 16) "UI span $id ($($span.Seam), $classification) blocks product work for $ms ms >16"}
+            # The compiled loop checks every record, including setup and non-UI
+            # phase associations. No samples are removed or threshold-adjusted.
+            if(-not ('GitGui.Acceptance.NativeSpanEvaluation' -as [type])) {
+                Add-Type -Path (Join-Path $PSScriptRoot 'NativeSpanEvaluation.cs')
             }
-            Require ($productCount -gt 0 -and $seams.ContainsKey('DispatcherOperation.Execute') -and $seams.ContainsKey('WindowImpl.AppWndProc')) 'No measured product dispatcher/native-window work'
-            return @{productSpans=$productCount;crossPhaseProductSpans=$crossingCount;maximumProductOverlapMs=$maximum;classifications=$classifications;processId=$p.targetProcessId}
+            $evaluation=[GitGui.Acceptance.NativeSpanEvaluation]::Evaluate([object[]]$p.spans,
+                [long[]]@($phases.at),[string[]]@($phases.name),[bool[]]@($phases.isProduct),$tid,$frequency)
+            return @{productSpans=$evaluation.ProductSpans;crossPhaseProductSpans=$evaluation.CrossPhaseProductSpans;
+                maximumProductOverlapMs=$evaluation.MaximumProductOverlapMs;classifications=$evaluation.Classifications;processId=$p.targetProcessId}
         }
     }
 }
