@@ -70,7 +70,9 @@ internal sealed class WindowsHighResolutionRenderClock : IDisposable
         try
         {
             WaitHandle[] waits = [changed, timer];
-            var interval = Stopwatch.Frequency / 120d;
+            // A single interactive update crosses UI commit, server update and surface
+            // submission turns. Keep that pipeline within a 60 Hz frame-gap budget.
+            var interval = Stopwatch.Frequency / 240d;
             var next = Stopwatch.GetTimestamp() + interval;
             while (true)
             {
