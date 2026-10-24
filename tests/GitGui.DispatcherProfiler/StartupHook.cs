@@ -33,7 +33,10 @@ internal static class StartupHook
 
 internal static class Profiler
 {
-    private const int Capacity = 262144;
+    // Native accessibility clients can issue hundreds of thousands of calls
+    // while the foreground handshake is paused. Retain those setup spans too;
+    // overflow still invalidates the entire run, including the product phases.
+    private const int Capacity = 1048576;
     private static readonly SpanRecord[] Records = new SpanRecord[Capacity];
     private static readonly List<object> Patches = [];
     private static readonly uint UiTid = GetCurrentThreadId();
@@ -57,6 +60,16 @@ internal static class Profiler
         var win32 = Assembly.Load("Avalonia.Win32");
         var native = win32.GetType("Avalonia.Win32.WindowImpl", throwOnError: true)!;
         Patch(harmony, native.GetMethod("AppWndProc", BindingFlags.Instance | BindingFlags.NonPublic)!, typeof(WndProcPatch));
+        if (Environment.GetEnvironmentVariable("GITGUI_TEXT_FORMATTING") == "1")
+        {
+            var edit = Assembly.Load("AvaloniaEdit");
+            var textView = edit.GetType("AvaloniaEdit.Rendering.TextView", true)!;
+            foreach (var name in new[] { "BuildVisualLine", "MeasureOverride", "CreateAndMeasureVisualLines", "CalculateDefaultTextMetrics", "MeasureInlineObjects", "RemoveInlineObjectsNow" })
+                Patch(harmony, textView.GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!, typeof(TextFormattingPatch));
+            Patch(harmony, edit.GetType("AvaloniaEdit.Rendering.TextLayer", true)!.GetMethod("SetVisualLines", BindingFlags.Instance | BindingFlags.NonPublic)!, typeof(TextFormattingPatch));
+            Patch(harmony, edit.GetType("AvaloniaEdit.Rendering.LinkElementGenerator", true)!.GetMethod("GetFirstInterestedOffset")!, typeof(TextFormattingPatch));
+        }
+        Environment.SetEnvironmentVariable("GITGUI_TEXT_FORMATTING", null);
         if (Environment.GetEnvironmentVariable("GITGUI_PROCESS_LIFECYCLE") == "1")
             ProcessLifecycle.Install((method, patch) => Patch(harmony, method, patch));
         Environment.SetEnvironmentVariable("GITGUI_PROCESS_LIFECYCLE", null);
@@ -220,6 +233,12 @@ internal struct SpanRecord
     public long EnterQpc, ExitQpc;
     public uint NativeTid;
     public bool Completed;
+}
+internal static class TextFormattingPatch
+{
+    public static void Prefix(MethodBase __originalMethod, out SpanState __state) =>
+        __state = Profiler.Enter(Stopwatch.GetTimestamp(), "diagnostic-text-formatting", __originalMethod.DeclaringType!.FullName + "." + __originalMethod.Name);
+    public static void Finalizer(SpanState __state, Exception? __exception) => Profiler.Leave(__state, __exception);
 }
 internal static class ExecutePatch
 {

@@ -6,6 +6,7 @@ using Avalonia.Automation;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using AvaloniaEdit;
+using AvaloniaEdit.Editing;
 
 namespace GitGui.UI;
 
@@ -16,8 +17,10 @@ public sealed class CodeEditor : TextEditor
     public static readonly StyledProperty<string> CodeTextProperty = AvaloniaProperty.Register<CodeEditor, string>(nameof(CodeText), "", defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
     public string CodeText { get => GetValue(CodeTextProperty); set => SetValue(CodeTextProperty, value); }
     private bool updatingText;
+    public Task DisplayReady => TextArea.TextView is IncrementalTextView view ? view.DisplayReady : Task.CompletedTask;
     protected override Type StyleKeyOverride => typeof(TextEditor);
-    public CodeEditor()
+    public CodeEditor() : this(false) { }
+    internal CodeEditor(bool incrementalRendering) : base(incrementalRendering ? new DiffTextArea() : new TextArea())
     {
         IsReadOnly = true; ShowLineNumbers = true; WordWrap = false; FontSize = 12;
         FontFamily = new("Cascadia Code,Consolas,Menlo,Microsoft JhengHei,PingFang TC,Noto Sans TC,monospace");
@@ -37,8 +40,16 @@ public sealed class CodeEditor : TextEditor
             ControlAutomationPeer.FromElement(this)?.RaisePropertyChangedEvent(ValuePatternIdentifiers.ValueProperty, change.OldValue, change.NewValue);
         if (change.Property != CodeTextProperty || Text == CodeText) return;
         updatingText = true;
-        try { Text = CodeText; }
+        try
+        {
+            (TextArea.TextView as IncrementalTextView)?.BeginUpdate();
+            Text = CodeText;
+        }
         finally { updatingText = false; }
+    }
+    private sealed class DiffTextArea() : TextArea(new IncrementalTextView())
+    {
+        protected override Type StyleKeyOverride => typeof(TextArea);
     }
     protected override AutomationPeer OnCreateAutomationPeer() => new EditorPeer(this);
     private sealed class EditorPeer(CodeEditor editor) : ControlAutomationPeer(editor), IValueProvider

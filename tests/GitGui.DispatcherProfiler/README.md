@@ -18,6 +18,8 @@ Profile the generated fixture without synthetic stalls:
 
 `-LayoutActivities` additionally subscribes to Avalonia's per-control measure/arrange activities. It stores control types and fixed control names, never text or content. This heavier mode allocates Activities and can substantially inflate durations; use it to attribute work, not as a product timing baseline.
 
+`-TextFormatting` additionally instruments the pinned AvaloniaEdit visible-line construction, attachment and hyperlink scan methods. It records method identities only. These extra diagnostic seams are for attribution; omit the flag for formal acceptance, which requires the original three seams. The fixed span capacity is1,048,576 to retain foreground-setup accessibility traffic; any overflow still invalidates the complete run.
+
 Each run preserves a complete dispatcher sidecar, the ordinary desktop probe JSON, NuGet content/hash evidence, and process stdout/stderr in a new TEMP directory. `ProductPhaseAtEnter` and `ProductPhaseAtExit` are correlated offline using the desktop report's QPC origin and full phase timeline; older reports without that origin retain uncorrelated spans. Callback identity is metadata only, not delegate closure values.
 
 The sidecar records `targetProcessId`, executable/App assembly/hook SHA256 hashes, plus `desktopProbeReportPath` and `desktopProbeReportSha256` read from that same child's performance-report argument. A gate must verify the file hash and shipping-binary identities before associating these spans with a desktop run. Missing identity/clock/coverage evidence remains unverified.

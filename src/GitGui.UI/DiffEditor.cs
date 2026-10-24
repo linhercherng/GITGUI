@@ -78,7 +78,7 @@ public sealed class DiffEditor : Grid
     }
     private static CodeEditor CreateEditor()
     {
-        var editor = new CodeEditor
+        var editor = new CodeEditor(incrementalRendering: true)
         {
             IsReadOnly = true, ShowLineNumbers = true, WordWrap = false,
             FontSize = 12, FontFamily = new("Cascadia Code,Consolas,Menlo,Microsoft JhengHei,PingFang TC,Noto Sans TC,monospace"),

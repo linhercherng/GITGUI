@@ -6,6 +6,7 @@ param(
     [string]$DotNet = 'dotnet',
     [switch]$LayoutActivities,
     [switch]$ProcessLifecycle,
+    [switch]$TextFormatting,
     [switch]$NoCanary,
     [switch]$NoBuild,
     [switch]$ExternalDriver
@@ -42,6 +43,8 @@ else { $start.Environment.Remove('GITGUI_DISPATCHER_CANARY') | Out-Null }
 if ($GitPath) { $start.Environment['GITGUI_BENCH_GIT']=[IO.Path]::GetFullPath($GitPath) }
 if ($LayoutActivities) { $start.Environment['GITGUI_LAYOUT_ACTIVITIES']='1' }
 else { $start.Environment.Remove('GITGUI_LAYOUT_ACTIVITIES') | Out-Null }
+if ($TextFormatting) { $start.Environment['GITGUI_TEXT_FORMATTING']='1' }
+else { $start.Environment.Remove('GITGUI_TEXT_FORMATTING') | Out-Null }
 if ($ProcessLifecycle) { $start.Environment['GITGUI_PROCESS_LIFECYCLE']='1' }
 else { $start.Environment.Remove('GITGUI_PROCESS_LIFECYCLE') | Out-Null }
 foreach($arg in @('--performance-report',$probe,'--performance-data',(Join-Path $root 'settings'))) { $start.ArgumentList.Add($arg) }
