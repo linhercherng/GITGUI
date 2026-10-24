@@ -45,8 +45,17 @@ jobs:
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
         run: ./tests/PreparePortableGit.ps1
-      - name: Test
-        run: dotnet test GitGui.sln -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame-hang-timeout 5m --blame-hang-dump-type mini --results-directory TestResults
+      # Separate testhost lifecycles: the macOS runner can stall when the
+      # solution launches all three VSTest/data-collector processes together.
+      - name: Test Core
+        timeout-minutes: 10
+        run: dotnet test tests/GitGui.Core.Tests/GitGui.Core.Tests.csproj -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame-hang-timeout 5m --blame-hang-dump-type mini --results-directory TestResults
+      - name: Test Engine
+        timeout-minutes: 10
+        run: dotnet test tests/GitGui.Engine.Tests/GitGui.Engine.Tests.csproj -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame-hang-timeout 5m --blame-hang-dump-type mini --results-directory TestResults
+      - name: Test UI
+        timeout-minutes: 10
+        run: dotnet test tests/GitGui.UI.Tests/GitGui.UI.Tests.csproj -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame-hang-timeout 5m --blame-hang-dump-type mini --results-directory TestResults
       - name: Verify JSON contracts without runtime reflection
         if: matrix.git == '2.56.0'
         shell: pwsh
@@ -84,6 +93,8 @@ jobs:
           name: test-results-${{ matrix.os }}-git-${{ matrix.git }}
           path: |
             TestResults/*.trx
+            TestResults/**/*.xml
+            TestResults/**/*.dmp
             TestResults/static-json/*.trx
             TestResults/static-json/verification.json
             TestResults/graph-text-cache/**
