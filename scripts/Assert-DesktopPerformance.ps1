@@ -61,7 +61,79 @@ function ReadReport([string]$path) {
     Require ($json -is [Collections.IDictionary]) 'JSON root must be an object'
     return $json
 }
+function NativeBundleValid($report) {
+    if(-not (Test-Path (Join-Path $appDirectory 'GitGui.Host.dll'))) {
+        Require (-not $report.Contains('nativeHostIdentity')) 'Unexpected native host identity'
+        return $false
+    }
+    $identity=$report.nativeHostIdentity;$origin=$report.launchOrigin
+    Require ($identity -is [Collections.IDictionary] -and $origin -is [Collections.IDictionary]) 'Missing native bundle/launcher identity'
+    $process=Join-Path ([Environment]::SystemDirectory) 'rundll32.exe'
+    $scriptHost=Join-Path ([Environment]::SystemDirectory) 'wscript.exe'
+    Require ([StringComparer]::OrdinalIgnoreCase.Equals($identity.processPath,$process)) 'Unexpected native process host'
+    Require ([StringComparer]::OrdinalIgnoreCase.Equals($origin.LauncherPath,$scriptHost)) 'Cold startup must include the normal script launcher'
+    Require ([StringComparer]::OrdinalIgnoreCase.Equals($origin.NativeHostPath,(Join-Path $appDirectory 'GitGui.Host.dll'))) 'Native host path differs from candidate'
+    $null=Integer $origin.ProcessId 1;$null=Integer $origin.LauncherProcessId 1
+    Require ($origin.ProcessId -ne $origin.LauncherProcessId) 'Missing distinct launcher process'
+    Require ($null -ne $origin.StartedUtc) 'Missing OS launcher creation time'
+    HashEquals $identity.processSha256 $process
+    HashEquals $identity.scriptHostSha256 $scriptHost
+    HashEquals $identity.hostSha256 (Join-Path $appDirectory 'GitGui.Host.dll')
+    HashEquals $identity.launcherSha256 (Join-Path $appDirectory 'GITGUI.vbs')
+    HashEquals $identity.bundleSha256 $app
+    HashEquals $report.compositeImageSha256 (Join-Path $appDirectory 'GitGui.App.r2r.dll')
+    return $true
+}
+function BundleImages {
+    if($null -ne $script:bundleImages){return $script:bundleImages}
+    $stream=[IO.File]::OpenRead($app)
+    try {
+        $pe=[Reflection.PortableExecutable.PEReader]::new($stream,[Reflection.PortableExecutable.PEStreamOptions]::LeaveOpen)
+        try {$prefixLength=($pe.PEHeaders.SectionHeaders|ForEach-Object {$_.PointerToRawData+$_.SizeOfRawData}|Measure-Object -Maximum).Maximum}finally{$pe.Dispose()}
+        Require ($prefixLength -gt 0 -and $prefixLength -le 64MB -and $prefixLength -le $stream.Length) 'Invalid bundle prefix'
+        $stream.Position=0;$prefix=[byte[]]::new($prefixLength);$stream.ReadExactly($prefix,0,$prefix.Length)
+        $text=[Text.Encoding]::Latin1.GetString($prefix)
+        $magic=[Text.Encoding]::Latin1.GetString([Convert]::FromHexString('8B1202B96A612038727B930214D7A03213F5B9E6EFAE3318EE3B2DCE24B36AAE'))
+        $index=$text.IndexOf($magic,[StringComparison]::Ordinal)
+        Require ($index -ge 8 -and $text.IndexOf($magic,$index+1,[StringComparison]::Ordinal) -lt 0) 'Ambiguous SDK bundle marker'
+        $header=[BitConverter]::ToInt64($prefix,$index-8)
+        Require ($header -ge $prefixLength -and $header -lt $stream.Length) 'Invalid SDK bundle header'
+        $stream.Position=$header;$reader=[IO.BinaryReader]::new($stream,[Text.Encoding]::UTF8,$true)
+        Require ($reader.ReadUInt32() -eq 6 -and $reader.ReadUInt32() -eq 0) 'Unsupported SDK bundle format'
+        $count=$reader.ReadInt32();Require ($count -gt 0 -and $count -le 10000) 'Invalid SDK bundle count'
+        function BundleString($reader) {
+            $length=$reader.Read7BitEncodedInt();Require ($length -ge 0 -and $length -le 4096) 'Invalid SDK bundle string length'
+            $bytes=$reader.ReadBytes($length);Require ($bytes.Length -eq $length) 'Truncated SDK bundle string'
+            return [Text.UTF8Encoding]::new($false,$true).GetString($bytes)
+        }
+        $null=BundleString $reader;for($i=0;$i -lt 5;$i++){$null=$reader.ReadInt64()}
+        $entries=@{}
+        for($i=0;$i -lt $count;$i++) {
+            $offset=$reader.ReadInt64();$length=$reader.ReadInt64();$compressed=$reader.ReadInt64();$kind=$reader.ReadByte();$name=BundleString $reader
+            if($name -notmatch '^(GitGui\.(App|Core|Controls|Engine\.Cli|Engine\.Lib|Infrastructure|UI)|Avalonia\.(Base|Win32))\.dll$'){continue}
+            Require (-not $entries.ContainsKey($name) -and $kind -eq 1 -and $compressed -eq 0) 'Duplicate or unsupported bundled assembly'
+            Require ($offset -ge $prefixLength -and $length -gt 0 -and $length -le 256MB -and $offset -le $header -and $length -le $header-$offset) 'Bundle assembly exceeds payload bounds'
+            $entries[$name]=@{offset=$offset;length=$length}
+        }
+        Require ($entries.Count -eq 9) 'Missing exact product/framework bundle entries'
+        foreach($name in @($entries.Keys)) {
+            $entry=$entries[$name];$stream.Position=$entry.offset;$bytes=$reader.ReadBytes($entry.length)
+            Require ($bytes.Length -eq $entry.length) 'Truncated bundled assembly'
+            $image=[IO.MemoryStream]::new($bytes,$false);$pe=[Reflection.PortableExecutable.PEReader]::new($image)
+            try {
+                $metadata=[Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($pe)
+                $entry.mvid=$metadata.GetGuid($metadata.GetModuleDefinition().Mvid).ToString('D')
+                $entry.managedNativeHeaderSize=$pe.PEHeaders.CorHeader.ManagedNativeHeaderDirectory.Size
+            } finally {$pe.Dispose();$image.Dispose()}
+            $entry.sha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+            HashEquals $entry.sha256 (Join-Path $appDirectory $name)
+        }
+        $script:bundleImages=$entries
+        return $entries
+    } finally {$stream.Dispose()}
+}
 function HostValid($report) {
+    $null=NativeBundleValid $report
     Require ($report.Contains('compositionModeRequested') -and $report.compositionModeRequested -ceq 'default') 'Formal acceptance requires the normal product composition selection; experiments are diagnostic only'
     $h=$report.host
     Require ($h -is [Collections.IDictionary]) 'Missing host'
@@ -100,6 +172,12 @@ function ProductAssembliesValid($report) {
         foreach($field in @('fileName','sha256','mvid','version')) {
             Require ($entry[$field] -is [string] -and $entry[$field] -ceq $candidateProducts[$name][$field]) "Candidate assembly identity mismatch: $name/$field"
             if($null -ne $script:referenceProducts) { Require ($entry[$field] -ceq $script:referenceProducts[$name][$field]) "Cross-run assembly identity mismatch: $name/$field" }
+        }
+        if(Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) {
+            $images=BundleImages;$image=$images["$name.dll"]
+            Require ($entry.storage -ceq 'bundle') 'Native candidate must report its actual bundled assembly'
+            SameNumber $entry.offset $image.offset
+            Require ($entry.sha256 -ceq $image.sha256 -and $entry.mvid -ceq $image.mvid) 'Loaded/manifest/sidecar assembly identity mismatch'
         }
     }
     if($null -eq $script:referenceProducts){$script:referenceProducts=$declared}
@@ -181,6 +259,14 @@ function ScrollValid($report) {
     Require (-not [string]::IsNullOrWhiteSpace($render.platformType)) 'Missing actual native platform'
     Require ($render.selectedSurfaceTypes -is [array] -and $render.selectedSurfaceTypes.Count -gt 0) 'Missing native surface identity'
     Require (-not [string]::IsNullOrWhiteSpace($render.platformGraphicsType)) 'Missing platform graphics identity'
+    if($render.platformGraphicsType -ceq 'Software (no platform graphics)') {
+        Require ('Avalonia.Win32.FramebufferManager' -cin $render.selectedSurfaceTypes) 'Software rendering requires the actual Windows framebuffer surface'
+        $contexts=@($render.batchCompletionsInOrder|Where-Object {-not [string]::IsNullOrEmpty($_.ActiveGpuContextType)})
+        Require ($contexts.Count -gt 0) 'Missing explicit software context inspection'
+        foreach($context in $contexts) {
+            Require ($context.ActiveGpuContextType -ceq 'Software (no GPU context)' -and [string]::IsNullOrEmpty($context.InspectionError)) 'Software graphics/context identity mismatch'
+        }
+    }
     Require ($render.avaloniaErrors -is [array] -and $render.avaloniaErrors.Count -eq 0) 'Renderer errors or missing error capture'
     $passes=@($report.avaloniaMetrics.samplesInOrder | Where-Object {$_.Instrument -ceq 'avalonia.comp.render.time' -and $_.RecordedQpc -ge $start -and $_.RecordedQpc -lt $end} | Sort-Object RecordedQpc)
     Require ($passes.Count -gt 1) 'No real render histograms in exact scroll interval'
@@ -235,7 +321,7 @@ function ScrollValid($report) {
     SameNumber $e.Gate.FractionalRefreshHz $fractional; SameNumber $e.Gate.GapLimitMs $gapLimit
     return @{frames=$e.FramesInOrder.Count;durationMs=$duration;largestInternalGapMs=($intervals|Measure-Object -Maximum).Maximum;startEndpointGapMs=$startGap;endEndpointGapMs=$endGap;expectedMinimum=$expected}
 }
-$referenceHost=$null; $referenceFixture=$null; $referenceProducts=$null; $candidateProducts=$null; $summaryData=$null
+$referenceHost=$null; $referenceFixture=$null; $referenceProducts=$null; $candidateProducts=$null; $summaryData=$null; $bundleImages=$null
 $app=[IO.Path]::GetFullPath($AppPath); $appDirectory=[IO.Path]::GetDirectoryName($app)
 Check summary 'identity-and-counts' {
     $script:summaryData=ReadReport $Summary; $s=$summaryData
@@ -263,6 +349,10 @@ if($null -ne $summaryData -and $summaryData.Contains('reports') -and $summaryDat
             $path=Join-Path $baseDirectory $row.file; HashEquals $row.sha256 $path
             $script:raw=ReadReport $path; SameNumber $raw.schema 1; True $raw.completed 'Incomplete raw report'
             HostValid $raw
+            if(Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) {
+                SameNumber $row.launcherProcessId $raw.launchOrigin.LauncherProcessId
+                Require ([DateTime]$row.launcherStartedUtc -eq [DateTime]$raw.launchOrigin.StartedUtc) 'Launcher creation time receipt mismatch'
+            }
             ProductAssembliesValid $raw
             return $row.sha256
         }
@@ -331,7 +421,10 @@ if($ProfileReports.Count -eq 0 -and $ProfileProbeReports.Count -eq 0) {
             SameNumber $p.schema 1; SameNumber $pr.schema 1; True $pr.completed 'Incomplete profiler probe'
             HostValid $pr; FixtureValid $pr
             ProductAssembliesValid $pr
-            HashEquals $p.targetExecutableSha256 $app
+            if(NativeBundleValid $pr) {
+                HashEquals $p.targetExecutableSha256 (Join-Path ([Environment]::SystemDirectory) 'rundll32.exe')
+                SameNumber $p.targetProcessId $pr.launchOrigin.ProcessId
+            } else {HashEquals $p.targetExecutableSha256 $app}
             HashEquals $p.targetAppAssemblySha256 (Join-Path $appDirectory 'GitGui.App.dll')
             HashEquals $p.hookAssemblySha256 $ProfilerHookPath
             HashEquals $p.desktopProbeReportSha256 $ProfileProbeReports[$profileIndex]
@@ -351,6 +444,12 @@ if($ProfileReports.Count -eq 0 -and $ProfileProbeReports.Count -eq 0) {
                 $candidate=Join-Path $appDirectory ([IO.Path]::GetFileName($patch[0].module))
                 HashEquals $patch[0].sha256 $candidate
                 $null=Integer $patch[0].managedNativeHeaderSize 1
+                if(Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) {
+                    $images=BundleImages;$image=$images[[IO.Path]::GetFileName($candidate)]
+                    Require ($patch[0].mvid -ceq $image.mvid -and $patch[0].storage -ceq 'bundle') 'Profiler hooked a different loaded module'
+                    SameNumber $patch[0].offset $image.offset
+                    SameNumber $patch[0].managedNativeHeaderSize $image.managedNativeHeaderSize
+                }
             }
             $origin=Integer $pr.timelineOriginQpc 1
             Require ($pr.phaseTimeline -is [array] -and $pr.phaseTimeline.Count -gt 0) 'Missing phase timeline'

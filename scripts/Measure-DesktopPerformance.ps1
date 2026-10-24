@@ -21,6 +21,12 @@ for ($sample = 1; $sample -le $Samples; $sample++) {
         $report = Join-Path $output "$mode-$sample.json"
         $dataDirectory = Join-Path $env:TEMP ('gitgui-native-' + [guid]::NewGuid().ToString('N'))
         $start = [Diagnostics.ProcessStartInfo]::new($app)
+        $launcher = Join-Path (Split-Path $app -Parent) 'GITGUI.vbs'
+        $nativeBundle = Test-Path $launcher
+        if($nativeBundle) {
+            $start.FileName=Join-Path $env:WINDIR 'System32/wscript.exe'
+            $start.ArgumentList.Add($launcher)
+        }
         $start.UseShellExecute = $false; $start.CreateNoWindow = $true; $start.WindowStyle = 'Hidden'
         $start.Environment['DOTNET_PROCESSOR_COUNT'] = '8'
         $start.Environment['GITGUI_BENCH_GIT'] = $git
@@ -29,6 +35,8 @@ for ($sample = 1; $sample -le $Samples; $sample++) {
         if ($mode -eq 'large') { $start.ArgumentList.Add('--performance-repository'); $start.ArgumentList.Add($fixturePath) }
         $process = [Diagnostics.Process]::Start($start)
         try {
+            $launcherProcessId=$process.Id
+            $launcherStartedUtc=$process.StartTime.ToUniversalTime()
             if (-not $process.WaitForExit(180000)) { $process.Kill($true); throw "Native $mode sample $sample timed out" }
             if ($process.ExitCode -ne 0) { throw "Native $mode sample $sample failed; inspect $report" }
         } finally { $process.Dispose() }
@@ -39,6 +47,11 @@ for ($sample = 1; $sample -le $Samples; $sample++) {
         if (-not $data.completed) { throw "Incomplete native sample: $report" }
         $row = [ordered]@{ mode=$mode; sample=$sample; file=[IO.Path]::GetFileName($report); sha256=(Get-FileHash -LiteralPath $report).Hash.ToLowerInvariant();
             startupMs=$data.startupInteractiveAfterInitializationMs; workingSetBytes=$data.workingSetBytes; heartbeatMaxMs=$data.uiDispatcherHeartbeatDelayMs.max }
+        if($nativeBundle) {
+            if($data.launchOrigin.LauncherProcessId -ne $launcherProcessId -or
+                [DateTime]$data.launchOrigin.StartedUtc -ne $launcherStartedUtc) {throw 'Reported cold-start origin differs from the actual launcher OS creation time'}
+            $row.launcherProcessId=$launcherProcessId;$row.launcherStartedUtc=$launcherStartedUtc
+        }
         if ($data.ContainsKey('startupSurfaceInteractiveMs')) { $row.startupSurfaceMs=$data.startupSurfaceInteractiveMs }
         if ($mode -eq 'large') {
             $row.openFirst500Ms=$data.openFirst500GraphFrameCallbackMs

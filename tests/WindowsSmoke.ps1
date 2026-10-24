@@ -1,5 +1,6 @@
 param(
     [Parameter(Mandatory = $true)][string]$AppPath,
+    [string[]]$PrefixArguments=@(),
     [switch]$Desktop
 )
 $ErrorActionPreference = 'Stop'
@@ -14,6 +15,7 @@ $start.CreateNoWindow = $true
 $start.RedirectStandardOutput = $true
 $start.RedirectStandardError = $true
 $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+foreach($argument in $PrefixArguments){$start.ArgumentList.Add($argument)}
 $start.ArgumentList.Add('--askpass')
 $start.ArgumentList.Add('Smoke credential prompt')
 $start.Environment['GITGUI_ASKPASS_PIPE'] = $pipeName

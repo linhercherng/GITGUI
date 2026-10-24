@@ -23,7 +23,13 @@ $root=Join-Path $env:TEMP ('gitgui-dispatcher-canary-'+[guid]::NewGuid().ToStrin
 $profile=Join-Path $root 'dispatcher-profile.json'
 $probe=Join-Path $root 'desktop-probe.json'
 $start=[Diagnostics.ProcessStartInfo]::new([IO.Path]::GetFullPath($app))
+if(Test-Path (Join-Path $AppDirectory 'GITGUI.vbs')) {
+    $start.FileName=Join-Path $env:WINDIR 'System32/wscript.exe'
+    $start.ArgumentList.Add([IO.Path]::GetFullPath((Join-Path $AppDirectory 'GITGUI.vbs')))
+}
 $start.UseShellExecute=$false
+$start.CreateNoWindow=$true
+$start.WindowStyle='Hidden'
 $start.Environment['DOTNET_PROCESSOR_COUNT']=$Processors.ToString([Globalization.CultureInfo]::InvariantCulture)
 $start.RedirectStandardError=$true
 $start.RedirectStandardOutput=$true

@@ -133,6 +133,24 @@ function RunCase([string]$name,[bool]$expected,[scriptblock]$change,[switch]$NoP
     if($NoProfiler -and $decision.uiBlocking.status -ne 'unverified'){throw 'Missing profiler must remain unverified'}
 }
 RunCase 'valid complete evidence' $true {}
+RunCase 'unexpected native identity on ordinary candidate' $false {param($s,$r) $r.nativeHostIdentity=@{bundleSha256=$s.appSHA256}}
+RunCase 'explicit software framebuffer evidence' $true {param($s,$r)
+    $r.scrollRendering.platformGraphicsType='Software (no platform graphics)'
+    $r.scrollRendering.selectedSurfaceTypes=@('Avalonia.Win32.FramebufferManager')
+    foreach($batch in $r.scrollRendering.batchCompletionsInOrder){$batch.ActiveGpuContextType='Software (no GPU context)'}
+}
+RunCase 'software declaration without framebuffer' $false {param($s,$r)
+    $r.scrollRendering.platformGraphicsType='Software (no platform graphics)'
+}
+RunCase 'software declaration with GPU context' $false {param($s,$r)
+    $r.scrollRendering.platformGraphicsType='Software (no platform graphics)'
+    $r.scrollRendering.selectedSurfaceTypes=@('Avalonia.Win32.FramebufferManager')
+}
+RunCase 'software context inspection error' $false {param($s,$r)
+    $r.scrollRendering.platformGraphicsType='Software (no platform graphics)'
+    $r.scrollRendering.selectedSurfaceTypes=@('Avalonia.Win32.FramebufferManager')
+    foreach($batch in $r.scrollRendering.batchCompletionsInOrder){$batch.ActiveGpuContextType='Software (no GPU context)';$batch.InspectionError='missing inspection'}
+}
 RunCase 'composition experiment cannot replace normal product' $false {param($s,$r) $r.compositionModeRequested='direct'}
 RunCase 'missing composition selection' $false {param($s,$r) $r.Remove('compositionModeRequested')}
 RunCase 'missing profiler' $false {} -NoProfiler

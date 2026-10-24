@@ -6,6 +6,7 @@ var input = Path.GetFullPath(args[0]);
 var output = Path.GetFullPath(args[1]);
 if (Directory.Exists(output)) throw new IOException("Existing publications are preserved.");
 var files = Directory.EnumerateFiles(input, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
+    .Where(file => !file.EndsWith(".r2r.dll", StringComparison.OrdinalIgnoreCase))
     .Select(file => new FileSpec(file, Path.GetRelativePath(input, file))).ToArray();
 // Use the pinned SDK's public bundler. The native runtime remains external and self-contained.
 var bundler = new Bundler("GitGui.App.exe", output, BundleOptions.None, OSPlatform.Windows,
@@ -19,3 +20,7 @@ foreach (var file in files.Where(file => file.Excluded || Path.GetExtension(file
     Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
     File.Copy(file.SourcePath, destination);
 }
+// Composite code must remain a normal executable PE mapping. Read-only bundle views
+// cannot be instrumented by the independent three-seam dispatcher profiler.
+foreach (var image in Directory.EnumerateFiles(input, "*.r2r.dll"))
+    File.Copy(image, Path.Combine(output, Path.GetFileName(image)));

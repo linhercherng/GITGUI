@@ -35,13 +35,26 @@ $harness = Join-Path $temporary 'test-driver'
 Push-Location $repo
 try {
     $version = (Get-Content "$app/build-info.json" -Raw | ConvertFrom-Json).version
+    $driverReadyToRun = -not [bool]$buildInfo.readyToRunComposite
     & dotnet publish tests/GitGui.PackageSmoke/GitGui.PackageSmoke.csproj -c Release -r win-x64 --self-contained true `
         -p:RuntimeFrameworkVersion=10.0.13 -p:NuGetLockFilePath=packages.win-x64.lock.json -p:RestoreLockedMode=true `
-        -p:PublishReadyToRun=true -p:PublishTrimmed=false -p:PublishSingleFile=false -p:Version=$version -o $harness
+        -p:PublishReadyToRun=$driverReadyToRun -p:PublishTrimmed=false -p:PublishSingleFile=false -p:Version=$version -o $harness
     if ($LASTEXITCODE -ne 0) { throw 'Package test driver build failed' }
+    $comparison=$harness
+    if ($buildInfo.readyToRunComposite) {
+        # Rebuild the same App composite, with the same owner name and source paths.
+        # A Smoke-owned composite has different component headers; comparing those
+        # hashes would not verify the released images. Keep the byte-for-byte gate.
+        $comparison=Join-Path $temporary 'recompiled-app'
+        & dotnet publish src/GitGui.App/GitGui.App.csproj -c Release -r win-x64 --self-contained true `
+            -p:RuntimeFrameworkVersion=10.0.13 -p:NuGetLockFilePath=packages.win-x64.lock.json -p:RestoreLockedMode=true `
+            -p:PublishReadyToRun=true -p:PublishReadyToRunComposite=true -p:PublishTrimmed=false -p:PublishSingleFile=false -p:Version=$version -o $comparison
+        if($LASTEXITCODE -ne 0){throw 'Independent App component rebuild failed'}
+    }
     # Prove the driver tests the exact released engine, SQLite/libgit2 and runtime binaries.
-    foreach ($file in Get-ChildItem -LiteralPath $harness -File) {
+    foreach ($file in Get-ChildItem -LiteralPath $comparison -File) {
         if ($file.Name -like 'GitGui.PackageSmoke.*' -or $file.Extension -eq '.pdb') { continue }
+        if($buildInfo.readyToRunComposite -and $file.Extension -ne '.dll'){continue}
         $packaged = Join-Path $app $file.Name
         if (-not (Test-Path -LiteralPath $packaged) -or
             (Get-FileHash $packaged).Hash -ne (Get-FileHash $file.FullName).Hash) {
@@ -89,6 +102,10 @@ try {
             Write-Output $result.Trim()
         } finally { $child.Dispose() }
         & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path $app 'GitGui.App.exe') -Desktop:$Desktop
+        if($buildInfo.readyToRunComposite) {
+            & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path ([Environment]::SystemDirectory) 'rundll32.exe') `
+                -PrefixArguments @((Join-Path $app 'GitGui.Host.dll')+',RunW')
+        }
         $report | Add-Member -NotePropertyName archiveSHA256 -NotePropertyValue (Get-FileHash $zip).Hash.ToLowerInvariant()
         $report | Add-Member -NotePropertyName desktopTested -NotePropertyValue ([bool]$Desktop)
         $report | Add-Member -NotePropertyName offlineGuideSHA256 -NotePropertyValue (Get-FileHash -LiteralPath (Join-Path $app 'USER-GUIDE.zh-TW.md')).Hash.ToLowerInvariant()

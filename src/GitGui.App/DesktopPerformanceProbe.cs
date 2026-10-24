@@ -230,6 +230,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                     values["nativeHostIdentity"] = new { processPath = Environment.ProcessPath, processSha256 = HashImage(Environment.ProcessPath!),
                         hostSha256 = HashImage(nativeHost), bundleSha256 = HashImage(Path.Combine(AppContext.BaseDirectory, "GitGui.App.exe")),
                         launcherSha256 = HashImage(Path.Combine(AppContext.BaseDirectory, "GITGUI.vbs")), scriptHostSha256 = HashImage(launchOrigin.LauncherPath) };
+                    values["compositeImageSha256"] = HashImage(Path.Combine(AppContext.BaseDirectory, "GitGui.App.r2r.dll"));
                 }
                 if (DirectComposition && backend.RequestedBackendMatched != true)
                 {
@@ -504,7 +505,9 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                             ?? throw new MissingMemberException("Server.RenderInterface");
                         var gpuProperty = renderInterface.GetType().GetProperty("GpuContext", flags)
                             ?? throw new MissingMemberException("RenderInterface.GpuContext");
-                        graphicsType = renderInterface.GetType().GetField("_graphics", flags)?.GetValue(renderInterface)?.GetType().FullName;
+                        var graphicsField = renderInterface.GetType().GetField("_graphics", flags)
+                            ?? throw new MissingFieldException("Server.RenderInterface._graphics");
+                        graphicsType = graphicsField.GetValue(renderInterface)?.GetType().FullName ?? "Software (no platform graphics)";
                         context = gpuProperty.GetValue(renderInterface)?.GetType().FullName ?? "Software (no GPU context)";
                     }
                     catch (Exception e) { inspectionError = e.GetType().Name + ": " + e.Message; }

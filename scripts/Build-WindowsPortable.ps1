@@ -14,14 +14,20 @@ if (Test-Path -LiteralPath $output) { throw 'OutputDirectory must be new: never 
 $null = New-Item -ItemType Directory -Path $output
 $name = "GITGUI-$Version-win-x64-portable"
 $app = Join-Path $output $name
+$ordinary = Join-Path $output 'ordinary-publish'
 $commit = (& git -C $repo rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify source commit' }
 Push-Location $repo
 try {
     & dotnet publish src/GitGui.App/GitGui.App.csproj -c Release -r win-x64 --self-contained true `
-        -p:RuntimeFrameworkVersion=10.0.13 -p:PublishReadyToRun=true -p:PublishTrimmed=false -p:PublishSingleFile=false `
-        -p:NuGetLockFilePath=packages.win-x64.lock.json -p:RestoreLockedMode=true -p:Version=$Version -o $app
+        -p:RuntimeFrameworkVersion=10.0.13 -p:PublishReadyToRun=true -p:PublishReadyToRunComposite=true -p:PublishTrimmed=false -p:PublishSingleFile=false `
+        -p:NuGetLockFilePath=packages.win-x64.lock.json -p:RestoreLockedMode=true -p:Version=$Version -o $ordinary
     if ($LASTEXITCODE -ne 0) { throw 'Self-contained publish failed' }
+    & dotnet build tools/PortableBundler/PortableBundler.csproj -c Release -p:RestoreLockedMode=true
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK bundler build failed' }
+    & dotnet "$repo/tools/PortableBundler/bin/Release/net10.0/PortableBundler.dll" $ordinary $app
+    if ($LASTEXITCODE -ne 0) { throw 'SDK native bundle publication failed' }
+    & "$repo/scripts/Build-WindowsNativeHost.ps1" -AppDirectory $app -BuildDirectory (Join-Path $output 'native-host-build')
     & "$repo/tests/PreparePortableGit.ps1" -Destination (Join-Path $app 'PortableGit')
     foreach ($document in @('START-HERE.txt', 'THIRD-PARTY.txt')) {
         (Get-Content -LiteralPath "$repo/docs/portable/$document" -Raw).Replace('0.1.0', $Version) |
@@ -87,6 +93,7 @@ try {
     $inventory | ConvertTo-Json -Depth 6 | Set-Content "$licenses/nuget-inventory.json" -Encoding utf8
     [ordered]@{ product = 'GITGUI'; version = $Version; sourceCommit = $commit;
         platform = 'win-x64'; selfContained = $true; dotnetRuntime = '10.0.13';
+        readyToRunComposite = $true; launcher = 'GITGUI.vbs'; nativeHost = 'GitGui.Host.dll';
         portableGit = '2.56.0.3'; portableGitArchiveSHA256 = '4fc27b779829a36df77911e3f4dea09c66c790dd6c5f7dfa3b6a5479f1fe354f';
         source = "https://github.com/linhercherng/GITGUI/tree/$commit" } |
         ConvertTo-Json | Set-Content "$app/build-info.json" -Encoding utf8
