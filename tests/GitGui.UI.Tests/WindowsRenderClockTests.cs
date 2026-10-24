@@ -5,6 +5,15 @@ namespace GitGui.UI.Tests;
 
 public sealed class WindowsRenderClockTests
 {
+    [Theory]
+    [InlineData(10, 10, 19, 20)]
+    [InlineData(10, 10, 20, 30)]
+    [InlineData(10, 10, 23, 30)]
+    [InlineData(10, 10, 49, 50)]
+    public void Delayed_ticks_skip_expired_deadlines_without_delaying_a_whole_extra_frame(
+        double previous, double interval, long now, double expected)
+        => Assert.Equal(expected, WindowsHighResolutionRenderClock.NextDeadline(previous, interval, now));
+
     [Fact]
     public async Task Unsubscribe_and_resubscribe_keeps_a_live_clock_and_disposal_stops_it()
     {
