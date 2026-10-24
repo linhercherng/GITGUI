@@ -66,9 +66,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string remoteName = "origin";
     [ObservableProperty] private string progressText = "";
     [ObservableProperty] private int progressPercent;
-    [ObservableProperty] private bool hasProgressPercent;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsProgressIndeterminate))] private bool hasProgressPercent;
     [ObservableProperty] private bool canCancel;
-    [ObservableProperty] private bool isBusy;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsProgressIndeterminate))] private bool isBusy;
+    public bool IsProgressIndeterminate => IsBusy && !HasProgressPercent;
     [ObservableProperty] private bool hasRepository;
     [ObservableProperty] private bool showStaged;
     [ObservableProperty] private bool splitDiff;

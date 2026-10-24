@@ -38,6 +38,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
     public bool SoftwareRendering { get; private init; }
     private CompositionProbeSettings Composition { get; init; } = new(false);
     public bool DirectComposition => Composition.Direct;
+    private bool ExternalDriver { get; init; }
 
     public void StartupCheckpoint(string checkpoint) => startupCheckpoints.Enqueue(new
     {
@@ -66,6 +67,8 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         var renderer = Environment.GetEnvironmentVariable("GITGUI_BENCH_RENDERER");
         if (renderer is not (null or "" or "default" or "software")) throw new ArgumentException("Probe renderer must be default or software.");
         var composition = CompositionProbeSettings.Parse(Environment.GetEnvironmentVariable("GITGUI_BENCH_COMPOSITION"), renderer == "software", OperatingSystem.IsWindows());
+        var driver = Environment.GetEnvironmentVariable("GITGUI_BENCH_DRIVER");
+        if (driver is not (null or "" or "foreground")) throw new ArgumentException("Unknown native probe driver.");
         Directory.CreateDirectory(data);
         // Probe child Git commands have no user/system configuration. Fixture-local settings are validated before trust.
         foreach (var key in Environment.GetEnvironmentVariables().Keys.Cast<string>().Where(k => k.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase)).ToArray())
@@ -74,7 +77,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         Environment.SetEnvironmentVariable("GIT_CONFIG_NOSYSTEM", "1"); Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", emptyConfig);
         // Must precede the first Avalonia initialization; this switch and listener only exist in a probe process.
         AppContext.SetSwitch("Avalonia.Diagnostics.Diagnostic.IsEnabled", true);
-        var probe = new DesktopPerformanceProbe(report, data, repo) { SoftwareRendering = renderer == "software" && OperatingSystem.IsWindows(), Composition = composition };
+        var probe = new DesktopPerformanceProbe(report, data, repo) { SoftwareRendering = renderer == "software" && OperatingSystem.IsWindows(), Composition = composition, ExternalDriver = driver == "foreground" };
         probe.nativeMetrics.BindUiThread();
         return probe;
     }
@@ -117,7 +120,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 graph = "Repository-path assignment through first500 publication, queued graph rebuild/LayoutReady, visible History layout, RAF diagnostic, then a requested rendered batch and native surface-update return. Full refresh completion remains separate. Setup/validation excluded. Surface submission is a conservative completed batch, not physical display.",
                 status = "RefreshStatusAsync through Changes.Reset, visible working-tree layout, diagnostic RAF and completed rendered batch/surface update. Total status+selected-file diff/conflict readiness is retained separately.",
                 diff = "Selecting generated big.txt after clearing selection through IsDiffLoading=false, active inline editor equality, layout, diagnostic RAF and completed rendered batch/surface update. Includes Git read, projection, bindings and editor layout; source file has10000lines.",
-                frames = "Native scrolling driver protocol2: each ScrollProvider update invalidates the actual graph and awaits its RAF callback plus requested CompositionBatch.Rendered before the next update. No additional whole-window invalidation, empty-RAF input busy loop or pre-scroll warmup. QPC starts before the first update. Loop intervals remain diagnostic; the real-render histogram/batch cadence gate is unchanged.",
+                frames = "Native scrolling driver protocol3 (native foreground events required): each ScrollProvider update invalidates the actual graph and awaits its RAF callback plus requested CompositionBatch.Rendered before the next update. No additional whole-window invalidation, empty-RAF input busy loop or pre-scroll warmup. QPC starts before the first update. Loop intervals remain diagnostic; the real-render histogram/batch cadence gate is unchanged.",
                 scrollRendering = "Real avalonia.comp.render.time scopes correlated with distinct public CompositionBatch.Rendered notifications after drawing-context/session disposal and native surface EndDraw. Exact QPC interval excludes drain and report work. This measures application rendering plus returned surface-update submission, not GPU completion, Windows compositor commit completion, physical display or photons. Histogram scopes end before surface disposal; batch notifications occur in finally, so render errors are captured separately and invalidate the gate. Nominal60 includes60000/1001Hz; endpoint allowance is floor(duration*60000/1001)-1, with every internal gap>=1.5frames failing even if average recovers.",
                 heartbeat = "Worker timer to UI Dispatcher callback delay during product open/status/diff/scroll or idle sampling, including OS scheduling and dispatcher backlog. Excludes probe runtime/fixture validation/trust setup and startup. This estimates responsiveness, not exact duration of every UI callback.",
                 instrumentation = "Ordered heartbeat timestamps/phase, worker16ms timer elapsed and GC deltas are retained. Bound-property spans measure VM PropertyChanging through PropertyChanged observers registered after normal bindings; they include synchronous setter/earlier-subscriber work, exclude deferred layout and are not a full UI callback profiler. Explicit UpdateLayout spans are separate. Instrumentation does not change renderer/GC/thread-pool settings.",
@@ -138,6 +141,18 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             var startupSurface = await SurfaceSubmissionAsync(window, processOriginQpc, timeout.Token);
             values["startupSurfaceInteractiveMs"] = Stopwatch.GetElapsedTime(processOriginQpc, startupSurface.CompletedQpc).TotalMilliseconds;
             values["startupSurfaceSubmission"] = startupSurface;
+            if (ExternalDriver)
+            {
+                // Startup is already measured. Coordinate foreground activation and
+                // its observation outside every timed repository/product operation.
+                trace.SetPhase("probe-setup");
+                window.Title = "GITGUI — M4 " + Environment.ProcessId;
+                await File.WriteAllTextAsync(Path.Combine(DataPath, "driver-ready.tmp"),
+                    JsonSerializer.Serialize(new { desktopProcessId = Environment.ProcessId, windowTitle = window.Title, startupSurfaceMs = values["startupSurfaceInteractiveMs"] }), timeout.Token);
+                File.Move(Path.Combine(DataPath, "driver-ready.tmp"), Path.Combine(DataPath, "driver-ready.json"));
+                while (!File.Exists(Path.Combine(DataPath, "driver-continue"))) await Task.Delay(25, timeout.Token);
+                if (!window.IsActive) throw new InvalidOperationException("Native interactive driver requires the GITGUI window in the foreground.");
+            }
             trace.SetPhase("probe-setup"); var setup = Stopwatch.StartNew();
             var git = await Task.Run(() => runtime.SaveAsync(Environment.GetEnvironmentVariable("GITGUI_BENCH_GIT"), timeout.Token), timeout.Token);
             values["gitRuntime"] = git;
@@ -459,12 +474,13 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             var now = clock.Elapsed.TotalMilliseconds; intervals.Add(now - previous); previous = now;
         }
         var endQpc = Stopwatch.GetTimestamp();
-        return new(new { driverProtocol = 2, pacing = "RAF callback and real rendered batch", samples = intervals.Count, elapsedMs = clock.Elapsed.TotalMilliseconds, callbackFps = intervals.Count / clock.Elapsed.TotalSeconds,
+        return new(new { driverProtocol = 3, pacing = "RAF callback and real rendered batch; foreground evidenced", samples = intervals.Count, elapsedMs = clock.Elapsed.TotalMilliseconds, callbackFps = intervals.Count / clock.Elapsed.TotalSeconds,
             intervals = Statistics(intervals), intervalsInOrder = intervals, scrollProviderCallbackDurationMs = Statistics(callbackDurations),
             startQpc, endQpc, timestampFrequency = Stopwatch.Frequency }, startQpc, endQpc);
     }
 
     private sealed record MemorySample(long RecordedQpc, long WorkingSetBytes, long DesktopWorkingSetBytes, long LauncherWorkingSetBytes);
+    private sealed record ForegroundSample(long RecordedQpc, bool IsActive);
     private async Task<(object Callbacks, object Rendering, object Memory)> SampleScrollFramesAsync(Window window, Action scroll, ProbeTrace trace, CancellationToken ct)
     {
         var platform = window.PlatformImpl ?? throw new InvalidOperationException("Native window platform unavailable.");
@@ -479,6 +495,11 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         var completions = new ConcurrentQueue<RenderBatchCompletion>();
         var observed = new HashSet<CompositionBatch>();
         var pending = new List<Task>();
+        var foreground = new List<ForegroundSample>();
+        void Activated(object? sender, EventArgs e) => foreground.Add(new(Stopwatch.GetTimestamp(), true));
+        void Deactivated(object? sender, EventArgs e) => foreground.Add(new(Stopwatch.GetTimestamp(), false));
+        window.Activated += Activated; window.Deactivated += Deactivated;
+        foreground.Add(new(Stopwatch.GetTimestamp(), window.IsActive));
         long batchId = 0; var inspectContext = 1;
         using var errors = new RenderErrorObserver();
         using var memoryCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -547,7 +568,12 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 scroll(); var batch = compositor.RequestCompositionBatchCommitAsync(); Observe(batch); return batch.Rendered;
             }, TimeSpan.FromSeconds(5), ct);
         }
-        finally { memoryCancellation.Cancel(); await memoryWorker; }
+        finally
+        {
+            foreground.Add(new(Stopwatch.GetTimestamp(), window.IsActive));
+            window.Activated -= Activated; window.Deactivated -= Deactivated;
+            memoryCancellation.Cancel(); await memoryWorker;
+        }
         trace.SetPhase("graph-scroll.draining");
         Observe(compositor.RequestCompositionBatchCommitAsync());
         await Task.WhenAll(pending).WaitAsync(ct);
@@ -571,6 +597,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         return (sampled.Report, new
         {
             evidence = analysis.Report, platformType = platform.GetType().FullName, selectedSurfaceTypes = surfaceTypes,
+            foreground = new { boundary = "Native Activated/Deactivated events with bracketing UI-thread endpoint observations", samplesInOrder = foreground.ToArray() },
             platformGraphicsType = graphicsType, batchCompletionsInOrder = analysis.Batches, drainedQpc,
             avaloniaErrors = errorSnapshot,
             activeGpuContextInspection = "Read-only, probe-only reflection of pinned Avalonia11.3.22 platform Surfaces and Server.RenderInterface.GpuContext; context is read on synchronous render-thread batch completion. Reference assemblies hide these internals, so unavailable members are explicitly reported. Compositor/batch lifetime is obtained through public ElementComposition APIs.",

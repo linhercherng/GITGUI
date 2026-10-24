@@ -7,7 +7,8 @@ param(
     [switch]$LayoutActivities,
     [switch]$ProcessLifecycle,
     [switch]$NoCanary,
-    [switch]$NoBuild
+    [switch]$NoBuild,
+    [switch]$ExternalDriver
 )
 $ErrorActionPreference='Stop'
 if (![OperatingSystem]::IsWindows()) { throw 'The dispatcher profiler canary requires Windows native desktop' }
@@ -35,6 +36,7 @@ $start.RedirectStandardError=$true
 $start.RedirectStandardOutput=$true
 $start.Environment['DOTNET_STARTUP_HOOKS']=[IO.Path]::GetFullPath($hook)
 $start.Environment['GITGUI_DISPATCHER_DIAGNOSTIC']=$profile
+if($ExternalDriver){$start.Environment['GITGUI_BENCH_DRIVER']='foreground'}
 if (!$NoCanary) { $start.Environment['GITGUI_DISPATCHER_CANARY']='1' }
 else { $start.Environment.Remove('GITGUI_DISPATCHER_CANARY') | Out-Null }
 if ($GitPath) { $start.Environment['GITGUI_BENCH_GIT']=[IO.Path]::GetFullPath($GitPath) }
@@ -48,7 +50,20 @@ $process=[Diagnostics.Process]::Start($start)
 $stderr=$process.StandardError.ReadToEndAsync()
 $stdout=$process.StandardOutput.ReadToEndAsync()
 try {
-    if (!$process.WaitForExit(150000)) { $process.Kill($true); throw 'Native diagnostic exceeded 150 seconds' }
+    if($ExternalDriver) {
+        $watch=[Diagnostics.Stopwatch]::StartNew();$published=$false
+        Write-Output "DRIVER DIRECTORY: $root"
+        while(-not $process.WaitForExit(250)) {
+            if($watch.Elapsed.TotalSeconds -gt 150){$process.Kill($true);throw 'Native diagnostic exceeded 150 seconds'}
+            $ready=Join-Path $root 'settings/driver-ready.json'
+            if(-not $published -and (Test-Path -LiteralPath $ready)) {
+                $driver=Get-Content $ready -Raw|ConvertFrom-Json
+                @{windowTitle=$driver.windowTitle;desktopProcessId=$driver.desktopProcessId;continuePath=(Join-Path $root 'settings/driver-continue')}|
+                    ConvertTo-Json|Set-Content (Join-Path $root 'driver-request.json')
+                $published=$true
+            }
+        }
+    } elseif (!$process.WaitForExit(150000)) { $process.Kill($true); throw 'Native diagnostic exceeded 150 seconds' }
     $errors=$stderr.GetAwaiter().GetResult(); $output=$stdout.GetAwaiter().GetResult()
     [IO.File]::WriteAllText((Join-Path $root 'stderr.txt'),$errors)
     [IO.File]::WriteAllText((Join-Path $root 'stdout.txt'),$output)

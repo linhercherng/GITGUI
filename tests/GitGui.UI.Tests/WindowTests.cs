@@ -28,6 +28,26 @@ public class TestApplication : Application
 public sealed class WindowTests
 {
     [AvaloniaFact]
+    public void Idle_or_determinate_progress_stops_the_indeterminate_animation()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            window.UpdateLayout();
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<ProgressBar>(), p => !p.IsVisible && p.IsIndeterminate);
+            vm.IsBusy = true; window.UpdateLayout();
+            var progress = Assert.Single(window.GetVisualDescendants().OfType<ProgressBar>(), p => p.IsEffectivelyVisible);
+            Assert.True(progress.IsIndeterminate);
+            vm.HasProgressPercent = true; vm.ProgressPercent = 50;
+            Assert.False(progress.IsIndeterminate); Assert.Equal(50, progress.Value);
+            vm.HasProgressPercent = false; Assert.True(progress.IsIndeterminate);
+            vm.IsBusy = false; Assert.False(progress.IsVisible); Assert.False(progress.IsIndeterminate);
+        }
+        finally { vm.IsBusy = false; window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Activity_feedback_does_not_resize_the_history_viewport()
     {
         using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());

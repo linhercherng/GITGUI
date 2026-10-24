@@ -36,6 +36,8 @@ $cases=[ordered]@{
     'different-launcher-creation-time'={param($s,$r,$p) $r.launchOrigin.StartedUtc=([DateTime]$r.launchOrigin.StartedUtc).AddTicks(1)}
     'omitted-launcher-memory'={param($s,$r,$p) $r.steadyMemory.samplesInOrder[0].LauncherWorkingSetBytes=0}
     'different-memory-launcher-process'={param($s,$r,$p) $r.memoryProcesses.launcherProcessId+=1}
+    'missing-foreground-evidence'={param($s,$r,$p) $r.scrollRendering.Remove('foreground')}
+    'background-scroll-is-not-interactive-acceptance'={param($s,$r,$p) $r.scrollRendering.foreground.samplesInOrder[0].IsActive=$false}
     'different-product-bundle-offset'={param($s,$r,$p) $r.productAssemblies['GitGui.UI'].offset+=1}
     'sidecar-is-not-loaded-bundle-evidence'={param($s,$r,$p) $r.productAssemblies['GitGui.UI'].storage='file'}
     'foreign-profile-process'={param($s,$r,$p) $p.targetProcessId+=1}

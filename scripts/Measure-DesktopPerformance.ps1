@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$GitExecutable,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateRange(3, 15)][int]$Samples = 5,
-    [ValidateSet('default','software')][string]$Renderer = 'default'
+    [ValidateSet('default','software')][string]$Renderer = 'default',
+    [switch]$ExternalDriver
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -31,13 +32,26 @@ for ($sample = 1; $sample -le $Samples; $sample++) {
         $start.Environment['DOTNET_PROCESSOR_COUNT'] = '8'
         $start.Environment['GITGUI_BENCH_GIT'] = $git
         $start.Environment['GITGUI_BENCH_RENDERER'] = $Renderer
+        if($ExternalDriver){$start.Environment['GITGUI_BENCH_DRIVER']='foreground'}
         foreach ($argument in @('--performance-report',$report,'--performance-data',$dataDirectory)) { $start.ArgumentList.Add($argument) }
         if ($mode -eq 'large') { $start.ArgumentList.Add('--performance-repository'); $start.ArgumentList.Add($fixturePath) }
         $process = [Diagnostics.Process]::Start($start)
         try {
             $launcherProcessId=$process.Id
             $launcherStartedUtc=$process.StartTime.ToUniversalTime()
-            if (-not $process.WaitForExit(180000)) { $process.Kill($true); throw "Native $mode sample $sample timed out" }
+            if($ExternalDriver) {
+                $watch=[Diagnostics.Stopwatch]::StartNew();$published=$false
+                while(-not $process.WaitForExit(250)) {
+                    if($watch.Elapsed.TotalSeconds -gt 180){$process.Kill($true);throw "Native $mode sample $sample timed out"}
+                    $ready=Join-Path $dataDirectory 'driver-ready.json'
+                    if(-not $published -and (Test-Path -LiteralPath $ready)) {
+                        $driver=Get-Content $ready -Raw|ConvertFrom-Json
+                        @{mode=$mode;sample=$sample;dataDirectory=$dataDirectory;windowTitle=$driver.windowTitle;desktopProcessId=$driver.desktopProcessId;continuePath=(Join-Path $dataDirectory 'driver-continue')}|
+                            ConvertTo-Json|Set-Content (Join-Path $output 'driver-request.json')
+                        $published=$true
+                    }
+                }
+            } elseif (-not $process.WaitForExit(180000)) { $process.Kill($true); throw "Native $mode sample $sample timed out" }
             if ($process.ExitCode -ne 0) { throw "Native $mode sample $sample failed; inspect $report" }
         } finally { $process.Dispose() }
         $data = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json -AsHashtable

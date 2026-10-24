@@ -261,6 +261,20 @@ function ScrollValid($report) {
     SameNumber $report.scrollNativeFrameIntervalsMs.timestampFrequency $frequency
     SameNumber $report.scrollNativeFrameIntervalsMs.startQpc $start
     SameNumber $report.scrollNativeFrameIntervalsMs.endQpc $end
+    if($report.scrollNativeFrameIntervalsMs.Contains('driverProtocol') -and $report.scrollNativeFrameIntervalsMs.driverProtocol -ge 2) {
+        $focus=$render.foreground.samplesInOrder
+        Require ($focus -is [array] -and $focus.Count -ge 2) 'Missing native foreground events/endpoints'
+        Require ($focus[0].RecordedQpc -le $start -and $focus[-1].RecordedQpc -ge $end) 'Foreground events do not bracket scrolling'
+        $previousFocus=0L;$activeAtStart=$false;$activeAtEnd=$false
+        foreach($item in $focus) {
+            $when=Integer $item.RecordedQpc 1;Require ($when -ge $previousFocus) 'Foreground events not ordered';$previousFocus=$when
+            Require ($item.IsActive -is [bool]) 'Invalid native foreground state'
+            if($when -le $start){$activeAtStart=$item.IsActive}
+            if($when -le $end){$activeAtEnd=$item.IsActive}
+            if($when -ge $start -and $when -le $end){Require $item.IsActive 'Window lost foreground during scrolling'}
+        }
+        Require ($activeAtStart -and $activeAtEnd) 'Scrolling requires the real interactive window in foreground'
+    }
     Require (-not [string]::IsNullOrWhiteSpace($render.platformType)) 'Missing actual native platform'
     Require ($render.selectedSurfaceTypes -is [array] -and $render.selectedSurfaceTypes.Count -gt 0) 'Missing native surface identity'
     Require (-not [string]::IsNullOrWhiteSpace($render.platformGraphicsType)) 'Missing platform graphics identity'
