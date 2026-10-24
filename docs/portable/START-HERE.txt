@@ -12,14 +12,19 @@ GITGUI 0.1.0 — Windows x64 免安裝版
 完整操作手冊：用瀏覽器開啟與 GitGui.App.exe 同一層的 USER-GUIDE.zh-TW.html。
 另附可編輯的 USER-GUIDE.zh-TW.md。
 手冊包含 M1 日常操作、M2 進階歷史、M3 倉庫工具、M4 快捷鍵與診斷、快照復原與常見問題；可離線閱讀。
+新手請從第 20 章「第一次備份」與第 21 章「修改後更新上傳」開始；
+兩章附 16 張真實操作截圖、編號框選與逐步說明，圖片可點擊放大。
+請一起保留 images/walkthrough 資料夾，離線閱讀才會顯示全部圖片。
 
 內附 .NET 10.0.13 與完整 Portable Git 2.56.0.3，不需另外安裝。
 請一起保留 PortableGit 資料夾及其他 DLL；整個資料夾可移動。
 「Git 設定」預設自動偵測程式旁 PortableGit。若曾選過其他 Git，
 請按「自動偵測」後儲存，以使用內附版本。
 
-Windows 10/11 x64；不需要系統管理員權限，不修改系統 PATH。
+支援 Windows x64；具體 Windows 版本限制見操作手冊與 docs/M4-ACCEPTANCE.md。
+不需要系統管理員權限，不修改系統 PATH。
 本版 GITGUI 執行檔未做 Authenticode 簽章。
+本版為 M4 預覽版；大型倉庫效能仍未完整通過正式門檻，詳見 docs/M4-PERFORMANCE.md。
 
 此處「免安裝」指執行環境隨附；使用者設定、信任清單、最近倉庫、
 快照索引及生命週期日誌仍存於 %LOCALAPPDATA%\GitGui。

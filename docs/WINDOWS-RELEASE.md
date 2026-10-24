@@ -1,10 +1,10 @@
 # Windows x64 免安裝發行
 
-從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.5.0)
-下載 `GITGUI-0.5.0-win-x64-portable.zip`，完整解壓縮後開啟
+從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.6.0)
+下載 `GITGUI-0.6.0-win-x64-portable.zip`，完整解壓縮後開啟
 `GitGui.App.exe`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
 
-v0.5.0列為預覽版：功能與回歸測試通過，大型倉庫首屏及嚴格16ms回應目標仍未完整通過，不能視為M4正式驗收完成。詳見 [效能結果](M4-PERFORMANCE.md)。
+v0.6.0列為預覽版：功能與回歸測試通過，大型倉庫首屏及嚴格16ms回應目標仍未完整通過，不能視為M4正式驗收完成。詳見 [效能結果](M4-PERFORMANCE.md)。
 
 ## 封裝內容
 
@@ -13,6 +13,8 @@ v0.5.0列為預覽版：功能與回歸測試通過，大型倉庫首屏及嚴�
 - 完整 PortableGit 2.56.0.3，保留 shell、SSH、helpers、原始授權與版本清單。
 - `START-HERE.txt`、繁體中文離線手冊 `USER-GUIDE.zh-TW.html`／`.md`、`THIRD-PARTY.txt`、`licenses/` 與 `build-info.json`。
 - Release 另附 SHA256SUMS、封裝驗證報告與 PortableGit copyleft 來源 ZIP。
+
+v0.6.0 的手冊第 20、21 章提供首次備份與修改後更新上傳範例，附 16 張真實操作截圖、編號框選與逐步說明。`images/walkthrough/` 隨 ZIP 一起提供，HTML／Markdown 的圖片連結可離線開啟；GitHub 位置參考圖沿用現有 GITGUI 倉庫，與隔離的本機示範提交分別標示。
 
 不修改系統 PATH，不註冊服務。個人設定仍在 `%LOCALAPPDATA%\GitGui`，
 這不是把個人憑證與資料庫放進 USB 的模式。Git 作者與遠端登入使用個人設定。
@@ -23,11 +25,11 @@ v0.5.0列為預覽版：功能與回歸測試通過，大型倉庫首屏及嚴�
 需要 Windows、PowerShell 7、.NET 10 SDK，從指定版本乾淨 checkout 執行：
 
 ```powershell
-./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.5.0
-./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.5.0/GITGUI-0.5.0-win-x64-portable.zip -Desktop
+./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.6.0
+./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.6.0/GITGUI-0.6.0-win-x64-portable.zip -Desktop
 ./scripts/Collect-PortableGitSources.ps1 `
-  -PortableGit C:/Build/GITGUI-0.5.0/GITGUI-0.5.0-win-x64-portable/PortableGit `
-  -OutputDirectory C:/Build/GITGUI-0.5.0-sources
+  -PortableGit C:/Build/GITGUI-0.6.0/GITGUI-0.6.0-win-x64-portable/PortableGit `
+  -OutputDirectory C:/Build/GITGUI-0.6.0-sources
 ```
 
 輸出目錄必須尚不存在，避免覆寫已測試的 ZIP。NuGet 另用各專案的

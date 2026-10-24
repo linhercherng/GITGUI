@@ -1,6 +1,6 @@
 # GITGUI 操作手冊
 
-適用版本：0.6.0（M4 效能改善候選版）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。發布狀態、下載檔名與驗證結果，請以同版 Release 為準；目前仍在進行跨平台與效能驗收，尚未宣告 M4 正式驗收通過。詳見 [效能結果](M4-PERFORMANCE.md)。
+適用版本：0.6.0（M4 預覽版，含操作截圖手冊）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。發布狀態、下載檔名與驗證結果，請以同版 Release 為準；目前仍在進行跨平台與效能驗收，尚未宣告 M4 正式驗收通過。詳見 [效能結果](M4-PERFORMANCE.md)。
 
 第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。
 

@@ -10,11 +10,13 @@
 
 ## Windows 免安裝版
 
-從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.5.0) 下載 `GITGUI-0.5.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。本版執行檔未簽章；支援OS限制見下方M4驗收說明。大型倉庫首屏及嚴格16ms回應目標尚未完整通過，因此列為預覽版，M4正式驗收仍未完成。
+從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.6.0) 下載 `GITGUI-0.6.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。本版執行檔未簽章；支援OS限制見下方M4驗收說明。大型倉庫首屏及嚴格16ms回應目標尚未完整通過，因此列為預覽版，M4正式驗收仍未完成。
 
 請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
 
 日常操作、進階歷史與 M3 倉庫工具的步驟見 [繁體中文操作手冊](docs/USER-GUIDE.zh-TW.md)。本機可用瀏覽器開啟 `docs/USER-GUIDE.zh-TW.html`；Windows 免安裝包的 HTML／Markdown 手冊與 `GitGui.App.exe` 放在同一層，可離線閱讀。
+
+新手可從第 20、21 章開始，依 16 張真實截圖與編號說明完成首次備份及修改後更新上傳；`images/walkthrough/` 已隨免安裝包提供，圖片可離線點擊放大。
 
 ## 從原始碼執行
 
