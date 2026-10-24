@@ -4,7 +4,9 @@ M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13�
 
 2026-10-24續作的編輯器延遲建立、資料庫背景排程與收合操作面板改善，及仍未達標的原生數據，見 [本輪效能結果](M4-PERFORMANCE.md)。測試程式已驗證資料庫鎖定不阻塞呼叫端、切換Diff保留文件與語系、收合期間保留紀錄並於展開更新；這些功能性質不能取代正式效能驗收。
 
-本輪實際候選包來源為 `b34dc8a4fe6c8053cf854ace95a8180ec12d949f`，已完成五組原生量測與配對 dispatcher profiler，正式判定仍為失敗：首次啟動4,074.56ms、捲動cadence僅1/5通過、單次UI工作18.9497ms；首批歷史、status、Diff及記憶體該組符合目標。真實git.git與合成倉庫的BDN六個case／30個actual樣本全部完成，但不取代原生關卡。詳見 [逐項結果](M4-PERFORMANCE.md)。
+最新實際免安裝候選包來源 `4e3741b` 的 [六格CI](https://github.com/linhercherng/GITGUI/actions/runs/40048922703) 與Windows459項測試、2,224次Git操作及原版24筆快照功能驗證均通過。原生五組的首屏、status、Diff、記憶體及本次配對16ms工作範圍達標；首次啟動7,734.22ms與捲動cadence 0/5仍未過關，正式判定保持失敗，因此沒有發布0.7.0 Release。
+
+前輪候選包來源為 `b34dc8a4fe6c8053cf854ace95a8180ec12d949f`，已完成五組原生量測與配對 dispatcher profiler，正式判定仍為失敗：首次啟動4,074.56ms、捲動cadence僅1/5通過、單次UI工作18.9497ms；首批歷史、status、Diff及記憶體該組符合目標。該來源的真實git.git與合成倉庫BDN六個case／30個actual樣本全部完成，但不取代最新來源的原生關卡。詳見 [逐項結果](M4-PERFORMANCE.md)。
 
 該來源的 [CI run39993166764](https://github.com/linhercherng/GITGUI/actions/runs/39993166764) 為五格成功、一格macOS／Git2.56的UI測試同步失敗；Core33、Engine284均通過。失敗已在隔離測試受控重現：衝突編輯測試未等待Activated啟動的實際刷新，儲存因忙碌被正確拒絕。修正只等待正確的工作完成，不放寬儲存與復原斷言。修正來源 `d5b5e08a63873ab00336554ac967c4c0cfc56d46` 的 [六格 CI run39995975192](https://github.com/linhercherng/GITGUI/actions/runs/39995975192) 已全部成功，包含Windows套件驗證；其相較候選包來源只有測試同步與文件變更，產品原始碼相同。本文件後續僅同步此驗證結果，不將CI成功延伸成原生效能通過。
 
