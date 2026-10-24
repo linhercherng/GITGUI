@@ -1,6 +1,16 @@
 # M4 正式版驗收
 
-M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.6.0已發布為含截圖手冊的M4預覽版；0.7.0效能候選版開發中，尚未發布。已發布來源f55f1b4的Windows／macOS／Linux × Git2.40／2.56六格 [CI](https://github.com/linhercherng/GITGUI/actions/runs/40042983510) 已通過，包含Windows免安裝包功能驗證；但首次新二進位啟動、持續捲動及嚴格16ms回應目標仍未完整通過，M4正式關卡仍未完成。完整測試、套件雜湊及發行狀態以同版 Release 的 `verification.json`、`SHA256SUMS.txt` 及對應來源 commit 的六格 CI 為準；原始規格保持不變。
+M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.7.0正式效能驗收已通過，原始規格及所有門檻保持不變。實際二進位來源為 `f923f11e18286b78b5b7358212bce5736032d5be`；後續驗收器及CI調整沒有修改產品程式碼。
+
+Windows／macOS／Linux × Git2.40／2.56的 [六格CI](https://github.com/linhercherng/GITGUI/actions/runs/40081899175) 全部通過，包含Core33、Engine288、UI170項測試及Windows ZIP驗證。實際ZIP另完成2,224次Git操作、24筆原版M3快照Undo/Redo與原狀復原、AskPass及桌面啟閉。
+
+首次新二進位啟動1,319.8566ms，五組大型倉庫操作及捲動全部通過。獨立profiler保留462,924筆完整紀錄，其中174,902筆涉及產品操作、40筆跨階段，最大產品重疊13.9479ms。原版與加速後驗收器的68項判定相同；51個驗收情境、5,992個時間索引對照及17個實際native負向案例均通過。BDN六個case／30個actual及M3的10%比較亦完成，詳見 [效能報告](M4-PERFORMANCE.md)。
+
+預設啟動路徑為 `GITGUI.vbs`。手冊更新採已測試映像的文件封裝，所有程式、Runtime、Portable Git及截圖逐檔SHA保持相同。`build-info.json`保留二進位來源，`release-info.json`記錄文件／驗收來源；Release的 `verification.json`、`SHA256SUMS.txt` 與證據ZIP提供完整核對。
+
+## 歷史驗收紀錄
+
+以下保留當時的失敗與限制，不代表v0.7.0最終判定。
 
 2026-10-24續作的編輯器延遲建立、資料庫背景排程與收合操作面板改善，及仍未達標的原生數據，見 [本輪效能結果](M4-PERFORMANCE.md)。測試程式已驗證資料庫鎖定不阻塞呼叫端、切換Diff保留文件與語系、收合期間保留紀錄並於展開更新；這些功能性質不能取代正式效能驗收。
 

@@ -15,19 +15,20 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 </style>
 <main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M4</div>
 <h1 id="gitgui">GITGUI 操作手冊</h1>
-<p>適用版本：0.7.0（M4 開發候選版，尚未發布，含操作截圖手冊）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。發布狀態、下載檔名與驗證結果，請以同版 Release 為準；目前仍在進行跨平台與效能驗收，尚未宣告 M4 正式驗收通過。詳見 <a href="M4-PERFORMANCE.md">效能結果</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#section-15">16. 中文訊息、路徑與換行設定</a></li><li><a href="#section-16">17. 狀態刷新與提交分頁</a></li><li><a href="#section-17">18. 錯誤建議與本機日誌</a></li><li><a href="#section-18">19. 常見問題與驗證範圍</a></li><li><a href="#section-19">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#section-20">21. 完整範例：專案修改後再次更新上傳</a></li></ol></nav>
+<p>適用版本：0.7.0（M4 正式效能驗收通過，含操作截圖手冊）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。原規格的效能門檻保持不變，完整結果見 <a href="M4-PERFORMANCE.md">效能報告</a>，下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0">v0.7.0 Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#section-15">16. 中文訊息、路徑與換行設定</a></li><li><a href="#section-16">17. 狀態刷新與提交分頁</a></li><li><a href="#section-17">18. 錯誤建議與本機日誌</a></li><li><a href="#section-18">19. 常見問題與驗證範圍</a></li><li><a href="#section-19">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#section-20">21. 完整範例：專案修改後再次更新上傳</a></li></ol></nav>
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
-<p>目前已發布的 0.6.0 預覽版也可沿用本手冊的操作流程與截圖。開發中的 0.7.0 尚未發布，也尚未通過 M4 正式效能驗收。請勿將本機候選包的建置成功或功能測試通過，視為正式版已發布。</p>
+<p>第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。</p>
 <h2 id="section-0">1. 解壓縮與啟動</h2>
 <ol>
-<li>目前可從本專案 Release 下載 <code>GITGUI-0.6.0-win-x64-portable.zip</code> 預覽版。0.7.0 尚未發布；未來發布後，以 Release 上的實際檔名為準。</li>
+<li>從本專案 v0.7.0 Release 下載 <code>GITGUI-0.7.0-win-x64-portable.zip</code>。</li>
 <li>在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。</li>
-<li>開啟解壓縮資料夾，執行 <code>GitGui.App.exe</code>。請勿直接從 ZIP 內執行。</li>
+<li>開啟解壓縮資料夾，執行 <strong><code>GITGUI.vbs</code></strong>。請勿直接從 ZIP 內執行。</li>
 <li>第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 <code>PortableGit\cmd\git.exe</code>。</li>
 </ol>
 <p>不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。</p>
+<p>預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 <code>GitGui.App.exe</code>；本次 1.5 秒冷啟動驗收使用 <code>GITGUI.vbs</code>，備用方式的啟動時間可能不同。請保留 <code>GitGui.Host.dll</code>、<code>GitGui.App.r2r.dll</code>、<code>PortableGit</code> 與其他隨附檔案。</p>
 <p>若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 <code>SHA256SUMS.txt</code>；此版本未提供程式碼簽章。</p>
-<pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.6.0-win-x64-portable.zip' -Algorithm SHA256
+<pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.0-win-x64-portable.zip' -Algorithm SHA256
 </code></pre>
 <p>上方 <code>C:\下載</code> 是範例，請換成實際下載位置。</p>
 <h2 id="section-1">2. 畫面與外觀</h2>
@@ -219,7 +220,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <p>提交圖資料備妥後會先顯示，工作區狀態與安全檢查可繼續在背景完成。這段期間仍不能執行寫入操作；若載入失敗，請重新開啟倉庫。歷史未改變時，重新整理會保留已載入的分頁與選取項目。</p>
 <p>刷新同一個檔案的差異時，現有文件會保留供閱讀，直到新結果備妥；查詢期間部分暫存仍停用。內容相同時會保留捲動位置與已勾選的差異行。一般 UTF-8／CRLF 文字及圖片預覽使用原生讀取；特殊 filter、編碼或不支援的倉庫格式會使用你選定的 Git，維持原有語意。</p>
 <p>大型差異先顯示檔案資訊與提示，需要時再按「仍要載入」。切換檔案後，以目前選取項目的載入結果為準；差異載入中不能送出尚未確認的部分暫存。</p>
-<p>這些是載入與刷新行為說明。十萬筆提交／五萬個檔案的啟動、記憶體與捲動效能是否符合目標，請以同版量測報告為準。</p>
+<p>v0.7.0 已在十萬筆提交／五萬個檔案的固定測試環境通過原始效能門檻：首次啟動 1,319.86ms、首屏最大 812.25ms、status 最大 236.34ms、Diff 最大 131.24ms、常駐記憶體最大約 221.23MB；五組持續捲動均通過空檔檢查，量測範圍內單次 UI 工作最大 13.9479ms。完整條件、逐筆紀錄與驗證邊界見 <a href="M4-PERFORMANCE.md">效能報告</a>。</p>
 <h2 id="section-17">18. 錯誤建議與本機日誌</h2>
 <p>操作失敗時，主視窗、進階與倉庫工具會顯示白話原因及建議動作。例如 lease 過期先 Fetch、非快轉推送先檢查同步狀態、衝突轉到解決流程、登入失敗開啟憑證說明、鎖定問題開啟鎖定說明。請先讀取原始原因，再執行建議；建議按鈕不會略過信任、確認或目前操作狀態的檢查。</p>
 <p>提交被辨識為 hook 拒絕時，可按「略過 hooks 重試」；必須另行確認，只重試同一份尚未改變的提交訊息、倉庫與選項，不會把略過設定保存為預設。修改草稿或切換倉庫後，請重新送出提交。其他 hook 操作仍先顯示輸出。</p>

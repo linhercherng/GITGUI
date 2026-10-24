@@ -1,10 +1,14 @@
 # Windows x64 免安裝發行
 
-從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.6.0)
-下載 `GITGUI-0.6.0-win-x64-portable.zip`，完整解壓縮後開啟
-`GitGui.App.exe`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+從 [v0.7.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0)
+下載 `GITGUI-0.7.0-win-x64-portable.zip`，完整解壓縮後開啟
+`GITGUI.vbs`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
 
-v0.6.0列為預覽版：功能與回歸測試通過，首次冷啟動、持續捲動及嚴格16ms回應目標仍未完整通過，不能視為M4正式驗收完成。0.7.0為開發中的本機候選包，尚未發布。詳見 [效能結果](M4-PERFORMANCE.md)。
+v0.7.0已通過M4正式效能驗收，原門檻未調整：首次啟動1,319.8566ms、五組捲動全部通過，產品UI工作最大13.9479ms，詳見 [效能結果](M4-PERFORMANCE.md)。
+
+預設方式需要Windows既有的Windows Script Host；環境不允許VBS時可改用 `GitGui.App.exe`。1.5秒啟動驗收使用 `GITGUI.vbs`，不能移用至備用方式。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`及所有隨附檔案。
+
+二進位來源為 `f923f11e18286b78b5b7358212bce5736032d5be`。手冊完成後，以逐檔SHA確認的同一測試映像封裝文件；不重新編譯或替換程式。`build-info.json`保留二進位來源，`release-info.json`與promotion報告記錄文件來源、原測試ZIP及最終ZIP。重新編譯產物若MVID／hash不同，不能沿用此次原生量測。
 
 ## 封裝內容
 
@@ -14,7 +18,7 @@ v0.6.0列為預覽版：功能與回歸測試通過，首次冷啟動、持續�
 - `START-HERE.txt`、繁體中文離線手冊 `USER-GUIDE.zh-TW.html`／`.md`、`THIRD-PARTY.txt`、`licenses/` 與 `build-info.json`。
 - Release 另附 SHA256SUMS、封裝驗證報告與 PortableGit copyleft 來源 ZIP。
 
-v0.6.0 的手冊第 20、21 章提供首次備份與修改後更新上傳範例，附 16 張真實操作截圖、編號框選與逐步說明。`images/walkthrough/` 隨 ZIP 一起提供，HTML／Markdown 的圖片連結可離線開啟；GitHub 位置參考圖沿用現有 GITGUI 倉庫，與隔離的本機示範提交分別標示。
+v0.7.0的手冊保留21章；第20、21章提供首次備份與修改後更新上傳範例，附 16 張真實操作截圖、編號框選與逐步說明。`images/walkthrough/` 隨 ZIP 一起提供，HTML／Markdown 的圖片連結可離線開啟；GitHub 位置參考圖沿用現有 GITGUI 倉庫，與隔離的本機示範提交分別標示。
 
 不修改系統 PATH，不註冊服務。個人設定仍在 `%LOCALAPPDATA%\GitGui`，
 這不是把個人憑證與資料庫放進 USB 的模式。Git 作者與遠端登入使用個人設定。

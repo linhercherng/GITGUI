@@ -1,24 +1,26 @@
 # GITGUI 操作手冊
 
-適用版本：0.7.0（M4 開發候選版，尚未發布，含操作截圖手冊）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。發布狀態、下載檔名與驗證結果，請以同版 Release 為準；目前仍在進行跨平台與效能驗收，尚未宣告 M4 正式驗收通過。詳見 [效能結果](M4-PERFORMANCE.md)。
+適用版本：0.7.0（M4 正式效能驗收通過，含操作截圖手冊）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。原規格的效能門檻保持不變，完整結果見 [效能報告](M4-PERFORMANCE.md)，下載與校驗檔見 [v0.7.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0)。
 
 第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。
 
-目前已發布的 0.6.0 預覽版也可沿用本手冊的操作流程與截圖。開發中的 0.7.0 尚未發布，也尚未通過 M4 正式效能驗收。請勿將本機候選包的建置成功或功能測試通過，視為正式版已發布。
+第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。
 
 ## 1. 解壓縮與啟動
 
-1. 目前可從本專案 Release 下載 `GITGUI-0.6.0-win-x64-portable.zip` 預覽版。0.7.0 尚未發布；未來發布後，以 Release 上的實際檔名為準。
+1. 從本專案 v0.7.0 Release 下載 `GITGUI-0.7.0-win-x64-portable.zip`。
 2. 在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。
-3. 開啟解壓縮資料夾，執行 `GitGui.App.exe`。請勿直接從 ZIP 內執行。
+3. 開啟解壓縮資料夾，執行 **`GITGUI.vbs`**。請勿直接從 ZIP 內執行。
 4. 第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 `PortableGit\cmd\git.exe`。
 
 不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。
 
+預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 `GitGui.App.exe`；本次 1.5 秒冷啟動驗收使用 `GITGUI.vbs`，備用方式的啟動時間可能不同。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`、`PortableGit` 與其他隨附檔案。
+
 若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 `SHA256SUMS.txt`；此版本未提供程式碼簽章。
 
 ```powershell
-Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.6.0-win-x64-portable.zip' -Algorithm SHA256
+Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.0-win-x64-portable.zip' -Algorithm SHA256
 ```
 
 上方 `C:\下載` 是範例，請換成實際下載位置。
@@ -248,7 +250,7 @@ git config --local i18n.commitEncoding UTF-8
 
 大型差異先顯示檔案資訊與提示，需要時再按「仍要載入」。切換檔案後，以目前選取項目的載入結果為準；差異載入中不能送出尚未確認的部分暫存。
 
-這些是載入與刷新行為說明。十萬筆提交／五萬個檔案的啟動、記憶體與捲動效能是否符合目標，請以同版量測報告為準。
+v0.7.0 已在十萬筆提交／五萬個檔案的固定測試環境通過原始效能門檻：首次啟動 1,319.86ms、首屏最大 812.25ms、status 最大 236.34ms、Diff 最大 131.24ms、常駐記憶體最大約 221.23MB；五組持續捲動均通過空檔檢查，量測範圍內單次 UI 工作最大 13.9479ms。完整條件、逐筆紀錄與驗證邊界見 [效能報告](M4-PERFORMANCE.md)。
 
 ## 18. 錯誤建議與本機日誌
 

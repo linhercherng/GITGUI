@@ -1,7 +1,7 @@
 GITGUI 0.1.0 — Windows x64 免安裝版
 
 1. 將整個 ZIP 解壓縮至有寫入權限的資料夾。
-2. 開啟 GitGui.App.exe。不要直接在壓縮檔內啟動。
+2. 開啟 GITGUI.vbs。不要直接在壓縮檔內啟動。
 3. 使用「瀏覽」開啟 Git 倉庫，或使用「倉庫操作」建立／複製倉庫。
 4. 「外觀配色」提供石墨深色、午夜藍、森林綠與霧白，選取後立即套用並記住。
 5. 「進階功能」提供 stash、互動式 rebase、cherry-pick/revert/reset、標籤、reflog、遠端管理、檔案歷史與 Blame。
@@ -24,7 +24,10 @@ GITGUI 0.1.0 — Windows x64 免安裝版
 支援 Windows x64；具體 Windows 版本限制見操作手冊與 docs/M4-ACCEPTANCE.md。
 不需要系統管理員權限，不修改系統 PATH。
 本版 GITGUI 執行檔未做 Authenticode 簽章。
-本版為 M4 預覽版；大型倉庫效能仍未完整通過正式門檻，詳見 docs/M4-PERFORMANCE.md。
+本版已通過 M4 正式效能驗收，原門檻未調整，詳見 docs/M4-PERFORMANCE.md。
+預設啟動需要 Windows 內建 Windows Script Host；若環境不允許 VBS，
+可改用 GitGui.App.exe。1.5 秒冷啟動驗收使用 GITGUI.vbs，備用方式時間可能不同。
+請保留 GitGui.Host.dll、GitGui.App.r2r.dll 及所有隨附檔案。
 
 此處「免安裝」指執行環境隨附；使用者設定、信任清單、最近倉庫、
 快照索引及生命週期日誌仍存於 %LOCALAPPDATA%\GitGui。

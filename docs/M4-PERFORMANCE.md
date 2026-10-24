@@ -1,10 +1,54 @@
 # M4 效能與重現
 
-原始規格第 11.1 節的目標保持不變。v0.6.0 已發布為含截圖手冊的預覽版，尚未通過完整 M4 正式驗收。目前 0.7.0 是開發中的效能候選版，尚未發布，不以功能測試通過代替效能驗收。
+原規格第11.1節及10%退步門檻保持不變。v0.7.0已完成正式效能驗收；先列最終結果，後保留歷史候選版及失敗紀錄。
 
-## 2026-10-24 續作與驗收狀態
+## 2026-10-24 最終正式驗收
 
-### 最新實際免安裝包：正式效能關卡仍未通過
+二進位來源 `f923f11e18286b78b5b7358212bce5736032d5be`。原測試ZIP SHA-256為 `0144d2d47af465292ca77418d93e6b93f728d2eec7570f0dcda26c95ba9368df`。從中文空白路徑解壓，使用內附Portable Git及正常 `GITGUI.vbs` 啟動。新二進位第一次執行即保留，沒有預啟動、暖機或捨棄慢樣本；五組cold／large配對的十份原始報告全部進入判定。
+
+| 指標與原門檻 | 最終觀察 | 判定 |
+| --- | --- | --- |
+| 冷啟動 ≤1,500ms | 首次1,319.8566ms | 通過 |
+| 首500筆 ≤1,000ms | 五組最大812.2499ms | 通過 |
+| 每次status ≤300ms | 15筆最大236.3389ms | 通過 |
+| 一萬行文字檔Diff ≤200ms | 15筆最大131.2405ms，包含完整可見文字列及surface提交 | 通過 |
+| 常駐 ≤300,000,000bytes | 桌面加存活WScript啟動器合計最大221,233,152bytes，含端點及100ms採樣 | 通過 |
+| 持續捲動60fps | 五組各至少五秒，實際繪製／surface提交118.85–131.00fps，所有內部及兩端空檔通過25.025ms關卡 | 通過 |
+| 產品UI工作 ≤16ms | 174,902筆，含40筆跨階段，最大13.9479ms | 通過配對範圍 |
+| 主要引擎退步 ≤10% | 同機、同fixture、相同protocol2的四項M3比較均通過 | 通過 |
+
+主機為Windows11 build26300、Intel i7-13620H，測試有效處理器數固定8，Runtime10.0.13。原生量測沒有變更系統電源方案、全域timer resolution或執行緒優先權。原生捲動以Activated／Deactivated事件及端點觀察核對前景狀態；畫面確認在計時前完成，計時中不擷取文字樹或截圖。
+
+### 修正與證據邊界
+
+Windows使用程式自有高解析度render clock及軟體呈現；SDK native bundle／composite ReadyToRun減少首次載入成本。正常 `GITGUI.vbs` 使用Windows既有WScript及rundll32，不散佈這兩個系統檔案。`GitGui.App.exe` 保留作備用方式，其啟動時間不能沿用上述1.5秒結果。
+
+已停止閒置進度列的indeterminate動畫。細分量測將剩餘熱點定位到AvaloniaEdit一次附加整個可見區域的文字列視覺節點；Diff改為每影格最多新增八列，保留完整文件、複製、唯讀及左右比對。換檔或關閉會取消過期readiness。探針等待完整可見區域建立，核對文字及可見高度，再等待真正的render histogram與CompositionBatch.Rendered，沒有把部分畫面視為Diff完成。
+
+獨立profiler保留462,924筆紀錄，無overflow及未閉合span。入口為DispatcherOperation.Execute、UI Action Send fastpath與WindowImpl.AppWndProc；巢狀span採inclusive，跨階段依實際重疊計算。通用Invoke<T>、其他COM或native入口不在instrumented範圍。render／surface提交不是GPU、DWM或實體螢幕光子完成，RAF與heartbeat不作替代證明。
+
+同一hook的queued／Send／native canary各記錄約45ms已知阻塞，均被16ms門檻拒絕。原版PowerShell及編譯加速驗收器均逐筆檢查所有紀錄，68項判定完全相同；沒有抽樣、丟棄span或扣除假設開銷。另通過51個驗收情境、5,992個線性／索引對照及17個以真實通過基準生成的native負向案例。
+
+### 引擎、相容性與套件驗證
+
+BDN固定六個case：真實git.git及100k／50k合成倉庫，各測完整OpenAsync、status及選定Diff。每case一個launch、一個warmup、五個actual，invocation／unroll皆1，DontRemove且不變更電源方案；保留30筆原始actual與六份fixture metadata。git.git固定HEAD `7e34d8174dcda3435d1404c9a30bef46afe6c13e`，82,563個commit／4,857個檔案，partial clone讀取時禁止lazy fetch。
+
+BDN完整OpenAsync包含首批圖之外的狀態等資料；真實倉庫選定的歷史Diff也不是合成倉庫的一萬行檔案，不能將這些完整操作時間直接替代上表畫面驗收。完整JSON、log及各case條件均附於證據ZIP。
+
+與M3來源 `f1320bf47205f497be558902153acf4a7fd68ab5` 的配對比較：首500筆581.5716ms、status中位146.1484ms、Diff中位45.7279ms、layout500中位0.0820371ms；相對基準分別改善70.10%、94.84%、85.15%、68.75%，均符合退步不得超過10%的門檻。
+
+[六格CI run40081899175](https://github.com/linhercherng/GITGUI/actions/runs/40081899175) 全部通過；其來源 `862cc11acd9acf9228d961553e71f7347e424cb7` 與二進位來源的產品程式碼相同。CI逐專案執行完整Core33／Engine288／UI170，保留停滯診斷，沒有減少案例或放寬斷言。先前兩次平行啟動而未完成的CI保留取消狀態，不計為成功。
+
+實際ZIP通過2,224次Git操作、24筆原版M3快照Undo/Redo及原狀復原、原生／備用AskPass與桌面功能驗證。最終封裝只更新手冊與發行metadata；程式、Runtime、Portable Git、授權及截圖逐檔SHA保持相同。原測試ZIP及文件封裝的外層ZIP雜湊因此不同，分別列於verification及promotion報告，不重新定義第一次二進位執行。
+
+完整資料見Release的 `M4-acceptance-evidence.zip`；本機原始資料位於 `artifacts/m4-native-sliced-five`、`artifacts/m4-sliced-bdn` 及 `artifacts/releases/v0.7.0-f923-evidence`。
+
+## 歷史候選版與失敗紀錄
+
+以下記錄當時的數據及設計選擇，不代表最終版本的設定或判定。
+
+
+### 歷史候選包4e3741b：當時正式關卡未通過
 
 來源 `4e3741bc96a8b9d6716fdeb1776b217263eb80a4` 的0.7.0本機候選ZIP，SHA-256為 `dfe2a8bc5eee26204c2834f89169ffbe519a6d03f54a5630355b5e344f38ea22`。從實際ZIP解壓，在中文空白路徑使用隨附Portable Git 2.56.0.windows.3完成五組原生量測；沒有先啟動暖機或丟棄首次樣本。正式判定 `pass=false`，尚未發布GitHub Release：
 

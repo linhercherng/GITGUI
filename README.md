@@ -10,7 +10,9 @@
 
 ## Windows 免安裝版
 
-從 [M4 預覽版 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.6.0) 下載 `GITGUI-0.6.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GitGui.App.exe**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。本版執行檔未簽章；支援OS限制見下方M4驗收說明。首次冷啟動、持續捲動及嚴格16ms回應目標尚未完整通過，因此列為預覽版，M4正式驗收仍未完成。0.7.0目前為開發中的效能候選版，尚未發布。
+從 [v0.7.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0) 下載 `GITGUI-0.7.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。M4 正式效能驗收已通過，原門檻保持不變：首次啟動 1,319.86ms、五組捲動均通過、單次產品 UI 工作最大 13.9479ms；詳見 [驗收表](docs/M4-ACCEPTANCE.md)。本版執行檔未簽章，支援OS限制見驗收說明。
+
+預設啟動使用 Windows Script Host；環境不允許 VBS 時，可改用 `GitGui.App.exe`，但備用方式不沿用 1.5 秒啟動驗收結果。
 
 請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
 
