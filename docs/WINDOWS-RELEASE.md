@@ -4,7 +4,7 @@
 下載 `GITGUI-0.6.0-win-x64-portable.zip`，完整解壓縮後開啟
 `GitGui.App.exe`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
 
-v0.6.0列為預覽版：功能與回歸測試通過，大型倉庫首屏及嚴格16ms回應目標仍未完整通過，不能視為M4正式驗收完成。詳見 [效能結果](M4-PERFORMANCE.md)。
+v0.6.0列為預覽版：功能與回歸測試通過，首次冷啟動、持續捲動及嚴格16ms回應目標仍未完整通過，不能視為M4正式驗收完成。0.7.0為開發中的本機候選包，尚未發布。詳見 [效能結果](M4-PERFORMANCE.md)。
 
 ## 封裝內容
 
@@ -25,11 +25,11 @@ v0.6.0 的手冊第 20、21 章提供首次備份與修改後更新上傳範例�
 需要 Windows、PowerShell 7、.NET 10 SDK，從指定版本乾淨 checkout 執行：
 
 ```powershell
-./scripts/Build-WindowsPortable.ps1 -OutputDirectory C:/Build/GITGUI-0.6.0
-./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.6.0/GITGUI-0.6.0-win-x64-portable.zip -Desktop
+./scripts/Build-WindowsPortable.ps1 -Version 0.7.0 -OutputDirectory C:/Build/GITGUI-0.7.0
+./tests/Test-WindowsPortable.ps1 -Archive C:/Build/GITGUI-0.7.0/GITGUI-0.7.0-win-x64-portable.zip -Desktop
 ./scripts/Collect-PortableGitSources.ps1 `
-  -PortableGit C:/Build/GITGUI-0.6.0/GITGUI-0.6.0-win-x64-portable/PortableGit `
-  -OutputDirectory C:/Build/GITGUI-0.6.0-sources
+  -PortableGit C:/Build/GITGUI-0.7.0/GITGUI-0.7.0-win-x64-portable/PortableGit `
+  -OutputDirectory C:/Build/GITGUI-0.7.0-sources
 ```
 
 輸出目錄必須尚不存在，避免覆寫已測試的 ZIP。NuGet 另用各專案的
