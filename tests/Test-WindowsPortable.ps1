@@ -104,7 +104,7 @@ try {
         & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path $app 'GitGui.App.exe') -Desktop:$Desktop
         if($buildInfo.readyToRunComposite) {
             & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path ([Environment]::SystemDirectory) 'rundll32.exe') `
-                -PrefixArguments @((Join-Path $app 'GitGui.Host.dll')+',RunW')
+                -NativeHostPath (Join-Path $app 'GitGui.Host.dll')
         }
         $report | Add-Member -NotePropertyName archiveSHA256 -NotePropertyValue (Get-FileHash $zip).Hash.ToLowerInvariant()
         $report | Add-Member -NotePropertyName desktopTested -NotePropertyValue ([bool]$Desktop)

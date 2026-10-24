@@ -16,6 +16,9 @@ extern "C" __declspec(dllexport) void CALLBACK RunW(HWND,HINSTANCE,LPWSTR,int) {
     const auto slash=own.find_last_of(L"\\/");
     if(slash==std::wstring::npos) ExitProcess(2);
     const auto root=own.substr(0,slash);
+    // Match the normal launcher when Git starts AskPass from a repository directory.
+    // The composite runtime must resolve its external native image beside the bundle.
+    if(!SetCurrentDirectoryW(root.c_str())) ExitProcess(6);
     const auto bundle=root+L"\\GitGui.App.exe";
     const auto app=root+L"\\GitGui.App.dll";
     const auto library=root+L"\\hostfxr.dll";

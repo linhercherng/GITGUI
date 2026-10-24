@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)][string]$AppPath,
-    [string[]]$PrefixArguments=@(),
+    [string]$NativeHostPath,
     [switch]$Desktop
 )
 $ErrorActionPreference = 'Stop'
@@ -15,9 +15,15 @@ $start.CreateNoWindow = $true
 $start.RedirectStandardOutput = $true
 $start.RedirectStandardError = $true
 $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
-foreach($argument in $PrefixArguments){$start.ArgumentList.Add($argument)}
-$start.ArgumentList.Add('--askpass')
-$start.ArgumentList.Add('Smoke credential prompt')
+if($NativeHostPath) {
+    $nativeHost=(Resolve-Path -LiteralPath $NativeHostPath).Path
+    # rundll32 requires quotes around the DLL path only, before the entry-point comma.
+    # ArgumentList would quote the entire path,RunW token and change its parser input.
+    $start.Arguments='"'+$nativeHost+'",RunW --askpass "Smoke credential prompt"'
+} else {
+    $start.ArgumentList.Add('--askpass')
+    $start.ArgumentList.Add('Smoke credential prompt')
+}
 $start.Environment['GITGUI_ASKPASS_PIPE'] = $pipeName
 $child = [Diagnostics.Process]::Start($start)
 try {
