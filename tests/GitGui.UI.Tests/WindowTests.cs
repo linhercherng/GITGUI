@@ -28,6 +28,27 @@ public class TestApplication : Application
 public sealed class WindowTests
 {
     [AvaloniaFact]
+    public void Activity_feedback_does_not_resize_the_history_viewport()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            window.FindControl<TabControl>("WorkspaceTabs")!.SelectedIndex = 1;
+            vm.ProgressText = "Reading repository";
+            window.UpdateLayout();
+            var graph = window.FindControl<ContentControl>("GraphHost")!;
+            var resting = graph.Bounds;
+            Assert.True(resting.Height > 0);
+            vm.IsBusy = true; window.UpdateLayout();
+            Assert.Equal(resting, graph.Bounds);
+            vm.IsBusy = false; window.UpdateLayout();
+            Assert.Equal(resting, graph.Bounds);
+        }
+        finally { vm.IsBusy = false; window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Collapsed_operation_panel_keeps_logs_without_creating_or_updating_its_text_editor()
     {
         var backend = new SampleWorkspace();
