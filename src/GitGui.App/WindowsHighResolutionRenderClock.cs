@@ -70,9 +70,7 @@ internal sealed class WindowsHighResolutionRenderClock : IDisposable
         try
         {
             WaitHandle[] waits = [changed, timer];
-            // UI commit, render and surface completion can span three clock turns.
-            // Leave headroom within a 60 Hz frame-gap budget when scrolling begins.
-            var interval = Stopwatch.Frequency / 180d;
+            var interval = Stopwatch.Frequency / 120d;
             var next = Stopwatch.GetTimestamp() + interval;
             while (true)
             {
@@ -90,12 +88,18 @@ internal sealed class WindowsHighResolutionRenderClock : IDisposable
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 if (WaitHandle.WaitAny(waits) == 0) continue;
                 action(clock.Elapsed);
-                next += interval;
-                var now = Stopwatch.GetTimestamp();
-                if (next <= now) next = now + interval;
+                next = NextDeadline(next, interval, Stopwatch.GetTimestamp());
             }
         }
         finally { lock (gate) Release(); }
+    }
+
+    internal static double NextDeadline(double previous, double interval, long now)
+    {
+        var next = previous + interval;
+        // Skip missed deadlines on the existing cadence. Sleeping a whole interval
+        // after a delayed render adds another frame of latency to queued UI work.
+        return next <= now ? next + (Math.Floor((now - next) / interval) + 1) * interval : next;
     }
 
     private void Release()
