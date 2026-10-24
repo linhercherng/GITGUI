@@ -192,9 +192,13 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         finally
         {
             heartbeatCancellation.Cancel(); try { await heartbeat; } catch (OperationCanceledException) { }
+            // Finish the actual product callback before the probe serializes its
+            // diagnostic report. Keep every profiler span and the same thresholds;
+            // report hashing/JSON must not extend an otherwise finished Git UI job.
+            trace.SetPhase("probe-report");
+            await Task.Yield();
             values["uiDispatcherHeartbeatDelayMs"] = Statistics(heartbeats.Select(s => s.QueueDelayMs));
             values["heartbeatSamplesInOrder"] = heartbeats.ToArray();
-            trace.SetPhase("probe-report");
             values["phaseTimeline"] = trace.Phases.ToArray();
             values["uiSynchronousSpans"] = trace.Spans.ToArray();
             values["startupCheckpoints"] = startupCheckpoints.ToArray();
