@@ -27,6 +27,6 @@ public sealed class Localization : INotifyPropertyChanged
     private static Dictionary<string, string> Load(string culture)
     {
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"GitGui.UI.Resources.{culture}.json")!;
-        return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
+        return JsonSerializer.Deserialize(stream, LocalizationJsonContext.Default.DictionaryStringString)!;
     }
 }
