@@ -35,6 +35,13 @@ the native NuGet package includes the exception and third-party notices).
 SkiaSharp: https://github.com/mono/SkiaSharp (MIT and third-party notices)
 SQLite: https://sqlite.org/copyright.html (public domain)
 
+GitGui.Host.dll is built with Microsoft Visual C++ 14.44 (/MT). Its C++ standard
+library portions are Copyright (c) Microsoft Corporation, Apache-2.0 WITH
+LLVM-exception. The original license is included in licenses/MSVC-STL-LICENSE.txt:
+https://github.com/microsoft/STL/blob/vs-2022-17.14/LICENSE.txt
+The launcher uses the host Windows installation's WScript and rundll32; those
+Windows executables are not redistributed in this ZIP.
+
 GITGUI is distributed under the MIT License. The application's copyright and
 license text are preserved in the top-level LICENSE file.
 Third-party software remains available under its respective licenses.

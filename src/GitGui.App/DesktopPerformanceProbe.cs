@@ -117,7 +117,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 graph = "Repository-path assignment through first500 publication, queued graph rebuild/LayoutReady, visible History layout, RAF diagnostic, then a requested rendered batch and native surface-update return. Full refresh completion remains separate. Setup/validation excluded. Surface submission is a conservative completed batch, not physical display.",
                 status = "RefreshStatusAsync through Changes.Reset, visible working-tree layout, diagnostic RAF and completed rendered batch/surface update. Total status+selected-file diff/conflict readiness is retained separately.",
                 diff = "Selecting generated big.txt after clearing selection through IsDiffLoading=false, active inline editor equality, layout, diagnostic RAF and completed rendered batch/surface update. Includes Git read, projection, bindings and editor layout; source file has10000lines.",
-                frames = "Actual native RequestAnimationFrame callback intervals while automation ScrollProvider changes the visible commit graph once per callback; not headless, synthetic frame scheduling or GPU presentation timing.",
+                frames = "Native scrolling driver protocol2: every ScrollProvider update awaits both its RequestAnimationFrame callback and requested CompositionBatch.Rendered before sending the next update. Prevents empty RAF callbacks from creating an unbounded input busy loop. No pre-scroll warmup; QPC starts before the first update. Callback/loop intervals remain diagnostic; the separate real-render histogram/batch cadence gate is unchanged.",
                 scrollRendering = "Real avalonia.comp.render.time scopes correlated with distinct public CompositionBatch.Rendered notifications after drawing-context/session disposal and native surface EndDraw. Exact QPC interval excludes drain and report work. This measures application rendering plus returned surface-update submission, not GPU completion, Windows compositor commit completion, physical display or photons. Histogram scopes end before surface disposal; batch notifications occur in finally, so render errors are captured separately and invalidate the gate. Nominal60 includes60000/1001Hz; endpoint allowance is floor(duration*60000/1001)-1, with every internal gap>=1.5frames failing even if average recovers.",
                 heartbeat = "Worker timer to UI Dispatcher callback delay during product open/status/diff/scroll or idle sampling, including OS scheduling and dispatcher backlog. Excludes probe runtime/fixture validation/trust setup and startup. This estimates responsiveness, not exact duration of every UI callback.",
                 instrumentation = "Ordered heartbeat timestamps/phase, worker16ms timer elapsed and GC deltas are retained. Bound-property spans measure VM PropertyChanging through PropertyChanged observers registered after normal bindings; they include synchronous setter/earlier-subscriber work, exclude deferred layout and are not a full UI callback profiler. Explicit UpdateLayout spans are separate. Instrumentation does not change renderer/GC/thread-pool settings.",
@@ -186,7 +186,11 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             {
                 values["probeSetupValidationMs"] = setup.Elapsed.TotalMilliseconds;
                 trace.SetPhase("idle"); heartbeat = HeartbeatAsync(heartbeats, trace, heartbeatCancellation.Token);
-                values["idleNativeFrameIntervalsMs"] = (await SampleFramesAsync(window, () => window.InvalidateVisual(), TimeSpan.FromSeconds(2), timeout.Token)).Report;
+                values["idleNativeFrameIntervalsMs"] = (await SampleFramesAsync(window, () =>
+                {
+                    window.InvalidateVisual();
+                    return ElementComposition.GetElementVisual(window)!.Compositor.RequestCompositionBatchCommitAsync().Rendered;
+                }, TimeSpan.FromSeconds(2), timeout.Token)).Report;
             }
             using var process = Process.GetCurrentProcess(); process.Refresh(); values["workingSetBytes"] = process.WorkingSet64; values["privateBytes"] = process.PrivateMemorySize64;
         }
@@ -433,17 +437,18 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         }
     }
     private sealed record FrameSampling(object Report, long StartQpc, long EndQpc);
-    private static async Task<FrameSampling> SampleFramesAsync(Window window, Action scroll, TimeSpan duration, CancellationToken ct)
+    private static async Task<FrameSampling> SampleFramesAsync(Window window, Func<Task> scroll, TimeSpan duration, CancellationToken ct)
     {
         var intervals = new List<double>(); var callbackDurations = new List<double>(); var clock = Stopwatch.StartNew(); var previous = clock.Elapsed.TotalMilliseconds;
         var startQpc = Stopwatch.GetTimestamp();
         while (clock.Elapsed < duration)
         {
-            var started = Stopwatch.GetTimestamp(); scroll(); callbackDurations.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-            await FrameAsync(window, ct); var now = clock.Elapsed.TotalMilliseconds; intervals.Add(now - previous); previous = now;
+            var started = Stopwatch.GetTimestamp(); var rendered = scroll(); callbackDurations.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            await ScrollFramePacing.WaitAsync(FrameAsync(window, ct), rendered, ct);
+            var now = clock.Elapsed.TotalMilliseconds; intervals.Add(now - previous); previous = now;
         }
         var endQpc = Stopwatch.GetTimestamp();
-        return new(new { samples = intervals.Count, elapsedMs = clock.Elapsed.TotalMilliseconds, callbackFps = intervals.Count / clock.Elapsed.TotalSeconds,
+        return new(new { driverProtocol = 2, pacing = "RAF callback and real rendered batch", samples = intervals.Count, elapsedMs = clock.Elapsed.TotalMilliseconds, callbackFps = intervals.Count / clock.Elapsed.TotalSeconds,
             intervals = Statistics(intervals), intervalsInOrder = intervals, scrollProviderCallbackDurationMs = Statistics(callbackDurations),
             startQpc, endQpc, timestampFrequency = Stopwatch.Frequency }, startQpc, endQpc);
     }
@@ -522,7 +527,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             trace.SetPhase("graph-scroll");
             sampled = await SampleFramesAsync(window, () =>
             {
-                scroll(); Observe(compositor.RequestCompositionBatchCommitAsync());
+                scroll(); var batch = compositor.RequestCompositionBatchCommitAsync(); Observe(batch); return batch.Rendered;
             }, TimeSpan.FromSeconds(5), ct);
         }
         finally { memoryCancellation.Cancel(); await memoryWorker; }
