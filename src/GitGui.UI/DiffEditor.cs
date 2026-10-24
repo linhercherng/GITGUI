@@ -25,22 +25,29 @@ public sealed class DiffEditor : Grid
     public string RightSource { get => GetValue(RightSourceProperty); set => SetValue(RightSourceProperty, value); }
     public bool IsSplit { get => GetValue(IsSplitProperty); set => SetValue(IsSplitProperty, value); }
     private readonly CodeEditor inline = CreateEditor();
-    private readonly CodeEditor left = CreateEditor();
-    private readonly CodeEditor right = CreateEditor();
-    private readonly Grid split = new() { ColumnDefinitions = new("*,6,*") };
+    private CodeEditor? left, right;
+    private Grid? split;
     private bool scrolling;
     public bool IsReadOnly => true;
-    public void FocusDocument() => (IsSplit ? left : inline).TextArea.Focus();
+    public void FocusDocument() => (IsSplit ? left! : inline).TextArea.Focus();
 
     public DiffEditor()
     {
+        Children.Add(inline);
+    }
+    private void EnsureSplitEditors()
+    {
+        if (split is not null) return;
+        // Inline is the default. Do not create/attach two unused editor trees at
+        // startup; retain them after the first split so documents and offsets survive.
+        left = CreateEditor(); right = CreateEditor();
+        split = new Grid { ColumnDefinitions = new("*,6,*") };
         split.Children.Add(left);
         var divider = new GridSplitter { ResizeDirection = GridResizeDirection.Columns };
         AppearanceManager.Bind(divider, BackgroundProperty, "BorderBrush");
         SetColumn(divider, 1); split.Children.Add(divider);
         SetColumn(right, 2); split.Children.Add(right);
-        Children.Add(inline); Children.Add(split);
-        split.IsVisible = false;
+        Children.Add(split);
         // Diff projections are line-aligned, so both panes share vertical scroll offsets.
         left.TextArea.TextView.ScrollOffsetChanged += (_, _) => Sync(left, right);
         right.TextArea.TextView.ScrollOffsetChanged += (_, _) => Sync(right, left);
@@ -56,14 +63,18 @@ public sealed class DiffEditor : Grid
     {
         base.OnPropertyChanged(change);
         if (change.Property == SourceProperty && !IsSplit) inline.CodeText = Source;
-        else if (change.Property == LeftSourceProperty && IsSplit) left.CodeText = LeftSource;
-        else if (change.Property == RightSourceProperty && IsSplit) right.CodeText = RightSource;
+        else if (change.Property == LeftSourceProperty && IsSplit) left!.CodeText = LeftSource;
+        else if (change.Property == RightSourceProperty && IsSplit) right!.CodeText = RightSource;
         else if (change.Property == IsSplitProperty)
         {
-            inline.IsVisible = !IsSplit; split.IsVisible = IsSplit;
-            if (IsSplit) { left.CodeText = LeftSource; right.CodeText = RightSource; } else inline.CodeText = Source;
+            if (IsSplit) EnsureSplitEditors();
+            inline.IsVisible = !IsSplit;
+            if (split is not null) split.IsVisible = IsSplit;
+            if (IsSplit) { left!.CodeText = LeftSource; right!.CodeText = RightSource; } else inline.CodeText = Source;
         }
-        inline.AccessibleName = DocumentName; left.AccessibleName = DocumentName + " · " + BeforeLabel; right.AccessibleName = DocumentName + " · " + AfterLabel;
+        inline.AccessibleName = DocumentName;
+        if (left is not null) left.AccessibleName = DocumentName + " · " + BeforeLabel;
+        if (right is not null) right.AccessibleName = DocumentName + " · " + AfterLabel;
     }
     private static CodeEditor CreateEditor()
     {
