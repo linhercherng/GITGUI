@@ -17,6 +17,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <h1 id="gitgui">GITGUI 操作手冊</h1>
 <p>適用版本：0.6.0（M4 預覽版，含操作截圖手冊）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。發布狀態、下載檔名與驗證結果，請以同版 Release 為準；目前仍在進行跨平台與效能驗收，尚未宣告 M4 正式驗收通過。詳見 <a href="M4-PERFORMANCE.md">效能結果</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#section-15">16. 中文訊息、路徑與換行設定</a></li><li><a href="#section-16">17. 狀態刷新與提交分頁</a></li><li><a href="#section-17">18. 錯誤建議與本機日誌</a></li><li><a href="#section-18">19. 常見問題與驗證範圍</a></li><li><a href="#section-19">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#section-20">21. 完整範例：專案修改後再次更新上傳</a></li></ol></nav>
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
+<p>開發中的 0.7.0 效能候選版沿用本手冊的操作流程與截圖，尚未發布，也尚未通過 M4 正式效能驗收。請勿將本機候選包的建置成功或功能測試通過，視為正式版已發布。</p>
 <h2 id="section-0">1. 解壓縮與啟動</h2>
 <ol>
 <li>版本發布後，從本專案 Release 下載 <code>GITGUI-0.6.0-win-x64-portable.zip</code>。</li>
@@ -223,6 +224,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <p>操作失敗時，主視窗、進階與倉庫工具會顯示白話原因及建議動作。例如 lease 過期先 Fetch、非快轉推送先檢查同步狀態、衝突轉到解決流程、登入失敗開啟憑證說明、鎖定問題開啟鎖定說明。請先讀取原始原因，再執行建議；建議按鈕不會略過信任、確認或目前操作狀態的檢查。</p>
 <p>提交被辨識為 hook 拒絕時，可按「略過 hooks 重試」；必須另行確認，只重試同一份尚未改變的提交訊息、倉庫與選項，不會把略過設定保存為預設。修改草稿或切換倉庫後，請重新送出提交。其他 hook 操作仍先顯示輸出。</p>
 <p>展開「操作面板」可查看實際指令與 Git 輸出，並複製內容。憑證欄位會遮罩；若要將輸出貼給他人，仍請自行檢查倉庫路徑及檔案內容是否適合分享。</p>
+<p>0.7.0候選版會在第一次展開時建立輸出區；收合時仍保留指令紀錄，重新展開會顯示最新內容。顯示紀錄設有長度上限，超過上限保留最新部分。單欄Diff切換為左右比對時才建立左右編輯器，後續切換會保留已建立的編輯器。</p>
 <p>Windows 的應用程式資料位置：</p>
 <pre><code class="language-text">%LOCALAPPDATA%\GitGui\ui.json          語系與自訂快捷鍵
 %LOCALAPPDATA%\GitGui\appearance.json  外觀

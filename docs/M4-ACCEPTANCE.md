@@ -1,6 +1,8 @@
 # M4 正式版驗收
 
-M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.5.0為M4預覽版；0.6.0效能改善候選版仍在驗收中。來源1f95807的Windows／macOS／Linux × Git2.40／2.56六格CI已通過，包含Windows免安裝包功能驗證；但首次新二進位啟動、持續捲動及嚴格16ms回應目標仍未完整通過，M4正式關卡仍未完成。完整測試、套件雜湊及發行狀態以同版 Release 的 `verification.json`、`SHA256SUMS.txt` 及對應來源 commit 的六格 CI 為準；原始規格保持不變。
+M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.6.0已發布為含截圖手冊的M4預覽版；0.7.0效能候選版開發中，尚未發布。已發布來源f55f1b4的Windows／macOS／Linux × Git2.40／2.56六格 [CI](https://github.com/linhercherng/GITGUI/actions/runs/40042983510) 已通過，包含Windows免安裝包功能驗證；但首次新二進位啟動、持續捲動及嚴格16ms回應目標仍未完整通過，M4正式關卡仍未完成。完整測試、套件雜湊及發行狀態以同版 Release 的 `verification.json`、`SHA256SUMS.txt` 及對應來源 commit 的六格 CI 為準；原始規格保持不變。
+
+2026-10-24續作的編輯器延遲建立、資料庫背景排程與收合操作面板改善，及仍未達標的原生數據，見 [本輪效能結果](M4-PERFORMANCE.md)。測試程式已驗證資料庫鎖定不阻塞呼叫端、切換Diff保留文件與語系、收合期間保留紀錄並於展開更新；這些功能性質不能取代正式效能驗收。
 
 本輪實際候選包來源為 `b34dc8a4fe6c8053cf854ace95a8180ec12d949f`，已完成五組原生量測與配對 dispatcher profiler，正式判定仍為失敗：首次啟動4,074.56ms、捲動cadence僅1/5通過、單次UI工作18.9497ms；首批歷史、status、Diff及記憶體該組符合目標。真實git.git與合成倉庫的BDN六個case／30個actual樣本全部完成，但不取代原生關卡。詳見 [逐項結果](M4-PERFORMANCE.md)。
 
