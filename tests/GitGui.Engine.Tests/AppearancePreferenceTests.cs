@@ -13,6 +13,7 @@ public class AppearancePreferenceTests
         var preferences = new AppearancePreferences(file);
         Assert.Null(preferences.LoadTheme());
         preferences.SaveTheme("forest");
+        Assert.Equal("{\"Theme\":\"forest\"}", File.ReadAllText(file));
         Assert.Equal("forest", new AppearancePreferences(file).LoadTheme());
         File.WriteAllText(file, "{broken");
         Assert.Null(new AppearancePreferences(file).LoadTheme());

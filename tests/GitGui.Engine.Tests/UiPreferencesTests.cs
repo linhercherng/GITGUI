@@ -16,6 +16,7 @@ public sealed class UiPreferencesTests
             var path = Path.Combine(directory, "ui.json"); var store = new UiPreferencesStore(path);
             Assert.Equal("zh-TW", store.Load().Culture);
             store.Save(new("en", new Dictionary<string, string?> { ["Main.Refresh"] = "Ctrl+R", ["Main.Commit"] = null }));
+            Assert.Equal("{\"Culture\":\"en\",\"Shortcuts\":{\"Main.Refresh\":\"Ctrl\\u002BR\",\"Main.Commit\":null}}", File.ReadAllText(path));
             var restored = new UiPreferencesStore(path).Load(); Assert.Equal("en", restored.Culture);
             Assert.Equal("Ctrl+R", restored.Shortcuts!["Main.Refresh"]); Assert.Null(restored.Shortcuts["Main.Commit"]);
             Assert.Single(Directory.EnumerateFiles(directory));

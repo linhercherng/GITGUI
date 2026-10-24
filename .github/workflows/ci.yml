@@ -47,6 +47,10 @@ jobs:
         run: ./tests/PreparePortableGit.ps1
       - name: Test
         run: dotnet test GitGui.sln -c Release --no-build --logger trx --results-directory TestResults
+      - name: Verify JSON contracts without runtime reflection
+        if: matrix.git == '2.56.0'
+        shell: pwsh
+        run: ./tests/Test-StaticJsonContracts.ps1 -OutputDirectory TestResults/static-json
       - name: Verify performance comparison gate rejects invalid evidence
         shell: pwsh
         run: |
@@ -79,4 +83,6 @@ jobs:
           name: test-results-${{ matrix.os }}-git-${{ matrix.git }}
           path: |
             TestResults/*.trx
+            TestResults/static-json/*.trx
+            TestResults/static-json/verification.json
             TestResults/graph-text-cache/**

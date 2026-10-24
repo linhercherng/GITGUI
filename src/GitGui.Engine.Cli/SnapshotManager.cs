@@ -169,7 +169,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         var manifest = new SnapshotManifest(root, headRef, headOid, refs, index, files, markers, configuration,
             remoteConfiguration, stashLog, stateDirectories, stateModes, operationRefs, symbolicRefs,
             submoduleConfiguration, protectedDirectories, sparse);
-        var manifestOid = await Hash(root, JsonSerializer.SerializeToUtf8Bytes(manifest), ct);
+        var manifestOid = await Hash(root, JsonSerializer.SerializeToUtf8Bytes(manifest, SnapshotJsonContext.Default.SnapshotManifest), ct);
         var roots = new List<string> { $"100644 blob {manifestOid}\tmanifest\0" };
         roots.Add($"040000 tree {await BuildTree(root, files.Select(f => new IndexEntry(f.Path, f.Mode, f.Oid, 0)), ct)}\tworktree\0");
         for (var stage = 0; stage <= 3; stage++)
@@ -359,7 +359,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         if (!Regex.IsMatch(info.Id, "^[a-zA-Z0-9-]+$") || info.StateRef != $"refs/gitgui/snapshots/{info.Id}/state")
             throw new InvalidOperationException("Invalid snapshot reference.");
         var content = await git.Bytes(root, ct, ["cat-file", "blob", info.StateRef + ":manifest"], new() { HideOutput = true });
-        var manifest = JsonSerializer.Deserialize<SnapshotManifest>(content) ?? throw new InvalidOperationException("Invalid snapshot metadata.");
+        var manifest = JsonSerializer.Deserialize(content, SnapshotJsonContext.Default.SnapshotManifest) ?? throw new InvalidOperationException("Invalid snapshot metadata.");
         if (!GitAccess.SamePath(manifest.Root, root)) throw new InvalidOperationException("Snapshot belongs to a different worktree.");
         foreach (var path in manifest.Files.Select(f => f.Path).Concat(manifest.Index.Select(e => e.Path))) GitAccess.FullPath(root, path);
         if (manifest.Files.Select(f => f.Path).Distinct().Count() != manifest.Files.Count ||

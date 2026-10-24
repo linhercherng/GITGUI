@@ -5,6 +5,23 @@ namespace GitGui.Engine.Tests;
 
 public class SnapshotTests
 {
+    [Fact]
+    public async Task Snapshot_manifest_bytes_match_the_legacy_reflection_contract()
+    {
+        using var repo = new TemporaryRepository();
+        await repo.Init();
+        await File.WriteAllTextAsync(Path.Combine(repo.Root, "中文 空白.txt"), "內容\r\n");
+        var manager = new SnapshotManager(new GitProcessRunner(), new MemoryCatalog());
+        var snapshot = await manager.CreateAsync(repo.Root, "format compatibility", default);
+        var manifest = await repo.Git("show", snapshot.StateRef + ":manifest");
+        var contract = typeof(SnapshotManager).Assembly.GetType("GitGui.Engine.Cli.SnapshotManifest", throwOnError: true)!;
+        var legacy = System.Text.Json.JsonSerializer.Deserialize(manifest, contract)!;
+        Assert.Equal(manifest, System.Text.Json.JsonSerializer.Serialize(legacy, contract));
+        await File.WriteAllTextAsync(Path.Combine(repo.Root, "中文 空白.txt"), "changed");
+        await manager.RestoreAsync(repo.Root, snapshot, default);
+        Assert.Equal("內容\r\n", await File.ReadAllTextAsync(Path.Combine(repo.Root, "中文 空白.txt")));
+    }
+
     [Theory]
     [InlineData("sha1")]
     [InlineData("sha256")]

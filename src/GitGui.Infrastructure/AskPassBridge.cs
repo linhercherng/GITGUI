@@ -31,9 +31,9 @@ public sealed class AskPassBridge : IDisposable
                     await using var output = new StreamWriter(server, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
                     var line = await input.ReadLineAsync(lifetime.Token);
                     if (line is null || line.Length > 8192) continue;
-                    var prompt = JsonSerializer.Deserialize<string>(line) ?? "Git credential";
+                    var prompt = JsonSerializer.Deserialize(line, SettingsJsonContext.Default.String) ?? "Git credential";
                     var answer = await interaction.CredentialAsync(prompt, lifetime.Token);
-                    await output.WriteLineAsync(JsonSerializer.Serialize(answer).AsMemory(), lifetime.Token);
+                    await output.WriteLineAsync(JsonSerializer.Serialize(answer, SettingsJsonContext.Default.String).AsMemory(), lifetime.Token);
                 }
                 catch (IOException) { /* A cancelled Git client must not disable later prompts. */ }
                 catch (JsonException) { /* Ignore malformed requests without retaining their contents. */ }
@@ -51,9 +51,9 @@ public sealed class AskPassBridge : IDisposable
         await client.ConnectAsync(15000, ct);
         using var input = new StreamReader(client, new UTF8Encoding(false), false, 1024, leaveOpen: true);
         await using var output = new StreamWriter(client, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
-        await output.WriteLineAsync(JsonSerializer.Serialize(prompt).AsMemory(), ct);
+        await output.WriteLineAsync(JsonSerializer.Serialize(prompt, SettingsJsonContext.Default.String).AsMemory(), ct);
         var line = await input.ReadLineAsync(ct);
-        return line is null ? null : JsonSerializer.Deserialize<string?>(line);
+        return line is null ? null : JsonSerializer.Deserialize(line, SettingsJsonContext.Default.String);
     }
 
     public void Dispose()
