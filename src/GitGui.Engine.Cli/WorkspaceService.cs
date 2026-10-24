@@ -47,7 +47,8 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
     public Task<FilePreview> GetPreviewAsync(string root, DiffRequest request, CancellationToken ct)
         => Task.Run(() => reader.Preview(root, request, ct), ct);
     public Task<IReadOnlyList<SnapshotInfo>> GetSnapshotsAsync(string root, CancellationToken ct)
-        => catalog.ListAsync(root, ct);
+        // SQLite async methods can wait synchronously for a database lock.
+        => Task.Run(() => catalog.ListAsync(root, ct), ct);
 
     public async Task TrustAsync(string root, CancellationToken ct)
     {

@@ -16,7 +16,9 @@ public sealed class RecentRepositories(string databasePath) : IRecentRepositorie
         return connection;
     }
 
-    public async Task<IReadOnlyList<string>> ListAsync(CancellationToken ct)
+    // Microsoft.Data.Sqlite's async ADO.NET calls execute synchronously. Schedule
+    // the complete connection/query lifetime on a worker, including busy waits.
+    public Task<IReadOnlyList<string>> ListAsync(CancellationToken ct) => Task.Run(async () =>
     {
         await using var connection = await Open(ct);
         using var command = connection.CreateCommand();
@@ -24,10 +26,10 @@ public sealed class RecentRepositories(string databasePath) : IRecentRepositorie
         var result = new List<string>();
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct)) result.Add(reader.GetString(0));
-        return result;
-    }
+        return (IReadOnlyList<string>)result;
+    }, ct);
 
-    public async Task RememberAsync(string path, CancellationToken ct)
+    public Task RememberAsync(string path, CancellationToken ct) => Task.Run(async () =>
     {
         await using var connection = await Open(ct);
         using var command = connection.CreateCommand();
@@ -36,5 +38,5 @@ public sealed class RecentRepositories(string databasePath) : IRecentRepositorie
         command.Parameters.AddWithValue("$path", Path.GetFullPath(path));
         command.Parameters.AddWithValue("$time", DateTimeOffset.UtcNow.ToString("O"));
         await command.ExecuteNonQueryAsync(ct);
-    }
+    }, ct);
 }
