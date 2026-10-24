@@ -70,7 +70,9 @@ internal sealed class WindowsHighResolutionRenderClock : IDisposable
         try
         {
             WaitHandle[] waits = [changed, timer];
-            var interval = Stopwatch.Frequency / 120d;
+            // UI commit, render and surface completion can span three clock turns.
+            // Leave headroom within a 60 Hz frame-gap budget when scrolling begins.
+            var interval = Stopwatch.Frequency / 180d;
             var next = Stopwatch.GetTimestamp() + interval;
             while (true)
             {
