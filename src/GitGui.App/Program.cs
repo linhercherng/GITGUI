@@ -15,6 +15,7 @@ namespace GitGui.App;
 
 internal static class Program
 {
+    private static IDisposable? renderClock;
     internal static DesktopPerformanceProbe? Performance { get; private set; }
     [STAThread]
     public static void Main(string[] args)
@@ -40,11 +41,20 @@ internal static class Program
         try { Performance = DesktopPerformanceProbe.Parse(args); }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException) { Environment.ExitCode = 2; return; }
         Performance?.StartupCheckpoint("Main parsed probe arguments");
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        try { BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }
+        finally { renderClock?.Dispose(); }
     }
     public static AppBuilder BuildAvaloniaApp()
     {
         var builder = AppBuilder.Configure<DesktopApp>().UsePlatformDetect();
+        if (OperatingSystem.IsWindows())
+        {
+            var initialize = builder.WindowingSubsystemInitializer!;
+            builder.UseWindowingSubsystem(() => { renderClock = WindowsRenderScheduling.Install(); initialize(); }, builder.WindowingSubsystemName!);
+            // Native measurements on the supported Windows host found ANGLE surface submission
+            // stalls. CPU rendering avoids those stalls and uses less resident memory here.
+            builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
+        }
         // An explicit probe-only experiment; normal desktop sessions retain platform defaults.
         if (Performance?.SoftwareRendering == true)
             builder.With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] });
