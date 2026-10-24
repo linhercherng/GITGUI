@@ -1,0 +1,1118 @@
+{
+  "capturedOn": "2026-10-24",
+  "sourceCommit": "221bad7dc54c0186050202a3f4a528301571590b",
+  "sourceUiTree": "79e3107c5f9744f18a2abda6a59505a3a16a09d6",
+  "method": "Native Windows captures of production MainWindow and real Git engine in an isolated tutorial harness; browser captures of the existing public GITGUI repository. Only numbered vector overlays and crops were applied.",
+  "demo": {
+    "project": "C:\\GitGui-Manual-ef3740c1\\hello-backup",
+    "remote": "Isolated local bare remote; never uploaded to GitHub",
+    "firstCommit": "57e19679e7f89e7e85edb0836233a386a29888b8",
+    "secondCommit": "3378e5d6b62bd8e3a1c83653ed82af19fc1d53d4"
+  },
+  "githubReference": "https://github.com/linhercherng/GITGUI",
+  "figures": [
+    {
+      "name": "20-01-github-url",
+      "source": "20-01-github-url",
+      "crop": [
+        140,
+        180,
+        960,
+        430
+      ],
+      "points": [
+        {
+          "rect": [
+            950,
+            261,
+            106,
+            34
+          ],
+          "marker": [
+            1000,
+            238
+          ],
+          "action": "點擊 Code"
+        },
+        {
+          "rect": [
+            677,
+            347,
+            64,
+            31
+          ],
+          "marker": [
+            650,
+            362
+          ],
+          "action": "選擇 HTTPS"
+        },
+        {
+          "rect": [
+            676,
+            386,
+            328,
+            32
+          ],
+          "marker": [
+            825,
+            455
+          ],
+          "action": "核對自己的倉庫 URL"
+        },
+        {
+          "rect": [
+            1013,
+            388,
+            29,
+            28
+          ],
+          "marker": [
+            1070,
+            402
+          ],
+          "action": "點擊複製 URL"
+        }
+      ],
+      "rawSHA256": "e25d8a2f50a1c2ae2c904160d63044901cb1e4d2eee0bc37aeb10550463974bc",
+      "annotatedSHA256": "75f7cfcd61c93fc2d0252cb2c62e89efb40a25b4d1a45f61af92d6410db1fbc8"
+    },
+    {
+      "name": "20-02-start",
+      "source": "20-02-start",
+      "crop": [
+        165,
+        32,
+        1060,
+        65
+      ],
+      "points": [
+        {
+          "rect": [
+            1012,
+            49,
+            90,
+            34
+          ],
+          "marker": [
+            1055,
+            21
+          ],
+          "action": "Git 設定"
+        },
+        {
+          "rect": [
+            910,
+            49,
+            94,
+            34
+          ],
+          "marker": [
+            953,
+            105
+          ],
+          "action": "倉庫操作"
+        },
+        {
+          "rect": [
+            181,
+            49,
+            553,
+            34
+          ],
+          "marker": [
+            450,
+            21
+          ],
+          "action": "倉庫路徑"
+        },
+        {
+          "rect": [
+            830,
+            49,
+            72,
+            34
+          ],
+          "marker": [
+            863,
+            105
+          ],
+          "action": "開啟"
+        }
+      ],
+      "rawSHA256": "b1001c97f9cc897fda41ea5fa2172c6f7556602a28c070a54bb8c2410436c5d6",
+      "annotatedSHA256": "8472ae50674d1435c0c4ee3f7ffb4729c72b69a720236876f665ee1dfb72e4e1"
+    },
+    {
+      "name": "20-03-init",
+      "source": "20-03-init",
+      "points": [
+        {
+          "rect": [
+            25,
+            123,
+            572,
+            34
+          ],
+          "marker": [
+            13,
+            105
+          ],
+          "action": "目的資料夾"
+        },
+        {
+          "rect": [
+            25,
+            197,
+            572,
+            34
+          ],
+          "marker": [
+            13,
+            179
+          ],
+          "action": "URL 留空"
+        },
+        {
+          "rect": [
+            25,
+            244,
+            106,
+            34
+          ],
+          "marker": [
+            13,
+            283
+          ],
+          "action": "初始化倉庫"
+        }
+      ],
+      "rawSHA256": "5983df81772aae1f9fe175e3318f93cb2e6094fb00e3c507535558b69422723f",
+      "annotatedSHA256": "3b022a37e36ab097cde3379c0423bab5ac7b40bd432ce22b008bda92813de4cd"
+    },
+    {
+      "name": "20-03-tools",
+      "source": "20-08-push",
+      "crop": [
+        958,
+        96,
+        312,
+        52
+      ],
+      "points": [
+        {
+          "rect": [
+            1174,
+            105,
+            82,
+            34
+          ],
+          "marker": [
+            1210,
+            157
+          ],
+          "action": "終端機"
+        },
+        {
+          "rect": [
+            969,
+            105,
+            96,
+            34
+          ],
+          "marker": [
+            1015,
+            87
+          ],
+          "action": "進階功能"
+        }
+      ],
+      "rawSHA256": "688731a6fc343c01b43f017b2836b18c16c09954eb2e2a7ab3d06398136af3e8",
+      "annotatedSHA256": "3561c5d67b3f5cc65527c8dfab6e4ce93c7224fa23455c9192c3dcae4d02bcdc"
+    },
+    {
+      "name": "20-04-review",
+      "source": "20-04-review",
+      "points": [
+        {
+          "rect": [
+            1163,
+            720,
+            94,
+            34
+          ],
+          "marker": [
+            1138,
+            737
+          ],
+          "action": "重新整理"
+        },
+        {
+          "rect": [
+            282,
+            330,
+            53,
+            29
+          ],
+          "marker": [
+            258,
+            342
+          ],
+          "action": "未暫存"
+        },
+        {
+          "rect": [
+            290,
+            407,
+            418,
+            45
+          ],
+          "marker": [
+            265,
+            428
+          ],
+          "action": "選取 README"
+        },
+        {
+          "rect": [
+            784,
+            392,
+            462,
+            187
+          ],
+          "marker": [
+            1230,
+            371
+          ],
+          "action": "核對差異"
+        },
+        {
+          "rect": [
+            378,
+            237,
+            94,
+            35
+          ],
+          "marker": [
+            422,
+            216
+          ],
+          "action": "全部暫存"
+        }
+      ],
+      "rawSHA256": "cedffca251307232c1c726ded4d9d46deff1f117ee3fa262fd8684bdffa44b6b",
+      "annotatedSHA256": "579d0b69feec74264b228cb0857282c287b11d0d0aad7d3f67508bb934233a56"
+    },
+    {
+      "name": "20-05-commit",
+      "source": "20-05-commit",
+      "crop": [
+        254,
+        320,
+        1014,
+        382
+      ],
+      "points": [
+        {
+          "rect": [
+            344,
+            330,
+            47,
+            29
+          ],
+          "marker": [
+            368,
+            310
+          ],
+          "action": "已暫存"
+        },
+        {
+          "rect": [
+            783,
+            392,
+            463,
+            187
+          ],
+          "marker": [
+            1230,
+            372
+          ],
+          "action": "核對將提交的差異"
+        },
+        {
+          "rect": [
+            280,
+            495,
+            435,
+            91
+          ],
+          "marker": [
+            262,
+            536
+          ],
+          "action": "提交訊息"
+        },
+        {
+          "rect": [
+            280,
+            598,
+            119,
+            24
+          ],
+          "marker": [
+            261,
+            610
+          ],
+          "action": "保持修改上一筆未勾選"
+        },
+        {
+          "rect": [
+            280,
+            633,
+            435,
+            38
+          ],
+          "marker": [
+            261,
+            651
+          ],
+          "action": "提交"
+        }
+      ],
+      "rawSHA256": "3a2c56fb69c11202c3344567d48feb8a87e1ff47198b76e5797e799b0cf69392",
+      "annotatedSHA256": "28a2f1a6e104f36501dd99da03ef0366ee6306c603bf5d802192e7806ee5577e"
+    },
+    {
+      "name": "20-06-history",
+      "source": "20-06-history",
+      "crop": [
+        254,
+        160,
+        486,
+        270
+      ],
+      "points": [
+        {
+          "rect": [
+            332,
+            176,
+            61,
+            28
+          ],
+          "marker": [
+            360,
+            151
+          ],
+          "action": "提交歷史"
+        },
+        {
+          "rect": [
+            280,
+            358,
+            436,
+            29
+          ],
+          "marker": [
+            262,
+            372
+          ],
+          "action": "核對提交訊息和 SHA"
+        }
+      ],
+      "rawSHA256": "97b487fcefda4af51f6791d988bd0a4f9e7515d0ff5f77024e2e3edd589f4edc",
+      "annotatedSHA256": "465b9806d03166c9391ae155b27848990973641f42ec69ffc08fb6a344bea9ca"
+    },
+    {
+      "name": "20-07-remote",
+      "source": "20-07-remote",
+      "crop": [
+        365,
+        120,
+        737,
+        442
+      ],
+      "points": [
+        {
+          "rect": [
+            375,
+            138,
+            55,
+            33
+          ],
+          "marker": [
+            354,
+            151
+          ],
+          "action": "遠端管理"
+        },
+        {
+          "rect": [
+            570,
+            302,
+            512,
+            32
+          ],
+          "marker": [
+            549,
+            318
+          ],
+          "action": "輸入 origin"
+        },
+        {
+          "rect": [
+            570,
+            342,
+            512,
+            32
+          ],
+          "marker": [
+            549,
+            358
+          ],
+          "action": "貼上自己的 HTTPS URL"
+        },
+        {
+          "rect": [
+            570,
+            386,
+            253,
+            23
+          ],
+          "marker": [
+            549,
+            398
+          ],
+          "action": "保持 Push URL 未勾選"
+        },
+        {
+          "rect": [
+            570,
+            422,
+            95,
+            34
+          ],
+          "marker": [
+            550,
+            439
+          ],
+          "action": "新增遠端"
+        }
+      ],
+      "rawSHA256": "85d642878ab0d58cbb13726b73463ca0275c0f9f27bfdb4d4b80c485f543263d",
+      "annotatedSHA256": "9807b2779ca4324f52c625acbba69fbd821b341249b1ddfcc61162900cf8903c"
+    },
+    {
+      "name": "20-08-push",
+      "source": "20-08-push",
+      "crop": [
+        12,
+        96,
+        1051,
+        323
+      ],
+      "points": [
+        {
+          "rect": [
+            25,
+            105,
+            63,
+            34
+          ],
+          "marker": [
+            57,
+            86
+          ],
+          "action": "核對分支"
+        },
+        {
+          "rect": [
+            337,
+            105,
+            100,
+            34
+          ],
+          "marker": [
+            383,
+            86
+          ],
+          "action": "遠端 origin"
+        },
+        {
+          "rect": [
+            601,
+            105,
+            113,
+            34
+          ],
+          "marker": [
+            651,
+            155
+          ],
+          "action": "Force 保持未勾選"
+        },
+        {
+          "rect": [
+            721,
+            105,
+            72,
+            34
+          ],
+          "marker": [
+            757,
+            86
+          ],
+          "action": "Push"
+        }
+      ],
+      "rawSHA256": "688731a6fc343c01b43f017b2836b18c16c09954eb2e2a7ab3d06398136af3e8",
+      "annotatedSHA256": "daf77d01f5a2ab00e05501d5b6e5e214c2213b770386dfa732b31150fbdd93c8"
+    },
+    {
+      "name": "20-09-github-check",
+      "source": "20-09-github-check",
+      "crop": [
+        140,
+        180,
+        960,
+        760
+      ],
+      "points": [
+        {
+          "rect": [
+            160,
+            262,
+            105,
+            33
+          ],
+          "marker": [
+            185,
+            241
+          ],
+          "action": "核對分支"
+        },
+        {
+          "rect": [
+            285,
+            319,
+            413,
+            36
+          ],
+          "marker": [
+            480,
+            297
+          ],
+          "action": "核對最新提交訊息"
+        },
+        {
+          "rect": [
+            808,
+            321,
+            52,
+            30
+          ],
+          "marker": [
+            833,
+            298
+          ],
+          "action": "點擊提交 SHA"
+        },
+        {
+          "rect": [
+            945,
+            319,
+            103,
+            32
+          ],
+          "marker": [
+            990,
+            297
+          ],
+          "action": "開啟提交歷史"
+        },
+        {
+          "rect": [
+            175,
+            849,
+            146,
+            39
+          ],
+          "marker": [
+            344,
+            868
+          ],
+          "action": "開啟 README 核對內容"
+        }
+      ],
+      "rawSHA256": "32735fe4778787fdcb451a09f23f21d9005c7080c18cf28b33955d6114bee8b4",
+      "annotatedSHA256": "fa9558bd532029ff0d524a598abcc480f422fd81e319b5d3b1ab1dbccee37bc3"
+    },
+    {
+      "name": "21-01-open",
+      "source": "21-01-open",
+      "crop": [
+        12,
+        33,
+        1256,
+        230
+      ],
+      "points": [
+        {
+          "rect": [
+            181,
+            49,
+            553,
+            34
+          ],
+          "marker": [
+            450,
+            23
+          ],
+          "action": "輸入原專案路徑"
+        },
+        {
+          "rect": [
+            830,
+            49,
+            72,
+            34
+          ],
+          "marker": [
+            863,
+            23
+          ],
+          "action": "開啟"
+        },
+        {
+          "rect": [
+            27,
+            195,
+            195,
+            35
+          ],
+          "marker": [
+            121,
+            248
+          ],
+          "action": "最近開啟"
+        },
+        {
+          "rect": [
+            25,
+            105,
+            62,
+            34
+          ],
+          "marker": [
+            58,
+            153
+          ],
+          "action": "核對目前分支"
+        },
+        {
+          "rect": [
+            444,
+            105,
+            75,
+            34
+          ],
+          "marker": [
+            478,
+            153
+          ],
+          "action": "Fetch"
+        },
+        {
+          "rect": [
+            528,
+            105,
+            65,
+            34
+          ],
+          "marker": [
+            560,
+            153
+          ],
+          "action": "有遠端更新才 Pull"
+        }
+      ],
+      "rawSHA256": "ed479ed33391d9476e742a9fce10d6c582943c6304b237b4caf15e11689199f1",
+      "annotatedSHA256": "848c848154f809e229f0ffc6217be19655eb4600c4cb2b1d4dff4bde8fd240f9"
+    },
+    {
+      "name": "21-02-review",
+      "source": "21-02-review",
+      "points": [
+        {
+          "rect": [
+            1163,
+            720,
+            94,
+            34
+          ],
+          "marker": [
+            1138,
+            737
+          ],
+          "action": "重新整理"
+        },
+        {
+          "rect": [
+            282,
+            330,
+            53,
+            29
+          ],
+          "marker": [
+            258,
+            342
+          ],
+          "action": "未暫存"
+        },
+        {
+          "rect": [
+            290,
+            369,
+            418,
+            45
+          ],
+          "marker": [
+            265,
+            391
+          ],
+          "action": "選取 README"
+        },
+        {
+          "rect": [
+            784,
+            392,
+            462,
+            187
+          ],
+          "marker": [
+            1230,
+            371
+          ],
+          "action": "核對新增文字"
+        },
+        {
+          "rect": [
+            278,
+            237,
+            94,
+            35
+          ],
+          "marker": [
+            324,
+            215
+          ],
+          "action": "暫存選取"
+        }
+      ],
+      "rawSHA256": "588e9c8c6af294fa56b025ba874080a2493bf8d708f63ec4f4836878e2d42e4b",
+      "annotatedSHA256": "166b53af93cd1c072722a71521fd530802b5ab40975f850d29b261c84ecd3831"
+    },
+    {
+      "name": "21-03-commit",
+      "source": "21-03-commit",
+      "crop": [
+        254,
+        320,
+        1014,
+        382
+      ],
+      "points": [
+        {
+          "rect": [
+            344,
+            330,
+            47,
+            29
+          ],
+          "marker": [
+            368,
+            310
+          ],
+          "action": "已暫存"
+        },
+        {
+          "rect": [
+            783,
+            392,
+            463,
+            187
+          ],
+          "marker": [
+            1230,
+            372
+          ],
+          "action": "核對將提交的修改"
+        },
+        {
+          "rect": [
+            280,
+            495,
+            435,
+            91
+          ],
+          "marker": [
+            262,
+            536
+          ],
+          "action": "新的提交訊息"
+        },
+        {
+          "rect": [
+            280,
+            598,
+            119,
+            24
+          ],
+          "marker": [
+            261,
+            610
+          ],
+          "action": "保持修改上一筆未勾選"
+        },
+        {
+          "rect": [
+            280,
+            633,
+            435,
+            38
+          ],
+          "marker": [
+            261,
+            651
+          ],
+          "action": "提交"
+        }
+      ],
+      "rawSHA256": "19b83a7bd1d2efe1b0d264359a7169ce7433964b3a1d553c8516979439eb23f6",
+      "annotatedSHA256": "ea20b379468630126af2a2e667977ef48c9b4196490a3e51a597497eed793054"
+    },
+    {
+      "name": "21-04-sync",
+      "source": "21-04-sync",
+      "crop": [
+        12,
+        96,
+        1051,
+        323
+      ],
+      "points": [
+        {
+          "rect": [
+            26,
+            105,
+            123,
+            34
+          ],
+          "marker": [
+            90,
+            86
+          ],
+          "action": "main / ahead 1"
+        },
+        {
+          "rect": [
+            280,
+            358,
+            436,
+            52
+          ],
+          "marker": [
+            738,
+            384
+          ],
+          "action": "核對新舊兩筆提交"
+        },
+        {
+          "rect": [
+            444,
+            105,
+            75,
+            34
+          ],
+          "marker": [
+            478,
+            86
+          ],
+          "action": "Fetch"
+        },
+        {
+          "rect": [
+            528,
+            105,
+            65,
+            34
+          ],
+          "marker": [
+            560,
+            155
+          ],
+          "action": "遠端有新提交才 Pull"
+        },
+        {
+          "rect": [
+            601,
+            105,
+            113,
+            34
+          ],
+          "marker": [
+            651,
+            155
+          ],
+          "action": "Force 保持未勾選"
+        },
+        {
+          "rect": [
+            721,
+            105,
+            72,
+            34
+          ],
+          "marker": [
+            757,
+            86
+          ],
+          "action": "Push"
+        }
+      ],
+      "rawSHA256": "b28db78bfa678d7ec8d474d371f74b73e9a816468198b8521b4c9590cb51797f",
+      "annotatedSHA256": "bc08e19b69e8c2bf9af3b517af1b777feb9e926dfa5cec66755a78a6424feda2"
+    },
+    {
+      "name": "21-05-verify",
+      "source": "21-05-verify",
+      "crop": [
+        254,
+        163,
+        1014,
+        405
+      ],
+      "points": [
+        {
+          "rect": [
+            280,
+            358,
+            436,
+            27
+          ],
+          "marker": [
+            262,
+            371
+          ],
+          "action": "選取最新提交"
+        },
+        {
+          "rect": [
+            927,
+            296,
+            62,
+            29
+          ],
+          "marker": [
+            1009,
+            310
+          ],
+          "action": "提交詳情"
+        },
+        {
+          "rect": [
+            784,
+            346,
+            460,
+            78
+          ],
+          "marker": [
+            1230,
+            443
+          ],
+          "action": "核對完整 SHA 與訊息"
+        },
+        {
+          "rect": [
+            784,
+            524,
+            460,
+            44
+          ],
+          "marker": [
+            765,
+            547
+          ],
+          "action": "本次修改檔案"
+        }
+      ],
+      "rawSHA256": "3af07ff17d331698fe697c4ee80f9f5ac52f84ef8a0ed0d88a2f15e4ddaa1609",
+      "annotatedSHA256": "70b7bf323aaf9e48fd0bd5e954475ad647aa28513a827ce8eb989aaf5d53809e"
+    },
+    {
+      "name": "21-06-github-sha",
+      "source": "21-06-github-sha",
+      "crop": [
+        10,
+        180,
+        1500,
+        260
+      ],
+      "points": [
+        {
+          "rect": [
+            24,
+            197,
+            191,
+            34
+          ],
+          "marker": [
+            237,
+            213
+          ],
+          "action": "核對提交 SHA"
+        },
+        {
+          "rect": [
+            25,
+            279,
+            1469,
+            43
+          ],
+          "marker": [
+            750,
+            261
+          ],
+          "action": "核對提交訊息"
+        },
+        {
+          "rect": [
+            1462,
+            327,
+            29,
+            32
+          ],
+          "marker": [
+            1450,
+            381
+          ],
+          "action": "複製完整 SHA"
+        },
+        {
+          "rect": [
+            1379,
+            196,
+            122,
+            34
+          ],
+          "marker": [
+            1350,
+            213
+          ],
+          "action": "瀏覽這筆提交的檔案"
+        }
+      ],
+      "rawSHA256": "961693ddee1fad05de0beca94f04bef441bf11c715b5fcff800350766452e642",
+      "annotatedSHA256": "058b0ad54989467c9d2b7561b48b97b0a53685349065b91bbe8edcc9c6c00c31"
+    }
+  ]
+}

@@ -283,6 +283,8 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <p>主程式採 MIT 授權，免安裝資料夾內的 <code>LICENSE</code> 保留著作權與免責聲明；Portable Git 與其他相依元件仍依各自授權，見 <code>THIRD-PARTY.txt</code> 與 <code>licenses/</code>。</p>
 <h2 id="section-19">20. 完整範例：第一次將新專案備份到 GitHub</h2>
 <p>這個範例把本機的 <code>hello-backup</code> 專案建立為 Git 倉庫，再上傳到自己的 GitHub。這裡的備份是「程式碼與提交歷史」：只有已提交並 Push 的內容會送到遠端，未提交、被忽略的檔案及 GITGUI 本機快照索引不會因此一起備份。</p>
+<p>**看圖操作方式：**每張圖的黃色編號對應緊接圖下的說明；「點擊／輸入」才是操作，「核對／保持未勾選」只需檢查。點圖片可開啟原尺寸。截圖拍攝於 2026-10-24，使用實際 Windows 介面與獨立示範專案，圖中的 <code>C:\GitGui-Manual-…\hello-backup</code> 請換成自己的資料夾。</p>
+<p><strong>GitHub 圖片採用現有的 <code>linhercherng/GITGUI</code> 倉庫作位置參考</strong>，沒有另外建立 GitHub 示範專案。請使用自己新建的空白倉庫，勿照抄圖片中的 GITGUI URL、檔案或 SHA。本機示範的兩次提交與 Push 已以隔離的本機遠端驗證，沒有把 <code>hello-backup</code> 上傳至 GitHub；登入畫面因帳號與憑證工具而異，請由本人完成。</p>
 <h3 id="github-1">20.1 準備範例與空白 GitHub 倉庫</h3>
 <table>
 <thead>
@@ -322,6 +324,62 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <li>開啟 GITGUI，到「Git 設定」確認選用的 Git 可正常驗證；免安裝版可使用包內的 <code>PortableGit\cmd\git.exe</code>。</li>
 </ol>
 <p>完成時應有一個尚無提交的 GitHub 倉庫，以及它的 HTTPS URL。GITGUI 的「初始化倉庫」只建立本機倉庫，不會建立 GitHub 倉庫。</p>
+<p>**圖 20-A：複製自己的 HTTPS URL（現有 GITGUI 倉庫位置參考）。**新建空白倉庫的畫面可能顯示「Quick setup」，直接複製其中的 HTTPS URL 即可；下圖適用已有檔案的倉庫。</p>
+<p><a href="images/walkthrough/20-01-github-url.png"><img src="images/walkthrough/20-01-github-url.png" alt="GitHub Code、HTTPS、倉庫網址與複製按鈕的編號位置" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>點擊綠色 <strong>Code</strong>。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>選擇 <strong>HTTPS</strong>。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>核對 URL 是自己的帳號／<code>hello-backup.git</code>，不要複製本參考圖中的 GITGUI URL。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>點擊複製圖示，稍後貼到「遠端管理」。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>圖 20-B：GITGUI 起始操作入口。</strong></p>
+<p><a href="images/walkthrough/20-02-start.png"><img src="images/walkthrough/20-02-start.png" alt="Git 設定、倉庫操作、倉庫路徑與開啟按鈕" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>先點擊 <strong>Git 設定</strong>，確認可使用的 Git；免安裝版的路徑說明見第 1 章。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>新的空資料夾：點擊 <strong>倉庫操作</strong>，接著看圖 20-C。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>已有 Git 倉庫：輸入自己的 <strong>倉庫路徑</strong>。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>已有 Git 倉庫：點擊 <strong>開啟</strong>；不必再次初始化。</td>
+</tr>
+</tbody>
+</table>
 <h3 id="git">20.2 建立本機 Git 倉庫</h3>
 <p>依資料夾目前的情況，選擇下面一種方法即可。</p>
 <p><strong>A. 專案資料夾尚未建立，或目前是空資料夾</strong></p>
@@ -331,6 +389,30 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <li>按「初始化倉庫」，等待完成；若尚未顯示該倉庫，將主畫面的「倉庫路徑」設為此路徑，再按「開啟」。</li>
 <li>用自己的編輯器或檔案總管，把專案檔案建立或複製到這個資料夾。不要把另一個倉庫的 <code>.git</code> 資料夾一起複製進來。</li>
 </ol>
+<p><strong>圖 20-C：初始化新的空資料夾。</strong></p>
+<p><a href="images/walkthrough/20-03-init.png"><img src="images/walkthrough/20-03-init.png" alt="初始化對話框的目的資料夾、空白 URL 與初始化按鈕" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>輸入新的／空的專案資料夾，例如 <code>C:\Projects\hello-backup</code>。</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>URL 留空</strong>；這裡是本機初始化。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>點擊 <strong>初始化倉庫</strong>，完成後才把專案檔案放入資料夾。已有檔案請改用下面的方法 B。</td>
+</tr>
+</tbody>
+</table>
 <p><strong>B. 專案資料夾已經有檔案，但還不是 Git 倉庫</strong></p>
 <p>目前 GUI 的初始化會拒絕非空目錄。可以保留原資料夾，在外部 PowerShell 用選定的 Portable Git 初始化一次：</p>
 <pre><code class="language-powershell">&amp; 'C:\Tools\GITGUI\PortableGit\cmd\git.exe' -C 'C:\Projects\hello-backup' init --initial-branch=main
@@ -369,6 +451,26 @@ git config --local user.email &quot;you@example.com&quot;
 </li>
 </ol>
 <p>作者姓名／電子郵件用於提交紀錄，與 GitHub 登入是兩件事。</p>
+<p><strong>圖 20-D：作者設定與後續遠端管理的入口。</strong></p>
+<p><a href="images/walkthrough/20-03-tools.png"><img src="images/walkthrough/20-03-tools.png" alt="終端機與進階功能按鈕的位置" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>需要設定作者時，點擊 <strong>終端機</strong>，輸入上方兩行 <code>git config --local</code> 指令；完成後關閉終端機。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>暫時先不用點；第一次提交完成後，第 20.5 節會從 <strong>進階功能</strong> 設定遠端。</td>
+</tr>
+</tbody>
+</table>
 <h3 id="section-15">20.4 暫存並建立第一次提交</h3>
 <ol>
 <li>按「重新整理」，在「工作區」的「未暫存」清單確認專案檔案與 <code>.gitignore</code> 都已列出。</li>
@@ -378,15 +480,114 @@ git config --local user.email &quot;you@example.com&quot;
 <li>在提交訊息輸入 <code>初始化專案：加入專案檔案與說明</code>，保持「修改上一筆提交」未勾選，按「提交」。</li>
 <li>等待成功，再到「提交歷史」確認出現這筆訊息。若仍有未暫存檔案，代表那些內容尚未包含在這次提交中。</li>
 </ol>
+<p><strong>圖 20-E：先看差異，再全部暫存。</strong></p>
+<p><a href="images/walkthrough/20-04-review.png"><img src="images/walkthrough/20-04-review.png" alt="重新整理、未暫存、選取 README、差異與全部暫存" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>點擊 <strong>重新整理</strong>。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>選擇 <strong>未暫存</strong>。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>點選 <code>README.md</code>；其他檔案（含 <code>.gitignore</code>）也要逐一檢查。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>核對右側差異，綠色 <code>+</code> 是新增內容。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>全部檢查完才點擊 <strong>全部暫存</strong>。只保存部分檔案時使用旁邊的「暫存選取」。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>圖 20-F：核對暫存內容並提交。</strong></p>
+<p><a href="images/walkthrough/20-05-commit.png"><img src="images/walkthrough/20-05-commit.png" alt="已暫存、差異、提交訊息、修改上一筆選項與提交按鈕" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>點擊 <strong>已暫存</strong>，確認要保存的檔案都有列出。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>核對已暫存差異；切換頁籤後右側會勾選「檢視已暫存差異」。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>輸入 <code>初始化專案：加入專案檔案與說明</code>。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>保持 <strong>修改上一筆提交</strong> 未勾選。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>點擊 <strong>提交</strong>，等待操作完成。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>圖 20-G：確認第一次本機提交。</strong></p>
+<p><a href="images/walkthrough/20-06-history.png"><img src="images/walkthrough/20-06-history.png" alt="提交歷史頁籤及第一次提交的 SHA 與訊息" /></a></p>
+<p>圖中 <strong>1</strong> 點擊「提交歷史」；<strong>2</strong> 核對第一次提交訊息與 SHA。你的 SHA 會不同，這是正常的。</p>
 <p><strong>到這裡只完成本機保存，GitHub 還沒有收到檔案。</strong> 接下來還要設定遠端並 Push。</p>
 <h3 id="github-2">20.5 設定 GitHub 遠端</h3>
 <ol>
-<li>按主畫面「進階」，切換到「遠端管理」。</li>
+<li>按主畫面「進階功能」（圖 20-D 的 2），切換到「遠端管理」。</li>
 <li>「遠端名稱」填 <code>origin</code>，「HTTPS / SSH 倉庫 URL」填入第 20.1 節複製的 HTTPS URL。</li>
 <li>保持「設定 Push URL（取消則為 Fetch URL）」未勾選，按「新增遠端」。</li>
 <li>確認清單出現 <code>origin</code>，選取後核對顯示的 URL，然後關閉進階視窗。</li>
 <li>如果 <code>origin</code> 原本就存在，先核對其 URL；不要重複新增。確實需要改網址時，選取該遠端、填入正確 URL，再按「儲存 URL」，並核對是否另有獨立的 Push URL。</li>
 </ol>
+<p>**圖 20-H：新增自己的 GitHub 遠端。**圖中 URL 是填寫範例，<code>YOUR-ACCOUNT</code> 必須換成自己的帳號；可直接貼上圖 20-A 複製的網址。</p>
+<p><a href="images/walkthrough/20-07-remote.png"><img src="images/walkthrough/20-07-remote.png" alt="遠端管理頁籤、origin、HTTPS URL、Push URL 選項及新增遠端" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>點擊 <strong>遠端管理</strong>。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>輸入 <strong>origin</strong>。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>貼上自己的完整 <strong>HTTPS URL</strong>。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>保持 <strong>設定 Push URL</strong> 未勾選。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>點擊 <strong>新增遠端</strong>，等待成功。接著選取左側出現的 <code>origin</code> 核對 URL，再關閉視窗。</td>
+</tr>
+</tbody>
+</table>
 <h3 id="push">20.6 第一次 Push 並確認備份成功</h3>
 <ol>
 <li>回主畫面，確認分支是 <code>main</code>，上方「遠端」欄位填 <code>origin</code>，保持 <code>Force with lease</code> 未勾選。</li>
@@ -395,6 +596,41 @@ git config --local user.email &quot;you@example.com&quot;
 <li>等待成功；需要確認細節時，可展開「操作紀錄與實際 Git 指令」。第一次成功推送後會建立目前分支的 upstream，供後續同步使用。</li>
 <li>回 GitHub 重新整理倉庫頁面，切到 <code>main</code>，確認看到 <code>README.md</code>、<code>.gitignore</code>、其他預期檔案及剛才的提交訊息。可以再比對 GitHub 的提交 SHA 與 GITGUI 顯示的同一筆提交。</li>
 </ol>
+<p>**圖 20-I：第一次一般 Push。**請先完成圖 20-H 的遠端設定。</p>
+<p><a href="images/walkthrough/20-08-push.png"><img src="images/walkthrough/20-08-push.png" alt="目前分支、origin、Force 未勾選與 Push 按鈕" /></a></p>
+<p>圖中 <strong>1</strong> 核對 <code>main</code>；<strong>2</strong> 核對 <code>origin</code>；<strong>3</strong> 保持 <code>Force with lease</code> 未勾選；<strong>4</strong> 點擊「Push」。若有登入或目標確認，請本人核對後完成。此圖示範按鈕位置，不代表 <code>hello-backup</code> 已上傳到 GitHub。</p>
+<p><strong>圖 20-J：到自己的 GitHub 倉庫驗證（現有 GITGUI 倉庫位置參考）。</strong></p>
+<p><a href="images/walkthrough/20-09-github-check.png"><img src="images/walkthrough/20-09-github-check.png" alt="GitHub 分支、最新提交訊息、SHA、提交歷史與 README 位置" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>重新整理網頁後，核對分支是自己剛 Push 的 <code>main</code>。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>核對最新提交訊息，應是自己的「初始化專案：加入專案檔案與說明」。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>點擊短 SHA 可開啟提交詳情；它應與 GITGUI 的同一筆提交一致。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>若要找更早的提交，點擊 <strong>Commits</strong>。數字會依自己的倉庫而不同。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>點擊 <code>README.md</code> 核對內容；也要確認 <code>.gitignore</code> 與其他預期檔案存在。</td>
+</tr>
+</tbody>
+</table>
 <p>確認檔案與提交都已在 GitHub 出現，才算完成這次遠端備份。未追蹤、被忽略或尚未提交的內容不會因為按 Push 而自動上傳。大型素材若需要 Git LFS，請先依第 11 章設定，再檢查對應的 LFS 上傳結果。</p>
 <h2 id="section-20">21. 完整範例：專案修改後再次更新上傳</h2>
 <p>沿用第 20 章已備份成功的 <code>C:\Projects\hello-backup</code>、<code>main</code> 與 <code>origin</code>。之後每次更新都使用同一個倉庫，不必重新建立 GitHub 倉庫或初始化。</p>
@@ -404,6 +640,38 @@ git config --local user.email &quot;you@example.com&quot;
 <li>如果還沒開始修改，先按「Fetch」檢查遠端是否有新提交；本機乾淨且遠端有更新時，先 Pull 並確認成功，再開始編輯。</li>
 <li>用原本的編輯器修改專案。例如在 <code>README.md</code> 最後增加一行 <code>第二版：加入聯絡資訊。</code>，並儲存檔案。若你已經修改完成，直接進入下一節，不必重做這個示範修改。</li>
 </ol>
+<p>**圖 21-A：開啟原專案，認明同步按鈕。**本圖已存入示範修改，因此顯示 1 個變更；尚未修改時應是乾淨狀態。</p>
+<p><a href="images/walkthrough/21-01-open.png"><img src="images/walkthrough/21-01-open.png" alt="原倉庫路徑、開啟、最近開啟、分支與 Fetch Pull 位置" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1、2</td>
+<td>輸入原專案路徑，點擊 <strong>開啟</strong>。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>或從 <strong>最近開啟</strong> 選擇原專案，兩種方式擇一。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>核對目前分支。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>開工前點擊 <strong>Fetch</strong> 檢查遠端狀態。</td>
+</tr>
+<tr>
+<td>6</td>
+<td>本機乾淨、遠端有新提交時才 <strong>Pull</strong>；已修改的檔案先妥善保存，依第 21.3 節處理。</td>
+</tr>
+</tbody>
+</table>
 <h3 id="section-18">21.2 檢查、暫存與提交本次修改</h3>
 <ol>
 <li>回到 GITGUI 按「重新整理」，確認「未暫存」出現 <code>README.md</code>；新增或刪除檔案也會列為變更。</li>
@@ -413,6 +681,62 @@ git config --local user.email &quot;you@example.com&quot;
 <li>提交訊息輸入 <code>更新專案說明：加入聯絡資訊</code>，保持「修改上一筆提交」未勾選，按「提交」。</li>
 <li>到「提交歷史」確認多出這筆提交。提交成功但尚未 Push 時，GitHub 仍會顯示舊版本。</li>
 </ol>
+<p><strong>圖 21-B：找到這次修改，再暫存選取。</strong></p>
+<p><a href="images/walkthrough/21-02-review.png"><img src="images/walkthrough/21-02-review.png" alt="第二版 README 的重新整理、未暫存、差異與暫存選取位置" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1、2</td>
+<td>點擊 <strong>重新整理</strong>，切換 <strong>未暫存</strong>。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>選取 <code>README.md</code>。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>核對綠色新增行是 <code>第二版：加入聯絡資訊。</code>。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>點擊 <strong>暫存選取</strong>；不要誤按「捨棄選取變更」。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>圖 21-C：建立新的提交。</strong></p>
+<p><a href="images/walkthrough/21-03-commit.png"><img src="images/walkthrough/21-03-commit.png" alt="第二版已暫存內容、新提交訊息與提交按鈕" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1、2</td>
+<td>切換 <strong>已暫存</strong>，核對本次修改確實包含在差異中。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>輸入 <code>更新專案說明：加入聯絡資訊</code>。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>保持 <strong>修改上一筆提交</strong> 未勾選。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>點擊 <strong>提交</strong>，等待完成，再到提交歷史核對。</td>
+</tr>
+</tbody>
+</table>
 <h3 id="push-1">21.3 檢查遠端更新，再 Push</h3>
 <ol>
 <li>確認沒有遺漏的本機修改；若需要全部備份，先把剩下的預期修改也提交。</li>
@@ -422,6 +746,73 @@ git config --local user.email &quot;you@example.com&quot;
 <li>如果 Push 時剛好又有別人更新而被拒絕，重新 Fetch、檢查並整合遠端更新後再試。</li>
 <li>等待成功後，開啟 GitHub 的 <code>hello-backup</code> 倉庫，切到 <code>main</code>，確認最新提交訊息是 <code>更新專案說明：加入聯絡資訊</code>，且 README 已顯示新增文字。若剛才產生合併提交，最新一筆可能是合併訊息，請在歷史中確認本次修改也已包含。</li>
 </ol>
+<p><strong>圖 21-D：提交後先檢查遠端，再決定是否 Pull，最後 Push。</strong></p>
+<p><a href="images/walkthrough/21-04-sync.png"><img src="images/walkthrough/21-04-sync.png" alt="ahead 1、新舊提交、Fetch、必要時 Pull、Force 與 Push" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>核對目前分支；<code>ahead 1</code> 表示本機比已取得的上游多 1 筆提交，仍須 Fetch 確認最新遠端狀態。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>核對最新一筆是本次修改，舊的第一次提交仍在。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>點擊 <strong>Fetch</strong>，等待完成並檢查遠端。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>遠端也有新提交才 <strong>Pull</strong>，依文字步驟完成整合／衝突處理。不要把 Fetch → Pull → Push 當成不需判斷的連續點擊。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>保持 <strong>Force with lease</strong> 未勾選。</td>
+</tr>
+<tr>
+<td>6</td>
+<td>確認可正常推進遠端後，點擊 <strong>Push</strong>。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>圖 21-E：取得本機提交 SHA，與 GitHub 比對。</strong></p>
+<p><a href="images/walkthrough/21-05-verify.png"><img src="images/walkthrough/21-05-verify.png" alt="選取新提交、提交詳情、完整 SHA 與本次變更檔案" /></a></p>
+<p>圖中 <strong>1</strong> 點選新提交；<strong>2</strong> 右側顯示「提交詳情」；<strong>3</strong> 核對完整 SHA、作者與訊息；<strong>4</strong> 確認這筆包含 <code>README.md</code>。本圖是本機示範提交，SHA 不會與下面的 GITGUI 參考圖相同；實際操作時應比對自己倉庫的同一筆提交。</p>
+<p>**圖 21-F：核對 GitHub 上的同一筆提交（現有 GITGUI 倉庫位置參考）。**先依圖 20-J 的 3 點擊自己倉庫的最新 SHA。</p>
+<p><a href="images/walkthrough/21-06-github-sha.png"><img src="images/walkthrough/21-06-github-sha.png" alt="GitHub 提交 SHA、訊息、複製完整 SHA 與 Browse files" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>核對自己的短 SHA，應與 GITGUI 所選提交的開頭一致。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>核對提交訊息是本次更新。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>點擊複製圖示可取得完整 SHA，與圖 21-E 的 3 比對。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>點擊 <strong>Browse files</strong>，再開啟 <code>README.md</code>，確認這筆提交已包含新增文字。也可回倉庫首頁核對 <code>main</code> 的 README。</td>
+</tr>
+</tbody>
+</table>
 <p>日常順序可記為：<strong>儲存檔案 → 檢查差異 → 暫存 → 提交 → Fetch／必要時 Pull → Push → GitHub 核對。</strong></p>
 <h3 id="section-19">21.4 更新上傳時的常見狀況</h3>
 <table>

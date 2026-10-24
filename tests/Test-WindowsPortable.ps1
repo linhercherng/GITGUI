@@ -24,6 +24,13 @@ if ($buildInfo.dotnetRuntime -ne '10.0.13' -or (Get-Content -LiteralPath (Join-P
 foreach ($image in @('m3-main.png', 'm3-tools.png', 'm4-main.png', 'm4-main-history.png')) {
     if ((Get-FileHash -LiteralPath (Join-Path $app "images/$image")).Hash -ne (Get-FileHash -LiteralPath (Join-Path $repo "docs/images/$image")).Hash) { throw "Offline guide image differs: $image" }
 }
+foreach ($reference in [regex]::Matches($guide, '\]\((images/walkthrough/[^)]+\.png)\)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique) {
+    $packaged = Join-Path $app $reference
+    if (-not (Test-Path -LiteralPath $packaged -PathType Leaf)) { throw "Missing offline walkthrough image: $reference" }
+    if ((Get-FileHash -LiteralPath $packaged).Hash -ne (Get-FileHash -LiteralPath (Join-Path "$repo/docs" $reference)).Hash) {
+        throw "Offline walkthrough image differs: $reference"
+    }
+}
 $harness = Join-Path $temporary 'test-driver'
 Push-Location $repo
 try {

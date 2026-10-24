@@ -38,6 +38,10 @@ try {
     foreach ($image in @('m3-main.png', 'm3-tools.png', 'm4-main.png', 'm4-main-history.png')) {
         Copy-Item -LiteralPath (Join-Path "$repo/docs/images" $image) -Destination $guideImages
     }
+    $walkthroughImages = Join-Path $guideImages 'walkthrough'
+    $null = New-Item -ItemType Directory -Path $walkthroughImages
+    # The offline guide links only the annotated PNGs; retain raw captures in source.
+    Copy-Item -Path "$repo/docs/images/walkthrough/*.png" -Destination $walkthroughImages
     # Root guide has the same links in the repository and portable package.
     $guide = Join-Path $app 'USER-GUIDE.zh-TW.md'
     (Get-Content -LiteralPath $guide -Raw) -replace '\]\((M3-COMPATIBILITY|M3-ARM-DECISION|M4-ACCEPTANCE|M4-PERFORMANCE|specification|WINDOWS-RELEASE)\.md\)', '](docs/$1.md)' |
