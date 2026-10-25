@@ -7,8 +7,10 @@ $toc = [Collections.Generic.List[string]]::new()
 $headings = [regex]::Matches($body, '<h2[^>]*>(.*?)</h2>', [Text.RegularExpressions.RegexOptions]::Singleline)
 for ($index = 0; $index -lt $headings.Count; $index++) {
     $heading = $headings[$index]
-    $body = $body.Replace($heading.Value, "<h2 id=`"section-$index`">$($heading.Groups[1].Value)</h2>")
-    $toc.Add("<li><a href=`"#section-$index`">$($heading.Groups[1].Value)</a></li>")
+    # Markdown also generates section-N IDs for Chinese subheadings; use a distinct chapter prefix.
+    $chapterId = "guide-chapter-$($index + 1)"
+    $body = $body.Replace($heading.Value, "<h2 id=`"$chapterId`">$($heading.Groups[1].Value)</h2>")
+    $toc.Add("<li><a href=`"#$chapterId`">$($heading.Groups[1].Value)</a></li>")
 }
 $navigation = "<nav aria-label=`"操作手冊目錄`"><strong>快速前往</strong><ol>$($toc -join '')</ol></nav>"
 $introEnd = $body.IndexOf('</p>') + 4

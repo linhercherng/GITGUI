@@ -15,11 +15,12 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 </style>
 <main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M4</div>
 <h1 id="gitgui">GITGUI 操作手冊</h1>
-<p>適用版本：0.7.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 <a href="M4-PERFORMANCE.md">效能報告</a>，v0.7.1 下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.7.1">Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#section-15">16. 中文訊息、路徑與換行設定</a></li><li><a href="#section-16">17. 狀態刷新與提交分頁</a></li><li><a href="#section-17">18. 錯誤建議與本機日誌</a></li><li><a href="#section-18">19. 常見問題與驗證範圍</a></li><li><a href="#section-19">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#section-20">21. 完整範例：專案修改後再次更新上傳</a></li></ol></nav>
+<p>適用版本：0.7.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 <a href="M4-PERFORMANCE.md">效能報告</a>，v0.7.1 下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.7.1">Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#guide-chapter-1">1. 解壓縮與啟動</a></li><li><a href="#guide-chapter-2">2. 畫面與外觀</a></li><li><a href="#guide-chapter-3">3. 開啟、建立或複製倉庫</a></li><li><a href="#guide-chapter-4">4. 修改、暫存與提交</a></li><li><a href="#guide-chapter-5">5. 分支、同步與衝突</a></li><li><a href="#guide-chapter-6">6. 快照復原與重做</a></li><li><a href="#guide-chapter-7">7. 進階歷史操作</a></li><li><a href="#guide-chapter-8">8. 內建終端機</a></li><li><a href="#guide-chapter-9">9. 子模組（Submodules）</a></li><li><a href="#guide-chapter-10">10. 工作樹（Worktrees）</a></li><li><a href="#guide-chapter-11">11. Git LFS</a></li><li><a href="#guide-chapter-12">12. 二分定位（Bisect）</a></li><li><a href="#guide-chapter-13">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#guide-chapter-14">14. 簽章提交與標籤</a></li><li><a href="#guide-chapter-15">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#guide-chapter-16">16. 中文訊息、路徑與換行設定</a></li><li><a href="#guide-chapter-17">17. 狀態刷新與提交分頁</a></li><li><a href="#guide-chapter-18">18. 錯誤建議與本機日誌</a></li><li><a href="#guide-chapter-19">19. 常見問題與驗證範圍</a></li><li><a href="#guide-chapter-20">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#guide-chapter-21">21. 完整範例：專案修改後再次更新上傳</a></li><li><a href="#guide-chapter-22">22. 完整範例：只在本機保存版本與再次提交</a></li><li><a href="#guide-chapter-23">23. 完整範例：單檔還原、撤銷提交與整個專案還原</a></li><li><a href="#guide-chapter-24">24. 完整範例：建立分支並合併回主分支</a></li></ol></nav>
 <p>v0.7.1 新增「已有檔案資料夾初始化」與初始化時的本機提交者設定，通過 504 項 Windows 本機自動化回歸與解壓啟動檢查。下列第 20.2 節說明此流程；v0.7.0 的舊截圖未顯示新增的姓名、電子郵件與瀏覽按鈕。既有正式效能數據仍僅對應報告中記錄的受測版本。</p>
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
 <p>第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。</p>
-<h2 id="section-0">1. 解壓縮與啟動</h2>
+<p>只在本機管理版本，請看第 22 章；單檔／整個專案還原，請看第 23 章；建立分支、合併回主分支與處理衝突，請看第 24 章。這些操作都不需要先設定 Server 或 GitHub。</p>
+<h2 id="guide-chapter-1">1. 解壓縮與啟動</h2>
 <ol>
 <li>從本專案 v0.7.1 Release 下載 <code>GITGUI-0.7.1-win-x64-portable.zip</code>。</li>
 <li>在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。</li>
@@ -32,11 +33,11 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.1-win-x64-portable.zip' -Algorithm SHA256
 </code></pre>
 <p>上方 <code>C:\下載</code> 是範例，請換成實際下載位置。</p>
-<h2 id="section-1">2. 畫面與外觀</h2>
+<h2 id="guide-chapter-2">2. 畫面與外觀</h2>
 <p>主畫面左側選擇最近倉庫與 refs，中間切換工作區、提交圖與快照並輸入提交訊息，右側檢視差異、衝突與提交詳情。操作面板可查看實際 Git 指令與輸出。</p>
 <p>「外觀」可選擇 Graphite、Midnight、Forest、Porcelain 四種配色。主工具列的 EN 選項可切換繁體中文或英文，會同步更新主視窗、進階、倉庫工具與設定視窗的介面資源。外觀、語系與自訂快捷鍵會保留供下次啟動使用。Git 原始輸出、使用者輸入的分支名稱與提交訊息維持原文。</p>
 <p><img src="images/m4-main.png" alt="M4 主畫面" /></p>
-<h2 id="section-2">3. 開啟、建立或複製倉庫</h2>
+<h2 id="guide-chapter-3">3. 開啟、建立或複製倉庫</h2>
 <ul>
 <li>已有本機倉庫：按「瀏覽」選擇工作目錄，或直接輸入路徑後按「開啟」。</li>
 <li>建立新倉庫：按「倉庫操作」，瀏覽或填寫專案資料夾，再按「初始化倉庫」；預設初始分支為 <code>main</code>。v0.7.1也接受已有檔案的資料夾，並保留原檔案，詳見第 20.2 節。</li>
@@ -47,7 +48,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <pre><code class="language-text">git config --local user.name &quot;你的名字&quot;
 git config --local user.email &quot;you@example.com&quot;
 </code></pre>
-<h2 id="section-3">4. 修改、暫存與提交</h2>
+<h2 id="guide-chapter-4">4. 修改、暫存與提交</h2>
 <ol>
 <li>在編輯器修改工作目錄內的檔案。</li>
 <li>回到 GITGUI，按重新整理，或讓視窗重新取得焦點。</li>
@@ -57,7 +58,7 @@ git config --local user.email &quot;you@example.com&quot;
 </ol>
 <p>「修改上一筆」會重寫最新提交。使用前先確認這筆提交是否已分享給其他人。「略過 hooks」只對本次操作生效；預設不勾選。</p>
 <p>「捨棄變更」會替換選取的工作檔案，執行前有確認與快照。請先看清楚檔案清單。</p>
-<h2 id="section-4">5. 分支、同步與衝突</h2>
+<h2 id="guide-chapter-5">5. 分支、同步與衝突</h2>
 <ul>
 <li>建立分支：輸入分支名稱後建立，再切換到該分支。</li>
 <li>切換分支：選取本機分支、遠端追蹤分支或提交；切換提交會進入 detached HEAD。</li>
@@ -66,7 +67,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>Push：將目前分支推送到選定遠端。強制推送使用 <code>--force-with-lease --force-if-includes</code>；受保護分支需要輸入分支名稱確認。</li>
 </ul>
 <p>遇到衝突，選擇衝突檔案，使用三方編輯、整檔 ours／theirs 或外部 mergetool。檢查結果後「標記已解決」，再完成提交或到「進階」繼續操作。二進位與符號連結衝突使用整檔選擇。</p>
-<h2 id="section-5">6. 快照復原與重做</h2>
+<h2 id="guide-chapter-6">6. 快照復原與重做</h2>
 <p>會修改歷史或替換內容的操作，依功能自動建立快照。主畫面快照清單、操作後的「復原」，或工具視窗的「還原最近快照」可還原本地狀態。</p>
 <ol>
 <li>先讀取快照的時間與操作名稱。</li>
@@ -79,7 +80,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p>子模組快照僅處理父倉庫，詳細邊界見第 9 節；工作樹、LFS 與 bisect 依各自方式處理。快照還原若遇到 index/ref 鎖或可能覆蓋未保存資料，會拒絕執行，請先處理原始原因。</p>
 <p>更新／停用子模組或移除工作樹時，若 index 有 assume-unchanged 或 skip-worktree flags，程式會保守拒絕，因為 Git status 可能隱藏未保存的內容。先另行備份並清除相關 flags，再重試。
 對使用 sparse-checkout 的工作樹，可先在該工作樹停用稀疏檢出，再確認內容並移除。</p>
-<h2 id="section-6">7. 進階歷史操作</h2>
+<h2 id="guide-chapter-7">7. 進階歷史操作</h2>
 <p>按「進階」開啟分頁：</p>
 <ul>
 <li><strong>Stash</strong>：可包含未追蹤檔案，支援 push、apply、pop、drop。pop 成功後移除該項；發生衝突時請先處理衝突。</li>
@@ -91,11 +92,11 @@ git config --local user.email &quot;you@example.com&quot;
 </ul>
 <p>Rebase、cherry-pick 或 revert 中斷時，可使用「繼續」「略過」「中止」。edit 暫停時先修改檔案、暫存並 amend，再繼續。</p>
 <p>包含reword的計畫會重播提交，以相容Git2.40的空提交處理；即使前方項目選pick，其OID也可能改變。執行前請檢查計畫，並確認這些歷史是否已分享給他人。</p>
-<h2 id="section-7">8. 內建終端機</h2>
+<h2 id="guide-chapter-8">8. 內建終端機</h2>
 <p>「終端機」會使用目前倉庫與同一套選定 Git。它是持續運行的逐行 shell，可輸入 Git 指令與一般命令，也會保留目前 shell 的工作目錄／環境變化。</p>
 <p>終端機開啟時會占用該倉庫的寫入佇列；先關閉終端機，再使用圖形介面寫入。關閉會終止 shell 及其子行程。此版本尚未提供完整 VT／PTY、全螢幕互動工具或 Ctrl+C 控制；需要這些功能時請用外部終端機。</p>
 <p>終端機內自行輸入的指令不會自動建立 GUI 快照。輸入會刪除或改寫資料的指令前，請自行確認與備份。</p>
-<h2 id="section-8">9. 子模組（Submodules）</h2>
+<h2 id="guide-chapter-9">9. 子模組（Submodules）</h2>
 <p>按「倉庫工具」→「子模組」。</p>
 <ol>
 <li>新增：填入父倉庫內的相對路徑及來源 URL／本機絕對路徑，按「新增子模組」。</li>
@@ -108,7 +109,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p>復原「新增子模組」會還原父倉庫，但保留已 clone 的子倉庫資料夾。復原 deinit 不會自動重建子倉庫 checkout，可再初始化／更新。父倉庫一般操作不會自動遞迴切換子模組。檔案與 gitlink 的危險型態替換會被拒絕。</p>
 <p>若既有子倉庫內還有巢狀 gitlink，而欲更新的提交尚未下載，程式會要求先在該子倉庫 Fetch，才能檢查目標是否覆蓋巢狀資料。請另行開啟子倉庫取得目標提交後再重試；不會直接以「下載並 checkout」繞過檢查。</p>
 <p><img src="images/m3-tools.png" alt="子模組工具" /></p>
-<h2 id="section-9">10. 工作樹（Worktrees）</h2>
+<h2 id="guide-chapter-10">10. 工作樹（Worktrees）</h2>
 <p>在「倉庫工具」→「工作樹」，可讓同一倉庫的不同分支同時存在於不同資料夾。</p>
 <ol>
 <li>新增：填寫全新或空白的絕對路徑、來源提交，以及新分支名稱。分支名稱留空會建立 detached 工作樹。</li>
@@ -118,7 +119,7 @@ git config --local user.email &quot;you@example.com&quot;
 </ol>
 <p>工作樹操作沒有快照 Undo。不能從目前正在開啟的工作樹移除自己；先改開另一個工作樹。共用同一個 Git common directory 的 GUI 操作會序列化。</p>
 <p>Windows 使用 reftable 格式時，Git 在部分 Windows 版本可能已移除工作樹資料夾，卻因檔案仍被 Git 映射而無法刪除管理紀錄。程式會明確顯示此狀態，不會自動清理。請先確認外接磁碟與其他工作樹仍可存取，再按「清理過期紀錄」並確認；這會清理所有已失效且未鎖定的紀錄，不只剛移除的項目。原分支會保留。</p>
-<h2 id="section-10">11. Git LFS</h2>
+<h2 id="guide-chapter-11">11. Git LFS</h2>
 <p>在「倉庫工具」→「Git LFS」查看版本與狀態。</p>
 <ol>
 <li>先按「安裝至此倉庫」，設定本地 filter 與 pre-push hook。</li>
@@ -128,7 +129,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>「取消追蹤」只修改屬性規則，不改寫既有提交中的 LFS pointer 或歷史。</li>
 </ol>
 <p>LFS 不是備份，也不自動進行歷史遷移。此工具沒有 LFS 快照 Undo；一般提交／快照仍依原有本地資料處理。遠端必須支援 LFS，登入、額度及網路錯誤會顯示在操作輸出。自訂 <code>core.hooksPath</code> 的倉庫，LFS 會依 Git 設定使用該 hooks 位置；既有不相容 hook 可能使安裝失敗。</p>
-<h2 id="section-11">12. 二分定位（Bisect）</h2>
+<h2 id="guide-chapter-12">12. 二分定位（Bisect）</h2>
 <p>在「倉庫工具」→「二分定位」：</p>
 <ol>
 <li>先提交或 stash 目前變更。</li>
@@ -138,7 +139,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>按「重設」執行 <code>git bisect reset</code>，回到原先分支／提交。關閉再開程式也能接續目前的 bisect。</li>
 </ol>
 <p>此功能不自動執行測試命令，復原方式為 bisect reset。可能被 checkout 覆蓋的未追蹤／被忽略檔案會先被擋下；請先移走或妥善保存，再開始。</p>
-<h2 id="section-12">13. 稀疏檢出（Sparse-checkout）</h2>
+<h2 id="guide-chapter-13">13. 稀疏檢出（Sparse-checkout）</h2>
 <p>在「倉庫工具」→「稀疏檢出」：</p>
 <ol>
 <li>先保存目前變更。</li>
@@ -148,14 +149,15 @@ git config --local user.email &quot;you@example.com&quot;
 <li>按「停用」取回完整工作目錄，或還原操作前快照。</li>
 </ol>
 <p>快照還原保存選定工作樹的 sparse 設定、pattern、index skip flags 與實際存在的檔案。Git 啟用的 <code>extensions.worktreeConfig</code> 儲存格式升級會保留，以免破壞其他工作樹。資料夾／忽略檔案衝突會先拒絕處理。</p>
-<h2 id="section-13">14. 簽章提交與標籤</h2>
-<p>先依自己的環境設定 GPG 或 SSH 簽章；程式不產生、不儲存你的私鑰。提交時勾選「簽章」，建立標籤時勾選簽章選項並填寫訊息，即交給 Git 執行 <code>commit -S</code> 或 <code>tag -s</code>。</p>
+<h2 id="guide-chapter-14">14. 簽章提交與標籤</h2>
+<p>先依自己的環境設定 GPG 或 SSH 簽章；程式不產生、不儲存你的私鑰。提交時勾選「簽署提交」，建立標籤時勾選簽章選項並填寫訊息，即交給 Git 執行 <code>commit -S</code> 或 <code>tag -s</code>。</p>
+<p>一般本機版本管理不需要簽章。v0.7.1 未勾選「簽署提交」時，仍會沿用 Git 的 <code>commit.gpgsign</code> 設定。若出現 <code>gpg: signing failed: No secret key</code>，請依第 22.4 節處理。</p>
 <p>SSH 設定範例（請換成已有的私鑰實際路徑）：</p>
 <pre><code class="language-text">git config --local gpg.format ssh
 git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&quot;
 </code></pre>
 <p>簽章需要可用的 signer／agent；硬體金鑰、密碼提示與第三方 GPG 設定依你的環境而定。簽章成功不等同遠端平台已將該金鑰認定為你的帳號，請另外完成平台金鑰登記。</p>
-<h2 id="section-14">15. 快捷鍵、命令選單與無障礙操作</h2>
+<h2 id="guide-chapter-15">15. 快捷鍵、命令選單與無障礙操作</h2>
 <p>主畫面右下方按「快捷鍵」，可依主視窗、進階與倉庫工具的作用範圍搜尋命令並設定按鍵。</p>
 <ol>
 <li>找到命令，在右側欄位輸入組合，例如 <code>Ctrl+Shift+K</code>，按該列「儲存」。</li>
@@ -200,7 +202,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 </table>
 <p>尚未綁定按鍵的命令也能從命令選單找到。正在執行操作、沒有選取項目或有未解決衝突時，快捷鍵與按鈕使用相同的停用規則。</p>
 <p>介面提供控制項名稱、焦點導覽與提交圖的 automation peer，供輔助工具識別目前提交、清單與按鈕。這些支援包含程式層的無障礙與鍵盤測試；各作業系統原生螢幕閱讀器的實際朗讀與操作結果，仍需另外驗證，尚未宣稱 Windows Narrator 人工驗收通過。</p>
-<h2 id="section-15">16. 中文訊息、路徑與換行設定</h2>
+<h2 id="guide-chapter-16">16. 中文訊息、路徑與換行設定</h2>
 <p>右側詳情會顯示選取提交的訊息編碼，以及目前倉庫的 <code>core.autocrlf</code>、<code>core.safecrlf</code>、<code>core.eol</code> 設定與換行轉換提醒。</p>
 <ul>
 <li>有 <code>encoding</code> 標頭的 commit，依標頭解碼；沒有標頭時先讀 UTF-8，若位元組不合法，再嘗試 Big5，並標示偵測結果。</li>
@@ -214,7 +216,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <p>這只調整之後的訊息編碼，不會轉換或修復既有 commit。附註標籤訊息使用 UTF-8。</p>
 <p>中文、空格、換行與 emoji 檔名以原始路徑處理。無法以 UTF-8 表示的檔名會用 <code>\xFF</code> 等轉義顯示，並保留原始位元組與 rename 來源；為避免誤改同名的有效路徑，相關編輯／暫存操作會被停用或拒絕。請使用支援原始位元組路徑的工具重新命名後再操作。倉庫有此類路徑時，部分暫存也會保守拒絕；其他受支援檔案仍可整檔暫存。非 UTF-8 的文字差異與二進位／符號連結衝突，使用整檔處理，不經文字編輯器另存轉碼。</p>
 <p><code>core.autocrlf</code> 未設定時顯示 <code>unset</code>，Git 預設視為 <code>false</code>。<code>true</code>、<code>input</code>、<code>false</code> 的行尾轉換行為不同，也可能受 <code>.gitattributes</code> 影響。請先查看提醒與差異，再決定是否修改設定；GITGUI 不會自動改成另一種換行政策。Windows 的 Git 執行程序會啟用 <code>core.longpaths</code>。</p>
-<h2 id="section-16">17. 狀態刷新與提交分頁</h2>
+<h2 id="guide-chapter-17">17. 狀態刷新與提交分頁</h2>
 <p>外部編輯檔案、切回視窗或按重新整理時，程式可局部更新工作區狀態與目前差異，避免每次都重建整份提交清單。使用者仍可透過重新整理取得新的 refs 與提交內容。</p>
 <p>提交圖預設先載入 500 筆。按「載入更多」繼續取得下一頁；搜尋或改變篩選條件會從新的查詢開始。若讀取期間歷史已改變，會重新載入，以免把不同版本的分頁混在一起。</p>
 <p>先在搜尋欄輸入文字，按「套用篩選」查詢。作者、路徑、起日與迄日收在「進階篩選」：按標題展開後輸入，再按相同的套用按鈕。收合或切換頁籤會保留已輸入的條件，收合不等於清除；如要取消條件，請展開並清空對應欄位後重新套用。鍵盤可將焦點移到「進階篩選」，按空白鍵展開，再按 Tab 進入欄位。欄位在第一次展開時才建立，讓一般提交圖畫面更快顯示。</p>
@@ -222,7 +224,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <p>刷新同一個檔案的差異時，現有文件會保留供閱讀，直到新結果備妥；查詢期間部分暫存仍停用。內容相同時會保留捲動位置與已勾選的差異行。一般 UTF-8／CRLF 文字及圖片預覽使用原生讀取；特殊 filter、編碼或不支援的倉庫格式會使用你選定的 Git，維持原有語意。</p>
 <p>大型差異先顯示檔案資訊與提示，需要時再按「仍要載入」。切換檔案後，以目前選取項目的載入結果為準；差異載入中不能送出尚未確認的部分暫存。</p>
 <p>v0.7.0 已在十萬筆提交／五萬個檔案的固定測試環境通過原始效能門檻：首次啟動 1,319.86ms、首屏最大 812.25ms、status 最大 236.34ms、Diff 最大 131.24ms、常駐記憶體最大約 221.23MB；五組持續捲動均通過空檔檢查，量測範圍內單次 UI 工作最大 13.9479ms。完整條件、逐筆紀錄與驗證邊界見 <a href="M4-PERFORMANCE.md">效能報告</a>。</p>
-<h2 id="section-17">18. 錯誤建議與本機日誌</h2>
+<h2 id="guide-chapter-18">18. 錯誤建議與本機日誌</h2>
 <p>操作失敗時，主視窗、進階與倉庫工具會顯示白話原因及建議動作。例如 lease 過期先 Fetch、非快轉推送先檢查同步狀態、衝突轉到解決流程、登入失敗開啟憑證說明、鎖定問題開啟鎖定說明。請先讀取原始原因，再執行建議；建議按鈕不會略過信任、確認或目前操作狀態的檢查。</p>
 <p>提交被辨識為 hook 拒絕時，可按「略過 hooks 重試」；必須另行確認，只重試同一份尚未改變的提交訊息、倉庫與選項，不會把略過設定保存為預設。修改草稿或切換倉庫後，請重新送出提交。其他 hook 操作仍先顯示輸出。</p>
 <p>展開「操作面板」可查看實際指令與 Git 輸出，並複製內容。憑證欄位會遮罩；若要將輸出貼給他人，仍請自行檢查倉庫路徑及檔案內容是否適合分享。</p>
@@ -236,7 +238,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <p>可把 <code>%LOCALAPPDATA%\GitGui</code> 貼到檔案總管網址列開啟。macOS／Linux 使用作業系統提供的本機應用程式資料目錄下的 <code>GitGui</code> 資料夾。</p>
 <p>日誌按日切檔並保留 14 天，也會記錄取消或啟動失敗的指令嘗試。持久化內容包含遮罩後的參數、工作目錄、耗時、結束碼與 stderr 分類，不保存 stdout、diff／blob、提交訊息、任意 hook stderr 或 AskPass 回答。操作面板與持久化日誌的內容範圍不同。日誌無法寫入時，不應把已成功的 Git 操作改判為失敗。</p>
 <p>目前沒有自動上傳日誌或預設啟用的遙測；日誌留在本機。</p>
-<h2 id="section-18">19. 常見問題與驗證範圍</h2>
+<h2 id="guide-chapter-19">19. 常見問題與驗證範圍</h2>
 <table>
 <thead>
 <tr>
@@ -285,7 +287,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 </table>
 <p>Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與實際 Windows ZIP／桌面測試的結果以同版 Release 的 <code>verification.json</code> 及相容性文件為準。M4 已加入鍵盤自訂、無障礙介面與分頁刷新支援；原生螢幕閱讀器人工驗證、大型效能目標及完整 VT／PTY 的完成狀態須分別確認。</p>
 <p>主程式採 MIT 授權，免安裝資料夾內的 <code>LICENSE</code> 保留著作權與免責聲明；Portable Git 與其他相依元件仍依各自授權，見 <code>THIRD-PARTY.txt</code> 與 <code>licenses/</code>。</p>
-<h2 id="section-19">20. 完整範例：第一次將新專案備份到 GitHub</h2>
+<h2 id="guide-chapter-20">20. 完整範例：第一次將新專案備份到 GitHub</h2>
 <p>這個範例把本機的 <code>hello-backup</code> 專案建立為 Git 倉庫，再上傳到自己的 GitHub。這裡的備份是「程式碼與提交歷史」：只有已提交並 Push 的內容會送到遠端，未提交、被忽略的檔案及 GITGUI 本機快照索引不會因此一起備份。</p>
 <p>**看圖操作方式：**每張圖的黃色編號對應緊接圖下的說明；「點擊／輸入」才是操作，「核對／保持未勾選」只需檢查。點圖片可開啟原尺寸。截圖拍攝於 2026-10-24，使用實際 Windows 介面與獨立示範專案，圖中的 <code>C:\GitGui-Manual-…\hello-backup</code> 請換成自己的資料夾。</p>
 <p><strong>GitHub 圖片採用現有的 <code>linhercherng/GITGUI</code> 倉庫作位置參考</strong>，沒有另外建立 GitHub 示範專案。請使用自己新建的空白倉庫，勿照抄圖片中的 GITGUI URL、檔案或 SHA。本機示範的兩次提交與 Push 已以隔離的本機遠端驗證，沒有把 <code>hello-backup</code> 上傳至 GitHub；登入畫面因帳號與憑證工具而異，請由本人完成。</p>
@@ -641,7 +643,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tbody>
 </table>
 <p>確認檔案與提交都已在 GitHub 出現，才算完成這次遠端備份。未追蹤、被忽略或尚未提交的內容不會因為按 Push 而自動上傳。大型素材若需要 Git LFS，請先依第 11 章設定，再檢查對應的 LFS 上傳結果。</p>
-<h2 id="section-20">21. 完整範例：專案修改後再次更新上傳</h2>
+<h2 id="guide-chapter-21">21. 完整範例：專案修改後再次更新上傳</h2>
 <p>沿用第 20 章已備份成功的 <code>C:\Projects\hello-backup</code>、<code>main</code> 與 <code>origin</code>。之後每次更新都使用同一個倉庫，不必重新建立 GitHub 倉庫或初始化。</p>
 <h3 id="section-17">21.1 修改並保存專案</h3>
 <ol>
@@ -867,6 +869,278 @@ git config --local user.email &quot;you@example.com&quot;
 </tbody>
 </table>
 <p>GitHub 的空白倉庫與 HTTPS 驗證說明可參閱官方文件：<a href="https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github?platform=windows">將本機程式碼加入 GitHub</a>、<a href="https://docs.github.com/en/get-started/git-basics/about-remote-repositories">遠端倉庫與 HTTPS 驗證</a>。本範例的 GITGUI 按鈕與行為依本專案介面撰寫。</p>
+<h2 id="guide-chapter-22">22. 完整範例：只在本機保存版本與再次提交</h2>
+<p>本章使用 <code>C:\Projects\local-notes</code> 作為示範專案。請換成自己的資料夾；不必新增遠端，也不必按 Fetch、Pull 或 Push。<strong>暫存是挑選本次要保存的內容，提交成功才會建立可取回的歷史版本。</strong></p>
+<h3 id="section-21">22.1 已有檔案的資料夾，建立第一次提交</h3>
+<ol>
+<li>按「倉庫操作」，瀏覽選取已有檔案的 <code>C:\Projects\local-notes</code>。</li>
+<li>依第 20.2 節填寫提交者姓名、電子郵件，按「初始化倉庫」。若資料夾已是 Git 倉庫，直接開啟即可，不必再初始化。</li>
+<li>回到「工作區」→「未暫存」，逐一檢查檔案；先將密碼、Token、不想追蹤的資料排除於 <code>.gitignore</code>。</li>
+<li>按「暫存選取」，或在全部檢查後按「全部暫存」。切到「已暫存」，確認要保存的檔案。</li>
+<li>提交訊息輸入 <code>初始版本備份</code>，保持「修改上一筆提交」未勾選。未設定簽章金鑰時，也不要勾選「簽署提交」。</li>
+<li>按「提交」，等待成功，再到「提交歷史」確認出現 <code>初始版本備份</code>。若簽章失敗，依第 22.4 節處理後重試。</li>
+</ol>
+<p>提交只會保存納入 Git 追蹤的內容；被忽略、尚未暫存的檔案不會因此自動進入版本。</p>
+<h3 id="section-22">22.2 修改後，建立第二次與後續提交</h3>
+<ol>
+<li>用原本的編輯器修改專案，例如在 <code>README.md</code> 加入 <code>第二版：補上使用方式。</code>，並儲存。</li>
+<li>回到 GITGUI 按「重新整理」，到「未暫存」選取 <code>README.md</code>，確認差異。</li>
+<li>按「暫存選取」，到「已暫存」核對內容。<strong>即使第一次已全部暫存，之後的新修改仍要再次暫存。</strong> 若暫存後又編輯，也要再次暫存才能包含新內容。</li>
+<li>輸入新訊息 <code>補上使用方式</code>，保持「修改上一筆提交」未勾選，按「提交」。</li>
+<li>到「提交歷史」確認有兩筆不同的提交：<code>初始版本備份</code> 與 <code>補上使用方式</code>。之後每次都重複「儲存 → 檢查 → 暫存 → 新訊息 → 提交」。</li>
+</ol>
+<p>若按「提交」後失敗，先閱讀實際指令輸出並處理原因。一般提交失敗不會清空暫存區，不需要重新初始化倉庫。</p>
+<h3 id="section-23">22.3 本機版本與備份的差別</h3>
+<p>歷史紀錄主要存放在專案的隱藏 <code>.git</code> 資料夾；請保留它。只複製工作檔案，不會帶走完整 Git 歷史。若硬碟故障或整個專案資料夾被刪除，本機提交也可能一起遺失。要另做備份時，請在 Git 操作完成後，將含 <code>.git</code> 的整個專案複製到另一顆磁碟或其他備份位置。</p>
+<h3 id="gpg">22.4 提交失敗：GPG 找不到私鑰</h3>
+<p>若看到 <code>gpg: skipped ... No secret key</code> 與 <code>fatal: failed to write commit object</code>，代表要求簽章但找不到私鑰。姓名、電子郵件只用於提交者身分，不會自動產生 GPG 私鑰。</p>
+<ol>
+<li>先取消勾選「簽署提交」，重新按「提交」。</li>
+<li>若仍出現相同錯誤，且此專案不需要簽章，按「終端機」。確認頂端顯示的是目前專案路徑，再輸入下列指令，按 Enter 或「執行」：</li>
+</ol>
+<pre><code class="language-text">git config --local commit.gpgsign false
+</code></pre>
+<ol start="3">
+<li>等待指令完成，按「關閉終端機」，釋放倉庫操作鎖，再回到工作區提交；保持「簽署提交」未勾選。</li>
+<li>在「提交歷史」確認成功。<code>branch.oid (initial)</code> 表示當時還沒有第一筆提交，不代表原始檔案消失。</li>
+</ol>
+<p>這個設定只關閉目前倉庫的自動簽章。若需要簽章，請依第 14 章設定可用私鑰。</p>
+<p>Windows 版內建終端機使用 cmd，且沿用「Git 設定」所選的 Git／Portable Git。因此在內建終端機可直接輸入上述 <code>git ...</code>，不需外開 PowerShell，也不要加上 PowerShell 專用的 <code>&amp; '路徑'</code> 語法。終端機開啟期間，GUI 的寫入操作會暫停；做完請按「關閉終端機」。</p>
+<h2 id="guide-chapter-23">23. 完整範例：單檔還原、撤銷提交與整個專案還原</h2>
+<p>Git 每次提交保存一個版本，但取回時可選擇整個專案或特定檔案。先確認自己要處理哪一種情況：</p>
+<table>
+<thead>
+<tr>
+<th>目的</th>
+<th>適合的做法</th>
+<th>對歷史的影響</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>放棄某個檔案尚未提交的修改</td>
+<td>取消暫存後，捨棄選取變更</td>
+<td>不新增提交</td>
+</tr>
+<tr>
+<td>只取回某個檔案在舊提交的內容</td>
+<td>指定來源版本與檔案路徑，檢查後再提交</td>
+<td>新增一筆還原紀錄，保留舊歷史</td>
+</tr>
+<tr>
+<td>撤銷某次提交帶來的修改</td>
+<td>Revert</td>
+<td>新增反向提交，保留舊歷史</td>
+</tr>
+<tr>
+<td>讓目前分支與已追蹤檔案回到某個舊提交</td>
+<td>Reset Hard</td>
+<td>移動分支，替換暫存區與工作檔</td>
+</tr>
+<tr>
+<td>撤回一次 GITGUI 操作前的本機狀態</td>
+<td>第 6 章的復原快照</td>
+<td>依快照替換本機狀態，不撤回遠端</td>
+</tr>
+</tbody>
+</table>
+<p><strong>先確認要保留的新修改已提交或另行備份。</strong> Git 不會替每次編輯器儲存建立歷史；從未提交、未納入快照或備份的內容，不保證能找回。</p>
+<h3 id="section-25">23.1 只放棄一個檔案尚未提交的修改</h3>
+<p>情境：上次提交的 <code>README.md</code> 是正確版本，今天改壞了；其他檔案要保留。</p>
+<ol>
+<li>若 <code>README.md</code> 已暫存，先到「已暫存」只選它，按「取消暫存」。<strong>取消暫存本身不會刪掉工作檔的修改。</strong></li>
+<li>回到「未暫存」，只選 <code>README.md</code>，核對右側差異。</li>
+<li>按「捨棄選取變更」，閱讀確認視窗中的檔案清單後確認。</li>
+<li>重新開啟檔案，確認回到目前分支最新提交的內容；其他未選取的檔案保持原狀。</li>
+</ol>
+<p>GITGUI 的捨棄會從暫存區還原工作檔，所以要回到最新提交時，應先取消該檔案的暫存。對尚未追蹤的新檔案按捨棄，會刪除該新檔案；第一次提交前也沒有可取回的已提交版本。</p>
+<h3 id="section-26">23.2 撤銷一筆普通提交，保留完整歷史</h3>
+<p>情境：最新一筆 <code>補上使用方式</code> 的修改不想要了，希望留下撤銷紀錄。</p>
+<ol>
+<li>先讓工作區與暫存區乾淨，確認目前分支正確。</li>
+<li>在「提交歷史」選取要撤銷的提交，從「提交詳情」取得完整 SHA。</li>
+<li>按「進階功能」→「提交操作」，將 SHA 貼到「目標版本 / Commit SHA」。</li>
+<li>按「Revert」，依確認視窗繼續，完成後重新整理。</li>
+<li>核對歷史新增了一筆反向提交，原提交仍存在；檢查檔案內容符合預期。</li>
+</ol>
+<p>Revert 反轉的是那筆提交的變更，並不是直接把整個專案替換成該提交的內容。撤銷較早的提交可能與後續修改衝突；請依提示解決後，到「進階功能」按「繼續操作」，或「中止操作」。本範例適用普通提交；合併提交的 Revert 需要額外指定主線，v0.7.1 此按鈕未提供該選項。</p>
+<h3 id="section-27">23.3 只把一個檔案還原到指定舊版本</h3>
+<p>假設目前分支剛好有以下三筆提交，且工作區／暫存區乾淨：</p>
+<table>
+<thead>
+<tr>
+<th>提交順序</th>
+<th>內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第一次</td>
+<td>建立 <code>A.txt</code>、<code>B.txt</code>、<code>C.txt</code></td>
+</tr>
+<tr>
+<td>第二次</td>
+<td>修改 <code>A.txt</code>、<code>B.txt</code></td>
+</tr>
+<tr>
+<td>第三次（目前最新）</td>
+<td>修改 <code>C.txt</code></td>
+</tr>
+</tbody>
+</table>
+<p>目標：只讓 <code>A.txt</code> 回到第一次提交的內容，保留 <code>B.txt</code>、<code>C.txt</code> 的現有內容。</p>
+<ol>
+<li>先另行保存 <code>A.txt</code> 目前需要保留的內容。確認沒有其他待提交的修改，以免混入這次還原。</li>
+<li>可到「進階功能」→「檔案歷史與 Blame」，輸入 <code>A.txt</code>，按「載入歷史與 Blame」查閱修改紀錄。<strong>v0.7.1 此面板提供查閱，沒有直接還原單檔到舊版本的按鈕。</strong></li>
+<li>回到主畫面按「終端機」，確認專案路徑。僅在上述恰好三筆提交的示範中，輸入：</li>
+</ol>
+<pre><code class="language-text">git restore --source=HEAD~2 --worktree -- &quot;A.txt&quot;
+</code></pre>
+<ol start="4">
+<li><code>HEAD~2</code> 是目前提交往前沿第一父系兩筆；實際專案應改用從「提交詳情」取得的完整 SHA。例如指令格式如下，<strong>先將 <code>目標提交SHA</code> 換成自己的實際 SHA，再執行</strong>：</li>
+</ol>
+<pre><code class="language-text">git restore --source=目標提交SHA --worktree -- &quot;A.txt&quot;
+</code></pre>
+<ol start="5">
+<li>等待完成，按「關閉終端機」，再按「重新整理」。到「未暫存」選 <code>A.txt</code>，確認差異與內容；<code>B.txt</code>、<code>C.txt</code> 應沒有因此改變。</li>
+<li>只暫存 <code>A.txt</code>，輸入 <code>將 A.txt 還原為第一次版本</code>，保持「修改上一筆提交」未勾選，再按「提交」。</li>
+<li>現在有第四筆提交，保留前面三筆歷史；目前分支沒有被移回第一次提交。</li>
+</ol>
+<p>路徑是相對專案根目錄的路徑，例如 <code>docs/說明.txt</code>，請保留雙引號。本指令會覆蓋該工作檔，且不自動暫存；若指定來源中沒有該已追蹤路徑，Git 可能移除它以符合來源。重新命名過的檔案應先核對來源版本中的實際路徑。終端機指令不會自動建立 GITGUI 復原快照，執行前應自行保存需要的內容。</p>
+<h3 id="reset-hard">23.4 整個專案回到舊提交（Reset Hard）</h3>
+<p>只有確定要讓整個目前分支回到舊版時才使用；只想取回單檔請用第 23.3 節。</p>
+<ol>
+<li>將未提交的內容先提交或另行備份，確認「未暫存」「已暫存」都沒有待保存變更。</li>
+<li>依第 24.1 節在目前最新提交建立一條備用分支，例如 <code>backup/before-reset</code>；建立後保持原分支，不切換到備用分支。這只保留提交歷史，不會保存未提交內容。</li>
+<li>從「提交歷史」取得目標舊提交的完整 SHA。</li>
+<li>按「進階功能」→「提交操作」，填入 SHA，選擇 <code>Hard（替換工作檔）</code> 模式，按「執行 Reset」，讀完確認視窗後再確認。</li>
+<li>核對目前分支的最新提交與已追蹤檔案已回到目標版本。需要找回先前最新提交時，可切換到剛才的備用分支。</li>
+</ol>
+<p>Reset Hard 會移動目前分支，替換暫存區與已追蹤工作檔，可能移除阻擋寫入的未追蹤資料；它不等於清空所有未追蹤／忽略檔案後再做完整資料夾備份還原。若分支已分享或推送，優先考慮 Revert；本機 Reset 不會自動修改伺服器，也不要接著為了對齊而直接強制推送。</p>
+<p>Git 官方說明：<a href="https://git-scm.com/docs/git-restore">Restore</a>、<a href="https://git-scm.com/docs/git-revert">Revert</a>、<a href="https://git-scm.com/docs/git-reset">Reset</a>。</p>
+<h2 id="guide-chapter-24">24. 完整範例：建立分支並合併回主分支</h2>
+<p>情境：目前穩定版本在 <code>main</code>，想先在 <code>feature/readme-update</code> 修改說明，確認完成後再合併回 <code>main</code>。若你的主分支叫 <code>master</code>，請把以下 <code>main</code> 換成 <code>master</code>。分支是同一個倉庫中的不同版本線，不是另外複製一份資料夾；切換分支會更新同一工作資料夾內的已追蹤檔案。</p>
+<p>本章全程可在本機完成。<strong>先有至少一筆成功提交，再建立分支；只有暫存但未提交，還沒有可作為分支起點的版本。</strong></p>
+<h3 id="main">24.1 從 main 建立並切換到新分支</h3>
+<ol>
+<li>開啟專案，確認頂端目前分支是 <code>main</code>，且工作區與暫存區乾淨。若不是 <code>main</code>，先在左側「分支名稱 / 合併來源」輸入 <code>main</code>，按「切換」。</li>
+<li>展開左側「分支操作」，在「分支名稱 / 合併來源」輸入 <code>feature/readme-update</code>。</li>
+<li>按「建立」（滑鼠提示為「建立分支」）。新分支從目前 <code>main</code> 的最新提交開始。</li>
+<li><strong>建立不會自動切換。</strong> 保持欄位為 <code>feature/readme-update</code>，再按「切換」。</li>
+<li>確認頂端目前分支已變成 <code>feature/readme-update</code>，才開始編輯檔案。</li>
+</ol>
+<p>也可單擊左側既有分支來填入欄位，再按「切換」。單擊選取分支與實際切換是不同動作，請以頂端目前分支為準。</p>
+<h3 id="section-29">24.2 在新分支修改、暫存與提交</h3>
+<ol>
+<li>在編輯器開啟專案的 <code>README.md</code>，加入一行 <code>新增功能分支的使用說明。</code>，並儲存。</li>
+<li>回到 GITGUI 按「重新整理」，再次確認目前分支是 <code>feature/readme-update</code>。</li>
+<li>在「未暫存」選取 <code>README.md</code> 檢查差異，按「暫存選取」。</li>
+<li>到「已暫存」確認內容，輸入 <code>補上 README 使用說明</code>，保持「修改上一筆提交」未勾選，按「提交」。</li>
+<li>確認成功且工作區乾淨。此時新提交屬於功能分支；<code>main</code> 尚未加入這筆修改。</li>
+</ol>
+<p>分支隔離的是提交歷史；尚未提交的工作區修改不會因建立分支就自動被隔離保存。GITGUI 會阻擋帶著已追蹤檔案的未提交修改直接切換／合併；請先提交，或依第 7 章使用 Stash 保存。未追蹤或忽略檔案也可能造成覆蓋衝突，請妥善保存。</p>
+<h3 id="main-1">24.3 將功能分支合併回 main</h3>
+<p>合併方向是：<strong>先切到接收變更的分支，再指定要合併進來的來源分支。</strong></p>
+<table>
+<thead>
+<tr>
+<th>操作階段</th>
+<th>頂端目前分支</th>
+<th>「分支名稱 / 合併來源」欄位</th>
+<th>要按的按鈕</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>切回主分支</td>
+<td><code>feature/readme-update</code></td>
+<td><code>main</code></td>
+<td>切換</td>
+</tr>
+<tr>
+<td>合併功能修改</td>
+<td><code>main</code></td>
+<td><code>feature/readme-update</code></td>
+<td>合併分支</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>確認功能分支的修改已提交，沒有進行中的合併／Rebase。</li>
+<li>在「分支名稱 / 合併來源」輸入 <code>main</code>，按「切換」。確認頂端目前分支為 <code>main</code>。</li>
+<li>如果此專案有共用遠端，可先依第 21.3 節 Fetch、檢查並整合主分支的遠端更新；只在本機管理就跳過此步。</li>
+<li>將同一欄位改為 <code>feature/readme-update</code>，保持頂端目前分支為 <code>main</code>，按「合併分支」。<strong>這一步不要再按「切換」。</strong></li>
+<li>等待完成，重新整理，確認仍在 <code>main</code>，開啟 <code>README.md</code> 檢查新增說明，並在歷史中確認功能提交已納入 <code>main</code>。</li>
+<li>若是 fast-forward，<code>main</code> 直接推進至功能分支提交，不會多出一筆合併提交；若兩邊都有各自的新提交且可自動整合，通常會產生合併提交。若出現衝突，依下一節處理；不要當作已完成。</li>
+</ol>
+<p>簡單情境的版本線如下；字母代表提交，不是檔案名稱：</p>
+<pre><code class="language-text">建立分支後：A  (main、feature/readme-update)
+功能提交後：A  (main) ── B  (feature/readme-update)
+合併完成後：A ── B  (main、feature/readme-update)
+</code></pre>
+<p>合併只變更目前接收分支，來源分支不會自動刪除，也不會自動與之永久同步。之後來源分支新增提交，仍需再次合併。Git 官方的方向與 fast-forward 說明見 <a href="https://git-scm.com/docs/git-merge">Merge 文件</a>。</p>
+<h3 id="section-30">24.4 合併遇到衝突時怎麼做</h3>
+<p>如果 <code>main</code> 與功能分支修改了同一段內容，Git 可能要求人工決定。此時保持在 <code>main</code>，不要重新初始化，也不要用 Reset Hard 當作解決衝突。</p>
+<ol>
+<li>在變更清單選取衝突檔案，查看右側衝突內容。<strong>本章的一般合併中，ours 是目前接收的 <code>main</code>，theirs 是來源 <code>feature/readme-update</code>。</strong> Rebase 的含義可能不同，勿直接套用。</li>
+<li>文字檔可在「可編輯的合併結果」整理最後內容，保留需要的兩邊修改，清除 <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>、<code>=======</code>、<code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> 衝突標記。</li>
+<li>按「儲存合併結果」，再按「標記已解決」。多個衝突檔案需逐一完成。</li>
+<li>確認沒有未解衝突，檢查已暫存的合併結果；在工作區輸入 <code>合併 README 功能分支</code>，保持「修改上一筆提交」未勾選，按「提交」完成合併。</li>
+<li>核對目前分支仍是 <code>main</code>，檔案可正常使用，歷史有合併提交且包含兩邊變更。</li>
+</ol>
+<p>若確定要整檔採其中一邊，可使用「採用 ours」或「採用 theirs」，檢查內容後再「標記已解決」；這會捨去另一邊在該檔案的內容。二進位檔無法以文字編輯合併，需挑選正確版本或使用合適外部工具。</p>
+<p>若暫時不想合併，使用「進階功能」中的「中止操作」或主畫面的「中止合併」，回到合併前狀態。合併開始後另外新增的編輯，應先另行保存；不要假設中止會保留它們。</p>
+<h3 id="section-31">24.5 合併成功後，保留或刪除功能分支</h3>
+<ol>
+<li>合併成功後可以保留功能分支，繼續查閱；刪除不是必要步驟。</li>
+<li>若要刪除，先確認目前在 <code>main</code>，功能提交已納入且工作區乾淨。</li>
+<li>在「分支名稱 / 合併來源」輸入 <code>feature/readme-update</code>，保持「允許刪除未合併分支」未勾選，再按「刪除分支」。</li>
+<li>如果提示尚未合併，先檢查分支與歷史，不要直接改勾強制刪除。正常刪除已合併的本機分支，<code>main</code> 中已納入的提交與檔案仍保留。</li>
+</ol>
+<p>以上只處理本機分支。若之後要上傳已合併結果，確認目前分支是 <code>main</code>，依第 21.3 節檢查遠端再 Push；刪除本機功能分支不會同時刪除遠端分支。</p>
+<h3 id="section-32">24.6 分支操作常見問題</h3>
+<table>
+<thead>
+<tr>
+<th>現象</th>
+<th>檢查方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>按建立後，頂端仍是 main</td>
+<td>建立與切換是兩步，欄位填新分支後再按「切換」。</td>
+</tr>
+<tr>
+<td>還沒有第一次提交，無法建立分支</td>
+<td>依第 22.1 節先成功提交，再建立。</td>
+</tr>
+<tr>
+<td>分支已存在</td>
+<td>從清單選取既有分支並切換，或使用不同名稱，不要重複建立。</td>
+</tr>
+<tr>
+<td>切換／合併被未提交修改擋住</td>
+<td>先提交或使用 Stash 保存，不要直接捨棄需要的修改。</td>
+</tr>
+<tr>
+<td>合併顯示 Already up to date</td>
+<td>目前分支已包含來源歷史；若預期仍有修改，檢查是否已儲存、暫存並提交在正確來源分支。</td>
+</tr>
+<tr>
+<td>合併後沒有新的 merge 提交</td>
+<td>可能是 fast-forward；確認 main 已包含功能提交與檔案內容。</td>
+</tr>
+<tr>
+<td>切錯方向，把 main 合併到功能分支</td>
+<td>這不會更新 main。先完成／中止進行中的操作，確保乾淨，再切回 main，指定功能分支為來源合併。</td>
+</tr>
+<tr>
+<td>合併時再次出現 GPG No secret key</td>
+<td>自動產生合併提交也會讀取 Git 簽章設定；若不需要簽章，依第 22.4 節處理，再依目前狀態完成合併。</td>
+</tr>
+</tbody>
+</table>
 <p>相關文件：<a href="M4-ACCEPTANCE.md">M4 驗收</a>、<a href="M4-PERFORMANCE.md">M4 效能</a>、<a href="M3-COMPATIBILITY.md">M3 相容性</a>、<a href="M3-ARM-DECISION.md">ARM 決策</a>、<a href="specification.md">原始規格</a>、<a href="WINDOWS-RELEASE.md">Windows 打包</a>。Release：<a href="https://github.com/linhercherng/GITGUI/releases">https://github.com/linhercherng/GITGUI/releases</a>。</p>
 
 <footer>離線手冊隨同 GITGUI 提供。原始可編輯版本：<a href="USER-GUIDE.zh-TW.md">USER-GUIDE.zh-TW.md</a></footer></main></html>
