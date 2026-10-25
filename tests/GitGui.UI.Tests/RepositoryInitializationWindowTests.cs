@@ -18,7 +18,7 @@ public class RepositoryInitializationWindowTests
     [AvaloniaFact]
     public async Task Existing_project_can_complete_first_commit_using_window_controls_and_real_git()
     {
-        using var fixture = new ProjectFolder();
+        await using var fixture = new ProjectFolder();
         await File.WriteAllTextAsync(Path.Combine(fixture.Root, "README.md"), "# 現有專案\n");
         await File.WriteAllTextAsync(Path.Combine(fixture.Root, ".gitignore"), ".env\n");
         await File.WriteAllTextAsync(Path.Combine(fixture.Root, ".env"), "EXAMPLE_ONLY=keep-local\n");
@@ -42,9 +42,6 @@ public class RepositoryInitializationWindowTests
             Assert.Equal(2, vm.Changes.Count);
             Assert.DoesNotContain(vm.Changes, f => f.Path == ".env");
             Assert.Equal("GUI 新手", (await fixture.Git("config", "--local", "--get", "user.name")).Trim());
-            // Isolate inherited signing/hooks so this test exercises the GUI commit itself.
-            await fixture.Git("config", "commit.gpgsign", "false");
-            await fixture.Git("config", "core.hooksPath", Path.Combine(fixture.Root, ".git", "hooks"));
             await ClickAction(window, Button(window, vm.L["StageAll"]), vm);
             Assert.Empty(vm.UnstagedChanges);
             Assert.Equal(2, vm.StagedChanges.Count());
@@ -59,13 +56,13 @@ public class RepositoryInitializationWindowTests
             Assert.Equal("# 現有專案\n", await File.ReadAllTextAsync(Path.Combine(fixture.Root, "README.md")));
             Assert.Equal("EXAMPLE_ONLY=keep-local\n", await File.ReadAllTextAsync(Path.Combine(fixture.Root, ".env")));
         }
-        finally { window.Close(); }
+        finally { await CloseWindow(window, vm); }
     }
 
     [AvaloniaFact]
     public async Task Incomplete_identity_stays_in_dialog_and_cancel_creates_nothing()
     {
-        using var fixture = new ProjectFolder();
+        await using var fixture = new ProjectFolder();
         await File.WriteAllTextAsync(Path.Combine(fixture.Root, "keep.txt"), "keep");
         using var vm = new MainWindowViewModel(fixture.Service, new MemoryRecent()) { RepositoryPath = fixture.Root };
         var window = new MainWindow(vm) { Width = 1380, Height = 900 };
@@ -86,7 +83,7 @@ public class RepositoryInitializationWindowTests
             Assert.Empty(vm.InitAuthorName);
             Assert.Equal("keep", await File.ReadAllTextAsync(Path.Combine(fixture.Root, "keep.txt")));
         }
-        finally { window.Close(); }
+        finally { await CloseWindow(window, vm); }
     }
 
     private static async Task ClickAction(Window owner, Button button, MainWindowViewModel vm)
@@ -102,12 +99,25 @@ public class RepositoryInitializationWindowTests
         }
         Assert.NotNull(vm.ActionCommand.ExecutionTask);
         await vm.ActionCommand.ExecutionTask.WaitAsync(TimeSpan.FromSeconds(30));
+        await WaitForIdle(vm);
+    }
+    private static async Task WaitForIdle(MainWindowViewModel vm)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         while (vm.IsBusy)
         {
             await Task.Delay(10, timeout.Token);
             Dispatcher.UIThread.RunJobs();
         }
         Assert.False(vm.IsBusy);
+    }
+    private static async Task CloseWindow(Window window, MainWindowViewModel vm)
+    {
+        // External-change refreshes can start during the final Git assertions.
+        // Closing while busy is correctly rejected by the real window.
+        await WaitForIdle(vm);
+        window.Close();
+        Assert.False(window.IsVisible);
     }
     private static T Find<T>(Window window, string name) where T : Control => window.GetVisualDescendants().OfType<T>().Single(c => c.Name == name);
     private static Button Button(Window window, string label) => window.GetVisualDescendants().OfType<Button>().Single(b => b.Content?.ToString() == label);
@@ -125,7 +135,7 @@ public class RepositoryInitializationWindowTests
         public Task<IReadOnlyList<string>> ListAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<string>>([]);
         public Task RememberAsync(string root, CancellationToken ct) => Task.CompletedTask;
     }
-    private sealed class ProjectFolder : IDisposable, IRepositorySettings, ISnapshotCatalog, IWorkspaceInteraction
+    private sealed class ProjectFolder : IAsyncDisposable, IRepositorySettings, ISnapshotCatalog, IWorkspaceInteraction
     {
         public string Root { get; } = Path.Combine(Path.GetTempPath(), "gitgui-gui-init-" + Guid.NewGuid().ToString("N"), "中文 專案");
         private readonly GitProcessRunner runner = new();
@@ -143,18 +153,34 @@ public class RepositoryInitializationWindowTests
             return Encoding.UTF8.GetString(result.Output);
         }
         public Task<bool> IsTrustedAsync(string root, CancellationToken ct) => Task.FromResult(true);
-        public Task TrustAsync(string root, CancellationToken ct) => Task.CompletedTask;
+        public async Task TrustAsync(string root, CancellationToken ct)
+        {
+            // Set fixture-only configuration before Init returns and the window attaches
+            // its file watchers. Late config writes would test an unrelated external refresh.
+            await Git("config", "commit.gpgsign", "false");
+            await Git("config", "core.hooksPath", Path.Combine(root, ".git", "hooks"));
+        }
         public Task SaveAsync(SnapshotInfo snapshot, CancellationToken ct) { snapshots.Add(snapshot); return Task.CompletedTask; }
         public Task<IReadOnlyList<SnapshotInfo>> ListAsync(string root, CancellationToken ct) => Task.FromResult<IReadOnlyList<SnapshotInfo>>(snapshots.Where(s => s.Repository == root).ToArray());
         public Task RemoveAsync(string id, CancellationToken ct) { snapshots.RemoveAll(s => s.Id == id); return Task.CompletedTask; }
         public Task<ConfirmationAnswer> ConfirmAsync(Confirmation confirmation, CancellationToken ct) => Task.FromResult(new ConfirmationAnswer(true, confirmation.RequiredText));
         public Task<string?> CredentialAsync(string prompt, CancellationToken ct) => Task.FromResult<string?>(null);
-        public void Dispose()
+        public async ValueTask DisposeAsync()
         {
             var directory = Directory.GetParent(Root)!.FullName;
             if (!directory.StartsWith(Path.Combine(Path.GetTempPath(), "gitgui-gui-init-"), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Unexpected test path");
-            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)) File.SetAttributes(file, FileAttributes.Normal);
-            Directory.Delete(directory, true);
+            // A cancelled selection read may need a moment to release its process CWD.
+            // Retry only teardown I/O; all operation timeouts and state assertions stay strict.
+            var cleanup = System.Diagnostics.Stopwatch.StartNew();
+            while (Directory.Exists(directory))
+            {
+                try
+                {
+                    foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)) File.SetAttributes(file, FileAttributes.Normal);
+                    Directory.Delete(directory, true);
+                }
+                catch (IOException) when (cleanup.Elapsed < TimeSpan.FromSeconds(5)) { await Task.Delay(50); }
+            }
         }
     }
 }
