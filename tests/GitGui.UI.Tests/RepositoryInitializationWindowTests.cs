@@ -88,8 +88,14 @@ public class RepositoryInitializationWindowTests
 
     private static async Task ClickAction(Window owner, Button button, MainWindowViewModel vm)
     {
+        await WaitForIdle(vm);
         var previous = vm.ActionCommand.ExecutionTask;
-        Click(owner, button);
+        var clicked = false;
+        EventHandler<Avalonia.Interactivity.RoutedEventArgs> observedClick = (_, _) => clicked = true;
+        button.Click += observedClick;
+        try { Click(owner, button); }
+        finally { button.Click -= observedClick; }
+        Assert.True(clicked, $"Pointer input did not click {button.Name}/{button.Content}; busy={vm.IsBusy}");
         await Task.Yield(); Dispatcher.UIThread.RunJobs();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         while (ReferenceEquals(previous, vm.ActionCommand.ExecutionTask))
@@ -126,6 +132,9 @@ public class RepositoryInitializationWindowTests
         owner.UpdateLayout(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Assert.True(button.IsEffectivelyVisible && button.IsEffectivelyEnabled);
         var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), owner)!.Value;
+        // Move before pressing: a real user updates hover/hit testing before clicking
+        // a different control. A press/release-only sequence can retain stale hover.
+        owner.MouseMove(point);
         owner.MouseDown(point, MouseButton.Left); owner.MouseUp(point, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
     }
