@@ -1,8 +1,8 @@
 # GITGUI 操作手冊
 
-適用版本：0.7.1（本機測試版，尚未發布）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 [效能報告](M4-PERFORMANCE.md)，該版下載與校驗檔見 [v0.7.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0)。
+適用版本：0.7.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 [效能報告](M4-PERFORMANCE.md)，v0.7.1 下載與校驗檔見 [Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.1)。
 
-本機修改版新增「已有檔案資料夾初始化」與初始化時的本機提交者設定，尚未更新 GitHub／Release。下列第 20.2 節說明此流程；v0.7.0 的舊截圖未顯示新增的姓名、電子郵件與瀏覽按鈕。既有正式效能數據仍僅對應報告中記錄的受測版本。
+v0.7.1 新增「已有檔案資料夾初始化」與初始化時的本機提交者設定，通過 504 項 Windows 本機自動化回歸與解壓啟動檢查。下列第 20.2 節說明此流程；v0.7.0 的舊截圖未顯示新增的姓名、電子郵件與瀏覽按鈕。既有正式效能數據仍僅對應報告中記錄的受測版本。
 
 第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。
 
@@ -10,19 +10,19 @@
 
 ## 1. 解壓縮與啟動
 
-1. 從本專案 v0.7.0 Release 下載 `GITGUI-0.7.0-win-x64-portable.zip`。
+1. 從本專案 v0.7.1 Release 下載 `GITGUI-0.7.1-win-x64-portable.zip`。
 2. 在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。
 3. 開啟解壓縮資料夾，執行 **`GITGUI.vbs`**。請勿直接從 ZIP 內執行。
 4. 第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 `PortableGit\cmd\git.exe`。
 
 不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。
 
-預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 `GitGui.App.exe`；本次 1.5 秒冷啟動驗收使用 `GITGUI.vbs`，備用方式的啟動時間可能不同。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`、`PortableGit` 與其他隨附檔案。
+預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 `GitGui.App.exe`；v0.7.0 的 1.5 秒冷啟動驗收使用 `GITGUI.vbs`，備用方式的啟動時間可能不同。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`、`PortableGit` 與其他隨附檔案。
 
 若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 `SHA256SUMS.txt`；此版本未提供程式碼簽章。
 
 ```powershell
-Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.0-win-x64-portable.zip' -Algorithm SHA256
+Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.1-win-x64-portable.zip' -Algorithm SHA256
 ```
 
 上方 `C:\下載` 是範例，請換成實際下載位置。
@@ -38,7 +38,7 @@ Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.0-win-x64-portable.zip' -Algorit
 ## 3. 開啟、建立或複製倉庫
 
 - 已有本機倉庫：按「瀏覽」選擇工作目錄，或直接輸入路徑後按「開啟」。
-- 建立新倉庫：按「倉庫操作」，瀏覽或填寫專案資料夾，再按「初始化倉庫」；預設初始分支為 `main`。本機修改版也接受已有檔案的資料夾，並保留原檔案，詳見第 20.2 節。
+- 建立新倉庫：按「倉庫操作」，瀏覽或填寫專案資料夾，再按「初始化倉庫」；預設初始分支為 `main`。v0.7.1也接受已有檔案的資料夾，並保留原檔案，詳見第 20.2 節。
 - 從遠端複製：在「倉庫操作」選擇「Clone」，輸入 HTTPS、SSH 或本機倉庫來源，以及全新或空白的目的資料夾。
 
 首次寫入陌生倉庫前，程式會詢問是否信任，並列出可能執行外部程式的 hooks、filters、SSH 或憑證設定。確認來源後再同意。程式不會自動修改 `safe.directory`。
@@ -369,7 +369,7 @@ Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與
 
 **B. 專案資料夾已經有檔案，但還不是 Git 倉庫**
 
-本機修改版可以直接在 GUI 操作，不需要開啟 PowerShell：
+v0.7.1可以直接在 GUI 操作，不需要開啟 PowerShell：
 
 1. 按主畫面的「倉庫操作」。
 2. 在「目的資料夾」旁按「瀏覽…」，選擇原有的專案資料夾，例如 `C:\Projects\hello-backup`；也可直接填入路徑。
@@ -409,7 +409,7 @@ Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與
    ```
 
 3. 確認檔名不是 `.gitignore.txt`，且帳密、Token、私鑰或真實環境設定沒有出現在準備上傳的清單中。`.gitignore` 本身需要提交；它不會自動取消已追蹤檔案的追蹤。
-4. 本機修改版的新倉庫可在第 20.2 節的初始化視窗填寫姓名與電子郵件，之後直接使用 GUI 暫存與提交，無須開啟終端機。以下指令僅供舊倉庫尚未設定作者時使用；電子郵件可使用 GitHub 提供的 noreply 地址：
+4. v0.7.1的新倉庫可在第 20.2 節的初始化視窗填寫姓名與電子郵件，之後直接使用 GUI 暫存與提交，無須開啟終端機。以下指令僅供舊倉庫尚未設定作者時使用；電子郵件可使用 GitHub 提供的 noreply 地址：
 
    ```text
    git config --local user.name "你的姓名"
@@ -628,3 +628,4 @@ Windows 發布包為 x64。ARM 原生套件尚未正式發布；跨平台 CI 與
 GitHub 的空白倉庫與 HTTPS 驗證說明可參閱官方文件：[將本機程式碼加入 GitHub](https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github?platform=windows)、[遠端倉庫與 HTTPS 驗證](https://docs.github.com/en/get-started/git-basics/about-remote-repositories)。本範例的 GITGUI 按鈕與行為依本專案介面撰寫。
 
 相關文件：[M4 驗收](M4-ACCEPTANCE.md)、[M4 效能](M4-PERFORMANCE.md)、[M3 相容性](M3-COMPATIBILITY.md)、[ARM 決策](M3-ARM-DECISION.md)、[原始規格](specification.md)、[Windows 打包](WINDOWS-RELEASE.md)。Release：<https://github.com/linhercherng/GITGUI/releases>。
+

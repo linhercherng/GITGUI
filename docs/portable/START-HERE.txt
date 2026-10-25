@@ -3,6 +3,9 @@ GITGUI 0.1.0 — Windows x64 免安裝版
 1. 將整個 ZIP 解壓縮至有寫入權限的資料夾。
 2. 開啟 GITGUI.vbs。不要直接在壓縮檔內啟動。
 3. 使用「瀏覽」開啟 Git 倉庫，或使用「倉庫操作」建立／複製倉庫。
+   已有檔案但尚未初始化：在「倉庫操作」瀏覽原資料夾，首次使用填寫姓名／Email，
+   按「初始化倉庫」，再檢查檔案、按「全部暫存」、輸入訊息並「提交」。
+   原檔案與 .gitignore 會保留；姓名／Email 僅儲存於此倉庫，初始化不會上傳 GitHub。
 4. 「外觀配色」提供石墨深色、午夜藍、森林綠與霧白，選取後立即套用並記住。
 5. 「進階功能」提供 stash、互動式 rebase、cherry-pick/revert/reset、標籤、reflog、遠端管理、檔案歷史與 Blame。
 6. 進行中的 rebase/cherry-pick/revert 可在重新啟動後繼續、略過或中止；先在主畫面解決並暫存衝突。
@@ -24,7 +27,8 @@ GITGUI 0.1.0 — Windows x64 免安裝版
 支援 Windows x64；具體 Windows 版本限制見操作手冊與 docs/M4-ACCEPTANCE.md。
 不需要系統管理員權限，不修改系統 PATH。
 本版 GITGUI 執行檔未做 Authenticode 簽章。
-本版已通過 M4 正式效能驗收，原門檻未調整，詳見 docs/M4-PERFORMANCE.md。
+v0.7.1 完成 504 項 Windows 本機回歸與免安裝解壓／啟動檢查。
+M4 正式效能數據對應 v0.7.0 的受測版本，原門檻未調整，詳見 docs/M4-PERFORMANCE.md。
 預設啟動需要 Windows 內建 Windows Script Host；若環境不允許 VBS，
 可改用 GitGui.App.exe。1.5 秒冷啟動驗收使用 GITGUI.vbs，備用方式時間可能不同。
 請保留 GitGui.Host.dll、GitGui.App.r2r.dll 及所有隨附檔案。
@@ -41,3 +45,4 @@ Git 使用個人的 Git 設定、憑證與 SSH keys；首次 commit 需設定作
 發行頁：https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0
 GITGUI 採 MIT 授權（LICENSE）；第三方元件各自保留原授權。
 授權及相依元件來源：THIRD-PARTY.txt、licenses/、PortableGit/LICENSE.txt。
+

@@ -1,8 +1,22 @@
 # Windows x64 免安裝發行
 
-從 [v0.7.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0)
-下載 `GITGUI-0.7.0-win-x64-portable.zip`，完整解壓縮後開啟
+從 [v0.7.1 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.1)
+下載 `GITGUI-0.7.1-win-x64-portable.zip`，完整解壓縮後開啟
 `GITGUI.vbs`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+
+## v0.7.1：已有檔案資料夾初始化
+
+在「倉庫操作」瀏覽原資料夾，填寫可選的倉庫本機姓名／Email，按「初始化倉庫」，再檢查檔案、暫存與提交。保留原檔案與 `.gitignore`；既有倉庫、父倉庫與 bare 倉庫不會被重新初始化，Clone 保持空目錄限制。
+
+Windows 本機 Core 33、Engine 299、UI 172，共 504 項回歸通過；Engine／UI 使用內附 PortableGit 2.56.0.windows.3。UI 測試使用真正的 Avalonia headless 控制項、指標操作與真實 Git 後端。實際 ZIP 的 9,969 個檔案與建置輸出逐檔核對，另完成 apphost／native host 的 UTF-8 AskPass，以及隔離設定下的桌面啟動、繪製與結束檢查。
+
+程式來源為 `4fdfd9c8c9e74df2ebd0b358ff53766aec0bf763`，測試同步修正來源為 `2aae7297c549245df48aa65e17298d05855e2e1a`。發布時沿用已驗證的程式、Runtime、Portable Git、授權及圖片，只更新發行文件與新增 `release-info.json`；逐檔核對報告與最終 ZIP SHA-256 隨 Release 提供。`build-info.json` 保留真正二進位來源，不將文件提交冒稱為重新建置來源。
+
+手冊保留 21 章與 16 張標示截圖；第 20.2 節更新為完整 GUI 流程。舊圖未顯示 v0.7.1 新增欄位，文字已明確註記。Release 同時提供包含 HTML、Markdown、圖片與引用文件的獨立離線手冊 ZIP。
+
+此版完成的是功能回歸與套件檢查；未將 v0.7.0 的數據當成本版重新進行的正式效能驗收。先前系統 Git 2.54 與內附 Git 在舊 Windows 刪除模擬案例的結果差異，以及 UI 測試設定／清理的失敗紀錄，保留在驗證附件；最終選定的完整回歸沒有刪除案例或放寬斷言。
+
+## v0.7.0 正式效能驗收紀錄
 
 v0.7.0已通過M4正式效能驗收，原門檻未調整：首次啟動1,319.8566ms、五組捲動全部通過，產品UI工作最大13.9479ms，詳見 [效能結果](M4-PERFORMANCE.md)。
 

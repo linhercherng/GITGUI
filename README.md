@@ -10,7 +10,7 @@
 
 ## Windows 免安裝版
 
-從 [v0.7.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0) 下載 `GITGUI-0.7.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。M4 正式效能驗收已通過，原門檻保持不變：首次啟動 1,319.86ms、五組捲動均通過、單次產品 UI 工作最大 13.9479ms；詳見 [驗收表](docs/M4-ACCEPTANCE.md)。本版執行檔未簽章，支援OS限制見驗收說明。
+從 [v0.7.1 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.1) 下載 `GITGUI-0.7.1-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。v0.7.1 新增 GUI 初始化已有檔案資料夾與倉庫本機提交者設定，完成 504 項 Windows 本機回歸及解壓啟動檢查。v0.7.0 的 M4 正式效能驗收原門檻保持不變，其受測版本結果為：首次啟動 1,319.86ms、五組捲動均通過、單次產品 UI 工作最大 13.9479ms；詳見 [驗收表](docs/M4-ACCEPTANCE.md)。本版執行檔未簽章，支援OS限制見驗收說明。
 
 預設啟動使用 Windows Script Host；環境不允許 VBS 時，可改用 `GitGui.App.exe`，但備用方式不沿用 1.5 秒啟動驗收結果。
 
@@ -31,7 +31,7 @@ dotnet restore GitGui.sln --locked-mode
 dotnet run --project src/GitGui.App
 ```
 
-使用「瀏覽」與「開啟」載入本地倉庫；「倉庫操作」建立或 clone 到新／空目錄。首次寫入需要信任倉庫，對話框會列出可能執行程式的 Git 設定。
+使用「瀏覽」與「開啟」載入本地倉庫；「倉庫操作」可初始化已有檔案的資料夾，保留原檔案與 `.gitignore`，並可填寫只用於此倉庫的姓名／Email；clone 仍需要新／空目錄。首次寫入需要信任倉庫，對話框會列出可能執行程式的 Git 設定。
 
 ## Portable Git
 
@@ -124,3 +124,4 @@ dotnet test GitGui.sln -c Release
 - M4 使用 .NET 10 LTS，隨包附 .NET 10.0.13。Microsoft 目前支援的桌面平台為 Windows 11、指定 Windows 10 Enterprise/LTSC 版本、macOS 15+、Ubuntu 22.04+；原規格 macOS 13 已離開上游支援週期，不能宣稱完成其實機驗證。來源與相容性範圍見 [M4 驗收](docs/M4-ACCEPTANCE.md)。
 
 原始規格日期：2026-10-23，全文保存於 [specification.md](docs/specification.md)，未改寫原始內容。其他優先級見 [ROADMAP](docs/ROADMAP.md)。
+
