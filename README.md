@@ -124,4 +124,3 @@ dotnet test GitGui.sln -c Release
 - M4 使用 .NET 10 LTS，隨包附 .NET 10.0.13。Microsoft 目前支援的桌面平台為 Windows 11、指定 Windows 10 Enterprise/LTSC 版本、macOS 15+、Ubuntu 22.04+；原規格 macOS 13 已離開上游支援週期，不能宣稱完成其實機驗證。來源與相容性範圍見 [M4 驗收](docs/M4-ACCEPTANCE.md)。
 
 原始規格日期：2026-10-23，全文保存於 [specification.md](docs/specification.md)，未改寫原始內容。其他優先級見 [ROADMAP](docs/ROADMAP.md)。
-

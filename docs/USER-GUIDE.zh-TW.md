@@ -628,4 +628,3 @@ v0.7.1可以直接在 GUI 操作，不需要開啟 PowerShell：
 GitHub 的空白倉庫與 HTTPS 驗證說明可參閱官方文件：[將本機程式碼加入 GitHub](https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github?platform=windows)、[遠端倉庫與 HTTPS 驗證](https://docs.github.com/en/get-started/git-basics/about-remote-repositories)。本範例的 GITGUI 按鈕與行為依本專案介面撰寫。
 
 相關文件：[M4 驗收](M4-ACCEPTANCE.md)、[M4 效能](M4-PERFORMANCE.md)、[M3 相容性](M3-COMPATIBILITY.md)、[ARM 決策](M3-ARM-DECISION.md)、[原始規格](specification.md)、[Windows 打包](WINDOWS-RELEASE.md)。Release：<https://github.com/linhercherng/GITGUI/releases>。
-

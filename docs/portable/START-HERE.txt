@@ -45,4 +45,3 @@ Git 使用個人的 Git 設定、憑證與 SSH keys；首次 commit 需設定作
 發行頁：https://github.com/linhercherng/GITGUI/releases/tag/v0.1.0
 GITGUI 採 MIT 授權（LICENSE）；第三方元件各自保留原授權。
 授權及相依元件來源：THIRD-PARTY.txt、licenses/、PortableGit/LICENSE.txt。
-
