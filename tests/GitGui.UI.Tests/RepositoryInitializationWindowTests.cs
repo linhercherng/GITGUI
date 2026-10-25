@@ -88,14 +88,23 @@ public class RepositoryInitializationWindowTests
 
     private static async Task ClickAction(Window owner, Button button, MainWindowViewModel vm)
     {
+        owner.UpdateLayout(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
         await WaitForIdle(vm);
+        Assert.True(button.IsEffectivelyVisible && button.IsEffectivelyEnabled);
         var previous = vm.ActionCommand.ExecutionTask;
         var clicked = false;
         EventHandler<Avalonia.Interactivity.RoutedEventArgs> observedClick = (_, _) => clicked = true;
         button.Click += observedClick;
-        try { Click(owner, button); }
+        try
+        {
+            // The official peer performs the real button's Click/Command path without
+            // pumping render/refresh jobs between synthetic mouse down and mouse up.
+            var peer = Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(button);
+            Assert.IsAssignableFrom<Avalonia.Automation.Provider.IInvokeProvider>(peer).Invoke();
+        }
         finally { button.Click -= observedClick; }
-        Assert.True(clicked, $"Pointer input did not click {button.Name}/{button.Content}; busy={vm.IsBusy}");
+        Assert.True(clicked, $"Control invocation did not click {button.Name}/{button.Content}");
         await Task.Yield(); Dispatcher.UIThread.RunJobs();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         while (ReferenceEquals(previous, vm.ActionCommand.ExecutionTask))

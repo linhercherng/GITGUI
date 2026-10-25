@@ -8,7 +8,7 @@
 
 在「倉庫操作」瀏覽原資料夾，填寫可選的倉庫本機姓名／Email，按「初始化倉庫」，再檢查檔案、暫存與提交。保留原檔案與 `.gitignore`；既有倉庫、父倉庫與 bare 倉庫不會被重新初始化，Clone 保持空目錄限制。
 
-Windows 本機 Core 33、Engine 299、UI 172，共 504 項回歸通過；Engine／UI 使用內附 PortableGit 2.56.0.windows.3。UI 測試使用真正的 Avalonia headless 控制項、指標操作與真實 Git 後端。實際 ZIP 的 9,969 個檔案與建置輸出逐檔核對，另完成 apphost／native host 的 UTF-8 AskPass，以及隔離設定下的桌面啟動、繪製與結束檢查。
+Windows 本機 Core 33、Engine 299、UI 172，共 504 項回歸通過；Engine／UI 使用內附 PortableGit 2.56.0.windows.3。UI 測試使用真正的 Avalonia headless 控制項、按鈕的無障礙 Invoke 與真實 Git 後端；其他視窗測試也涵蓋指標／鍵盤操作。實際 ZIP 的 9,969 個檔案與建置輸出逐檔核對，另完成 apphost／native host 的 UTF-8 AskPass，以及隔離設定下的桌面啟動、繪製與結束檢查。
 
 程式來源為 `4fdfd9c8c9e74df2ebd0b358ff53766aec0bf763`，測試同步修正來源為 `2aae7297c549245df48aa65e17298d05855e2e1a`。發布時沿用已驗證的程式、Runtime、Portable Git、授權及圖片，只更新發行文件與新增 `release-info.json`；逐檔核對報告與最終 ZIP SHA-256 隨 Release 提供。`build-info.json` 保留真正二進位來源，不將文件提交冒稱為重新建置來源。
 
