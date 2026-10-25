@@ -399,19 +399,55 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         if (viewModel is null) return;
         var vm = viewModel;
         var dialog = CreateDialog(vm.L["RepositoryActions"], 620);
-        var path = new TextBox { Text = vm.RepositoryPath, Watermark = vm.L["Destination"] };
+        var path = new TextBox { Name = "RepositoryDestinationInput", Text = vm.RepositoryPath, Watermark = vm.L["Destination"] };
         var url = new TextBox { Text = vm.CloneUrl, Watermark = vm.L["Url"] };
+        var authorName = new TextBox { Name = "InitAuthorNameInput", Text = vm.InitAuthorName, Watermark = vm.L["InitAuthorName"] };
+        var authorEmail = new TextBox { Name = "InitAuthorEmailInput", Text = vm.InitAuthorEmail, Watermark = vm.L["InitAuthorEmail"] };
+        Avalonia.Automation.AutomationProperties.SetName(path, vm.L["Destination"]);
+        Avalonia.Automation.AutomationProperties.SetName(authorName, vm.L["InitAuthorName"]);
+        Avalonia.Automation.AutomationProperties.SetName(authorEmail, vm.L["InitAuthorEmail"]);
         var stack = new StackPanel { Spacing = 12, Margin = new Thickness(24) };
-        stack.Children.Add(Heading(vm.L["RepositoryActions"])); stack.Children.Add(Label(vm.L["Destination"])); stack.Children.Add(path); stack.Children.Add(Label(vm.L["Url"])); stack.Children.Add(url);
+        stack.Children.Add(Heading(vm.L["RepositoryActions"]));
+        stack.Children.Add(new TextBlock { Name = "InitializationHelp", Text = vm.L["InitializationHelp"], TextWrapping = TextWrapping.Wrap });
+        stack.Children.Add(Label(vm.L["Destination"]));
+        var destination = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
+        var browse = new ActionButton { Icon = "Open", Content = vm.L["Browse"], Name = "InitializationBrowseButton" };
+        browse.Click += async (_, _) =>
+        {
+            var folders = await dialog.StorageProvider.OpenFolderPickerAsync(new() { Title = vm.L["Destination"], AllowMultiple = false });
+            if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } selected) path.Text = selected;
+        };
+        destination.Children.Add(path); Grid.SetColumn(browse, 1); destination.Children.Add(browse); stack.Children.Add(destination);
+        stack.Children.Add(Label(vm.L["InitIdentityTitle"]));
+        var identity = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 12 };
+        var namePanel = new StackPanel { Spacing = 6 }; namePanel.Children.Add(Label(vm.L["InitAuthorName"])); namePanel.Children.Add(authorName);
+        var emailPanel = new StackPanel { Spacing = 6 }; emailPanel.Children.Add(Label(vm.L["InitAuthorEmail"])); emailPanel.Children.Add(authorEmail);
+        identity.Children.Add(namePanel); Grid.SetColumn(emailPanel, 1); identity.Children.Add(emailPanel); stack.Children.Add(identity);
+        stack.Children.Add(new TextBlock { Text = vm.L["InitIdentityHint"], TextWrapping = TextWrapping.Wrap, Opacity = .75 });
+        stack.Children.Add(Label(vm.L["Url"] + " · " + vm.L["Clone"])); stack.Children.Add(url);
+        var error = new TextBlock { Name = "InitializationError", IsVisible = false, TextWrapping = TextWrapping.Wrap };
+        AppearanceManager.Bind(error, TextBlock.ForegroundProperty, "WarningBrush"); stack.Children.Add(error);
         var buttons = new WrapPanel { Orientation = Orientation.Horizontal };
-        var init = new ActionButton { Icon = "Plus", Content = vm.L["Init"], Margin = new Thickness(0, 0, 8, 0) };
+        var init = new ActionButton { Name = "InitializeRepositoryButton", Icon = "Plus", Content = vm.L["Init"], Margin = new Thickness(0, 0, 8, 0) };
+        init.Classes.Add("primary");
         var clone = new ActionButton { Icon = "Repository", Content = vm.L["Clone"], Margin = new Thickness(0, 0, 8, 0) };
         var cancel = new ActionButton { Icon = "Close", Content = vm.L["Cancel"] };
-        init.Click += (_, _) => dialog.Close("Init"); clone.Click += (_, _) => dialog.Close("Clone"); cancel.Click += (_, _) => dialog.Close(null);
+        init.Click += (_, _) =>
+        {
+            if (string.IsNullOrWhiteSpace(authorName.Text) != string.IsNullOrWhiteSpace(authorEmail.Text))
+            {
+                error.Text = vm.L["InitIdentityRequired"]; error.IsVisible = true;
+                if (string.IsNullOrWhiteSpace(authorName.Text)) authorName.Focus(); else authorEmail.Focus();
+                return;
+            }
+            dialog.Close("Init");
+        };
+        clone.Click += (_, _) => dialog.Close("Clone"); cancel.Click += (_, _) => dialog.Close(null);
         buttons.Children.Add(init); buttons.Children.Add(clone); buttons.Children.Add(cancel); stack.Children.Add(buttons); dialog.Content = stack;
         var action = await dialog.ShowDialog<string?>(this);
         if (action is null) return;
         vm.RepositoryPath = path.Text ?? ""; vm.CloneUrl = url.Text ?? "";
+        if (action == "Init") { vm.InitAuthorName = authorName.Text ?? ""; vm.InitAuthorEmail = authorEmail.Text ?? ""; }
         await vm.ActionCommand.ExecuteAsync(action);
     }
 

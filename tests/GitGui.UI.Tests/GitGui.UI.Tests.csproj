@@ -10,6 +10,7 @@
     <Compile Include="../../src/GitGui.App/ScrollRenderEvidence.cs" Link="Probe/ScrollRenderEvidence.cs" />
     <Compile Include="../../src/GitGui.App/SurfaceInkMarker.cs" Link="Probe/SurfaceInkMarker.cs" />
     <ProjectReference Include="../../src/GitGui.UI/GitGui.UI.csproj" />
+    <ProjectReference Include="../../src/GitGui.Engine.Cli/GitGui.Engine.Cli.csproj" />
     <ProjectReference Include="../../src/GitGui.Controls/GitGui.Controls.csproj" />
     <PackageReference Include="Avalonia.Headless.XUnit" />
     <PackageReference Include="Avalonia.Skia" />

@@ -18,6 +18,8 @@ public sealed record GitOperation(GitAction Action)
     public string? Message { get; init; }
     public string? Remote { get; init; }
     public string? Url { get; init; }
+    public string? InitAuthorName { get; init; }
+    public string? InitAuthorEmail { get; init; }
     public string? Patch { get; init; }
     public string? SnapshotId { get; init; }
     public bool Amend { get; init; }

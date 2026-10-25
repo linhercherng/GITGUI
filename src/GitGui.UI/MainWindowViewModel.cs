@@ -63,6 +63,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string branchName = "";
     [ObservableProperty] private string newBranchName = "";
     [ObservableProperty] private string cloneUrl = "";
+    [ObservableProperty] private string initAuthorName = "";
+    [ObservableProperty] private string initAuthorEmail = "";
     [ObservableProperty] private string remoteName = "origin";
     [ObservableProperty] private string progressText = "";
     [ObservableProperty] private int progressPercent;
@@ -397,7 +399,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             case "Commit":
                 if (string.IsNullOrWhiteSpace(CommitMessage)) throw new InvalidOperationException(L["MessageRequired"]);
                 return new(GitAction.Commit) { Message = CommitMessage, Amend = Amend, SkipHooks = SkipHooks, Sign = SignCommit };
-            case "Init": return new(GitAction.Init);
+            case "Init": return new(GitAction.Init) { InitAuthorName = InitAuthorName, InitAuthorEmail = InitAuthorEmail };
             case "Clone": return new(GitAction.Clone) { Url = Require(CloneUrl, "UrlRequired") };
             case "CreateBranch": return new(GitAction.CreateBranch) { Name = Require(BranchName, "BranchRequired") };
             case "SwitchBranch": return new(GitAction.SwitchBranch) { Name = Require(BranchName, "BranchRequired") };

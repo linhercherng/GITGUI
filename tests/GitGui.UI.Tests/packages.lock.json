@@ -215,6 +215,12 @@
       "gitgui.core": {
         "type": "Project"
       },
+      "gitgui.engine.cli": {
+        "type": "Project",
+        "dependencies": {
+          "GitGui.Core": "[1.0.0, )"
+        }
+      },
       "gitgui.ui": {
         "type": "Project",
         "dependencies": {

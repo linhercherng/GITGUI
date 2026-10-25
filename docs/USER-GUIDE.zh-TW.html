@@ -15,7 +15,8 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 </style>
 <main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M4</div>
 <h1 id="gitgui">GITGUI 操作手冊</h1>
-<p>適用版本：0.7.0（M4 正式效能驗收通過，含操作截圖手冊）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。原規格的效能門檻保持不變，完整結果見 <a href="M4-PERFORMANCE.md">效能報告</a>，下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0">v0.7.0 Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#section-15">16. 中文訊息、路徑與換行設定</a></li><li><a href="#section-16">17. 狀態刷新與提交分頁</a></li><li><a href="#section-17">18. 錯誤建議與本機日誌</a></li><li><a href="#section-18">19. 常見問題與驗證範圍</a></li><li><a href="#section-19">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#section-20">21. 完整範例：專案修改後再次更新上傳</a></li></ol></nav>
+<p>適用版本：0.7.1（本機測試版，尚未發布）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 <a href="M4-PERFORMANCE.md">效能報告</a>，該版下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.7.0">v0.7.0 Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#section-0">1. 解壓縮與啟動</a></li><li><a href="#section-1">2. 畫面與外觀</a></li><li><a href="#section-2">3. 開啟、建立或複製倉庫</a></li><li><a href="#section-3">4. 修改、暫存與提交</a></li><li><a href="#section-4">5. 分支、同步與衝突</a></li><li><a href="#section-5">6. 快照復原與重做</a></li><li><a href="#section-6">7. 進階歷史操作</a></li><li><a href="#section-7">8. 內建終端機</a></li><li><a href="#section-8">9. 子模組（Submodules）</a></li><li><a href="#section-9">10. 工作樹（Worktrees）</a></li><li><a href="#section-10">11. Git LFS</a></li><li><a href="#section-11">12. 二分定位（Bisect）</a></li><li><a href="#section-12">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#section-13">14. 簽章提交與標籤</a></li><li><a href="#section-14">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#section-15">16. 中文訊息、路徑與換行設定</a></li><li><a href="#section-16">17. 狀態刷新與提交分頁</a></li><li><a href="#section-17">18. 錯誤建議與本機日誌</a></li><li><a href="#section-18">19. 常見問題與驗證範圍</a></li><li><a href="#section-19">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#section-20">21. 完整範例：專案修改後再次更新上傳</a></li></ol></nav>
+<p>本機修改版新增「已有檔案資料夾初始化」與初始化時的本機提交者設定，尚未更新 GitHub／Release。下列第 20.2 節說明此流程；v0.7.0 的舊截圖未顯示新增的姓名、電子郵件與瀏覽按鈕。既有正式效能數據仍僅對應報告中記錄的受測版本。</p>
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
 <p>第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。</p>
 <h2 id="section-0">1. 解壓縮與啟動</h2>
@@ -38,7 +39,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <h2 id="section-2">3. 開啟、建立或複製倉庫</h2>
 <ul>
 <li>已有本機倉庫：按「瀏覽」選擇工作目錄，或直接輸入路徑後按「開啟」。</li>
-<li>建立新倉庫：按「倉庫操作」，填寫全新或空白資料夾，再按「初始化倉庫」；預設初始分支為 <code>main</code>。已有檔案的資料夾請依第 20.2 節的方法處理。</li>
+<li>建立新倉庫：按「倉庫操作」，瀏覽或填寫專案資料夾，再按「初始化倉庫」；預設初始分支為 <code>main</code>。本機修改版也接受已有檔案的資料夾，並保留原檔案，詳見第 20.2 節。</li>
 <li>從遠端複製：在「倉庫操作」選擇「Clone」，輸入 HTTPS、SSH 或本機倉庫來源，以及全新或空白的目的資料夾。</li>
 </ul>
 <p>首次寫入陌生倉庫前，程式會詢問是否信任，並列出可能執行外部程式的 hooks、filters、SSH 或憑證設定。確認來源後再同意。程式不會自動修改 <code>safe.directory</code>。</p>
@@ -417,10 +418,15 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 </tbody>
 </table>
 <p><strong>B. 專案資料夾已經有檔案，但還不是 Git 倉庫</strong></p>
-<p>目前 GUI 的初始化會拒絕非空目錄。可以保留原資料夾，在外部 PowerShell 用選定的 Portable Git 初始化一次：</p>
-<pre><code class="language-powershell">&amp; 'C:\Tools\GITGUI\PortableGit\cmd\git.exe' -C 'C:\Projects\hello-backup' init --initial-branch=main
-</code></pre>
-<p>上面的 <code>C:\Tools\GITGUI</code> 是示意安裝位置，請換成你解壓縮 GITGUI 的實際位置；專案路徑也須存在。這個指令建立 <code>.git</code> 管理資料，不會清空原有專案檔案。執行後在 GITGUI 輸入該專案路徑，按「開啟」。</p>
+<p>本機修改版可以直接在 GUI 操作，不需要開啟 PowerShell：</p>
+<ol>
+<li>按主畫面的「倉庫操作」。</li>
+<li>在「目的資料夾」旁按「瀏覽…」，選擇原有的專案資料夾，例如 <code>C:\Projects\hello-backup</code>；也可直接填入路徑。</li>
+<li>第一次使用 Git 時，填寫「提交者姓名」與「提交者電子郵件」。兩欄只儲存在這個倉庫，不影響其他專案；若已有可用的 Git 身分設定，可兩欄都留空。</li>
+<li><strong>URL 留空</strong>，按「初始化倉庫」。程式只建立 <code>.git</code>，不改寫原檔案、<code>.gitignore</code>，也不會上傳或自動暫存。</li>
+<li>完成後主視窗會自動開啟這個倉庫，顯示原有檔案的變更。先依第 20.3 節檢查 <code>.gitignore</code>，再於第 20.4 節按「全部暫存」、輸入訊息並按「提交」。</li>
+</ol>
+<p>初始化不會建立遠端。完成上述步驟就有第一筆本機 Git 紀錄，日後有需要再設定遠端與 Push。若資料夾本身或父資料夾已有 Git 倉庫，程式會拒絕重新初始化，請直接開啟原倉庫。Clone 仍須使用全新或空白目錄。</p>
 <p><strong>C. 專案已經是 Git 倉庫</strong></p>
 <p>直接在 GITGUI 開啟原有資料夾，沿用既有歷史，不需要重新初始化。若現有分支叫 <code>master</code> 或其他名稱，後面步驟中的 <code>main</code> 請換成實際分支名稱。</p>
 <p>完成時應看到正確的倉庫路徑與目前分支；新初始化的倉庫是 <code>main</code>，尚未有提交是正常的。</p>
@@ -445,12 +451,12 @@ obj/
 </li>
 <li><p>確認檔名不是 <code>.gitignore.txt</code>，且帳密、Token、私鑰或真實環境設定沒有出現在準備上傳的清單中。<code>.gitignore</code> 本身需要提交；它不會自動取消已追蹤檔案的追蹤。</p>
 </li>
-<li><p>若這個倉庫尚未設定作者，開啟 GITGUI「終端機」，輸入以下兩行，換成自己的姓名與電子郵件；電子郵件可使用 GitHub 提供的 noreply 地址：</p>
+<li><p>本機修改版的新倉庫可在第 20.2 節的初始化視窗填寫姓名與電子郵件，之後直接使用 GUI 暫存與提交，無須開啟終端機。以下指令僅供舊倉庫尚未設定作者時使用；電子郵件可使用 GitHub 提供的 noreply 地址：</p>
 <pre><code class="language-text">git config --local user.name &quot;你的姓名&quot;
 git config --local user.email &quot;you@example.com&quot;
 </code></pre>
 </li>
-<li><p><strong>關閉終端機視窗</strong>後再繼續 GUI 操作。終端機開啟時會占用寫入佇列；若出現「信任此倉庫」，確認是自己的專案並閱讀設定後再同意。</p>
+<li><p>若有使用終端機，<strong>關閉終端機視窗</strong>後再繼續 GUI 操作。終端機開啟時會占用寫入佇列；若出現「信任此倉庫」，確認是自己的專案並閱讀設定後再同意。</p>
 </li>
 </ol>
 <p>作者姓名／電子郵件用於提交紀錄，與 GitHub 登入是兩件事。</p>

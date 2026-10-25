@@ -336,9 +336,33 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
 
     private async Task<OperationOutcome> CreateRepository(string destination, GitOperation op, IProgress<OperationProgress>? progress, CancellationToken ct)
     {
-        if (File.Exists(destination) || new DirectoryInfo(destination).LinkTarget is not null ||
-            Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
-            throw new InvalidOperationException("Choose a new or empty destination directory.");
+        if (File.Exists(destination) || new DirectoryInfo(destination).LinkTarget is not null)
+            throw new InvalidOperationException("請選擇一般資料夾 / Choose a directory that is not a file or symbolic link.");
+        if (op.Action == GitAction.Clone && Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
+            throw new InvalidOperationException("複製倉庫需要全新或空白資料夾 / Clone requires a new or empty destination directory.");
+        var authorName = op.InitAuthorName?.Trim() ?? "";
+        var authorEmail = op.InitAuthorEmail?.Trim() ?? "";
+        if (op.Action == GitAction.Init)
+        {
+            if ((authorName.Length == 0) != (authorEmail.Length == 0) ||
+                authorName.IndexOfAny(['\r', '\n', '\0', '<', '>']) >= 0 || authorEmail.IndexOfAny(['\r', '\n', '\0', '<', '>']) >= 0)
+                throw new InvalidOperationException("請同時填寫有效的提交者姓名與電子郵件，或兩者都留空 / Enter both author name and email on a single line, or leave both empty.");
+            // Refuse existing repositories, including unborn repos, gitfiles, broken links
+            // and inherited worktrees. Init must never rewrite their configuration/HEAD.
+            for (var directory = new DirectoryInfo(destination); directory is not null; directory = directory.Parent)
+            {
+                var marker = Path.Combine(directory.FullName, ".git");
+                if (File.Exists(marker) || Directory.Exists(marker) || new FileInfo(marker).LinkTarget is not null)
+                    throw new InvalidOperationException("此資料夾已屬於 Git 倉庫，請直接開啟原倉庫 / This folder already belongs to a Git repository; open the existing repository.");
+            }
+            if (Directory.Exists(destination))
+            {
+                var existing = await runner.RunAsync(destination, ["rev-parse", "--absolute-git-dir"], ct);
+                if (existing.ExitCode == 0)
+                    throw new InvalidOperationException("已存在 Git 倉庫，請直接開啟 / A Git repository already exists; open it instead.");
+                if (existing.ExitCode != 128) throw new GitCommandException(existing);
+            }
+        }
         var parent = Path.GetDirectoryName(destination) ?? throw new ArgumentException("Invalid destination.");
         Directory.CreateDirectory(parent);
         if (op.Action == GitAction.Init)
@@ -346,6 +370,11 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
             var name = op.Name ?? "main";
             await git.Text(parent, ct, "check-ref-format", "--branch", name);
             await RunWrite(parent, ["init", "--initial-branch=" + name, "--", destination], null, ct, progress);
+            if (authorName.Length > 0)
+            {
+                await RunWrite(destination, ["config", "--local", "--replace-all", "user.name", authorName], null, ct, progress);
+                await RunWrite(destination, ["config", "--local", "--replace-all", "user.email", authorEmail], null, ct, progress);
+            }
         }
         else
         {
