@@ -2243,6 +2243,492 @@
       ],
       "rawSHA256": "b1915ae31e6475a602d891637ff3c6267151d7d106e7a720b4bd5f1d4b19dcc2",
       "annotatedSHA256": "9dba1ac5ac4707ae260f588da748b4dd555e247f48a26a6271020ea471bc294d"
+    },
+    {
+      "name": "24-10-conflict-merge",
+      "source": "24-10-conflict-merge",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        250,
+        402
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            198,
+            29
+          ],
+          "marker": [
+            128,
+            145
+          ],
+          "action": "確認在 main 且工作區乾淨"
+        },
+        {
+          "rect": [
+            42,
+            377,
+            151,
+            34
+          ],
+          "marker": [
+            239,
+            390
+          ],
+          "action": "指定來源 feature/readme-update"
+        },
+        {
+          "rect": [
+            42,
+            459,
+            151,
+            36
+          ],
+          "marker": [
+            238,
+            477
+          ],
+          "action": "點合併分支；本次會發生內容衝突"
+        }
+      ],
+      "rawSHA256": "bc03e7eae3dd0171514821f93288cb34c61879baca7096c6964dd8568f97d54a",
+      "annotatedSHA256": "c6a9b802415e13fa5e356821d40a89a30cf40f6c42595b97ca773b21e3613a96"
+    },
+    {
+      "name": "24-11-conflict-detected",
+      "source": "24-11-conflict-detected",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        270,
+        212,
+        570,
+        277
+      ],
+      "points": [
+        {
+          "rect": [
+            281,
+            222,
+            406,
+            55
+          ],
+          "marker": [
+            767,
+            246
+          ],
+          "action": "確認 merge 請先解決衝突，合併尚未完成"
+        },
+        {
+          "rect": [
+            289,
+            389,
+            45,
+            27
+          ],
+          "marker": [
+            257,
+            401
+          ],
+          "action": "切到未暫存"
+        },
+        {
+          "rect": [
+            289,
+            426,
+            242,
+            45
+          ],
+          "marker": [
+            570,
+            448
+          ],
+          "action": "選取 U 狀態的 README.md"
+        }
+      ],
+      "rawSHA256": "67955bf3ced6ccf3a82d5e33fcfe90eaf7654fbf4f4779f991fb487b3dd93189",
+      "annotatedSHA256": "94573e733954bd9c7c3dc2f3910b73c2cb898c962c42f874c94f64de4863d4b1"
+    },
+    {
+      "name": "24-12-conflict-editor",
+      "source": "24-12-conflict-editor",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        1393,
+        289,
+        1138,
+        914
+      ],
+      "points": [
+        {
+          "rect": [
+            1623,
+            291,
+            55,
+            27
+          ],
+          "marker": [
+            1710,
+            303
+          ],
+          "action": "切到解決衝突頁籤"
+        },
+        {
+          "rect": [
+            1780,
+            367,
+            342,
+            81
+          ],
+          "marker": [
+            1985,
+            470
+          ],
+          "action": "OURS 是本次合併的 main 內容"
+        },
+        {
+          "rect": [
+            2156,
+            367,
+            342,
+            81
+          ],
+          "marker": [
+            2360,
+            470
+          ],
+          "action": "THEIRS 是傳入功能分支內容"
+        },
+        {
+          "rect": [
+            1405,
+            827,
+            760,
+            145
+          ],
+          "marker": [
+            2210,
+            912
+          ],
+          "action": "只在下方可編輯的合併結果整理內容，移除三種衝突標記"
+        }
+      ],
+      "rawSHA256": "1b05966a1cae1cfcaffc1c9d7e5066da492da09ceaaffceb984b0abc38e38a65",
+      "annotatedSHA256": "9fd3a43caf7891ebd8b05cc31e4cdc4e004f7008a134d6059e39bc93d97db7b9"
+    },
+    {
+      "name": "24-13-conflict-edited",
+      "source": "24-13-conflict-edited",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        1393,
+        820,
+        1138,
+        383
+      ],
+      "points": [
+        {
+          "rect": [
+            1405,
+            829,
+            760,
+            98
+          ],
+          "marker": [
+            2210,
+            881
+          ],
+          "action": "結果保留兩邊內容，且不再有衝突標記"
+        },
+        {
+          "rect": [
+            1405,
+            1162,
+            119,
+            35
+          ],
+          "marker": [
+            1379,
+            1179
+          ],
+          "action": "點儲存合併結果，尚未暫存或完成合併"
+        }
+      ],
+      "rawSHA256": "0de7c2d474e07dd797ac059c0a96a6fae56247515b6e6c5e2e53986b24a983e9",
+      "annotatedSHA256": "a8721dcaae9654fea7e47a827e5d8dfc9c50a06e2ea9ff76fad94d3e7c926faa"
+    },
+    {
+      "name": "24-14-conflict-save",
+      "source": "24-14-conflict-save",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        1393,
+        843,
+        1138,
+        401
+      ],
+      "points": [
+        {
+          "rect": [
+            1405,
+            848,
+            760,
+            98
+          ],
+          "marker": [
+            2210,
+            901
+          ],
+          "action": "確認已儲存的結果內容"
+        },
+        {
+          "rect": [
+            1532,
+            1202,
+            107,
+            35
+          ],
+          "marker": [
+            1586,
+            1258
+          ],
+          "action": "點標記已解決，將結果加入暫存區"
+        }
+      ],
+      "rawSHA256": "3d7c7ac3e8b818c48538bad20d01ec1f192507f6ffb5b33f47683374d3250827",
+      "annotatedSHA256": "3147f93144fcf2220f085307efc5e5b6dbc358d2e448dc72ba6f6ab6f2b606f9"
+    },
+    {
+      "name": "24-15-conflict-staged",
+      "source": "24-15-conflict-staged",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        270,
+        212,
+        570,
+        277
+      ],
+      "points": [
+        {
+          "rect": [
+            281,
+            222,
+            406,
+            55
+          ],
+          "marker": [
+            767,
+            246
+          ],
+          "action": "提示改為請完成提交或中止操作，仍在合併中"
+        },
+        {
+          "rect": [
+            347,
+            389,
+            41,
+            27
+          ],
+          "marker": [
+            420,
+            401
+          ],
+          "action": "切到已暫存"
+        },
+        {
+          "rect": [
+            289,
+            426,
+            242,
+            45
+          ],
+          "marker": [
+            570,
+            448
+          ],
+          "action": "核對 README.md 為已暫存 M，而不是未解決 U"
+        }
+      ],
+      "rawSHA256": "8e9ece7b6159192c1c0408e51aa1e29b719c548b23d567afd8f9cbab6ba2dc8c",
+      "annotatedSHA256": "59bbcca91ca56051b7bcbfdeead4cf6ef97262fc8c26ac729085ef9ab9fed0ce"
+    },
+    {
+      "name": "24-16-conflict-commit",
+      "source": "24-16-conflict-commit",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        270,
+        1015,
+        1080,
+        230
+      ],
+      "points": [
+        {
+          "rect": [
+            279,
+            1042,
+            1059,
+            91
+          ],
+          "marker": [
+            1364,
+            1085
+          ],
+          "action": "輸入合併 README 功能分支並解決衝突"
+        },
+        {
+          "rect": [
+            279,
+            1144,
+            329,
+            26
+          ],
+          "marker": [
+            651,
+            1157
+          ],
+          "action": "保持修改上一筆提交、略過 hooks、簽署提交未勾選"
+        },
+        {
+          "rect": [
+            279,
+            1180,
+            1059,
+            38
+          ],
+          "marker": [
+            1364,
+            1199
+          ],
+          "action": "點提交，完成正在進行的合併"
+        }
+      ],
+      "rawSHA256": "46c33fa137a9534aec95f6f752fedcb5094b1e743cb7af779d876f1e59de04ff",
+      "annotatedSHA256": "d5a397e056173be2c90a418f8943694a646798f238da642d43141090d535130d"
+    },
+    {
+      "name": "24-17-conflict-history",
+      "source": "24-17-conflict-history",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        1258,
+        591
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            198,
+            29
+          ],
+          "marker": [
+            279,
+            122
+          ],
+          "action": "確認目前 main、零變更、合併已結束"
+        },
+        {
+          "rect": [
+            279,
+            359,
+            438,
+            25
+          ],
+          "marker": [
+            744,
+            371
+          ],
+          "action": "在提交歷史選取新合併提交"
+        },
+        {
+          "rect": [
+            283,
+            366,
+            27,
+            80
+          ],
+          "marker": [
+            259,
+            412
+          ],
+          "action": "核對兩條歷史線已合流"
+        },
+        {
+          "rect": [
+            789,
+            349,
+            450,
+            37
+          ],
+          "marker": [
+            1047,
+            331
+          ],
+          "action": "核對合併提交完整 SHA"
+        }
+      ],
+      "rawSHA256": "728f07e8bd3bc2ac091a38db7017146027f1f4afece513a1887c62c05b3407e0",
+      "annotatedSHA256": "f59848afb0bcfb56d7b7828bd3e452a2aac6879f3969a683f3ba4b8c445973e2"
+    },
+    {
+      "name": "24-18-conflict-result",
+      "source": "24-18-conflict-result",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        767,
+        170,
+        486,
+        520
+      ],
+      "points": [
+        {
+          "rect": [
+            769,
+            172,
+            200,
+            26
+          ],
+          "marker": [
+            1015,
+            187
+          ],
+          "action": "確認是 README.md"
+        },
+        {
+          "rect": [
+            780,
+            296,
+            38,
+            29
+          ],
+          "marker": [
+            798,
+            276
+          ],
+          "action": "切到所選合併提交的差異"
+        },
+        {
+          "rect": [
+            798,
+            551,
+            389,
+            37
+          ],
+          "marker": [
+            1219,
+            571
+          ],
+          "action": "確認兩邊說明都保留；另開實際工作檔核對並執行專案檢查"
+        }
+      ],
+      "rawSHA256": "0034cd046836090b317930a58384e2718eefd2d9b564a759a0e1069f3a86c848",
+      "annotatedSHA256": "c214d926271ccb3c0dcc5d88adb3e11bd65afcfab41226f5a6f79e3baa364b88"
     }
   ],
   "restoreWalkthrough": {
@@ -2342,6 +2828,96 @@
         "readme": "# 本機分支與合併示範\r\n\r\n原本的主分支說明。\r\n\n新增功能分支的使用說明。\n",
         "status": null,
         "remotes": null
+      }
+    }
+  },
+  "conflictWalkthrough": {
+    "capturedOn": "2026-10-30",
+    "sourceCommit": "6b5701e5e39ce4de62308ce9f46cd3d007c2c60a",
+    "sourceUiTree": "d388864e76802565aa2ea85a22231cb021cb0887",
+    "method": "Native Windows @oai/sky captures, production MainWindow and real Git backend; only isolated launcher settings/path/title/initial size differ. Window maximized for conflict editing, restored for final checks. Raw captures retained; only vector callouts and crops added.",
+    "demo": {
+      "project": "C:\\GitGui-Guide-Conflict-4852f743\\hello-conflict",
+      "remote": "None; local only",
+      "mainBranch": "main",
+      "featureBranch": "feature/readme-update",
+      "baseCommit": "f7a95fd4db951ba5966634159685ac40f5171110",
+      "mainBeforeMerge": "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+      "featureCommit": "14e315bf777c176af7157e9a30dc68fa756810d7"
+    },
+    "verification": {
+      "afterConflict": {
+        "stage": "after-conflict",
+        "head": "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+        "main": "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+        "feature": "14e315bf777c176af7157e9a30dc68fa756810d7",
+        "currentBranch": "main",
+        "mergeHead": "14e315bf777c176af7157e9a30dc68fa756810d7",
+        "parents": [
+          "f7a95fd4db951ba5966634159685ac40f5171110"
+        ],
+        "commitCount": 3,
+        "unmerged": "100644 248895372992fb70febc857b6b6cae38a6a22908 1\tREADME.md\n100644 c3ad340f281d75f7c49c458062dc26ff09553b5e 2\tREADME.md\n100644 50e16139d37b1db87ba7afdce6ccc3c80f3b2389 3\tREADME.md",
+        "status": "UU README.md",
+        "staged": "U\tREADME.md",
+        "readme": "# 分支合併衝突示範\n\n<<<<<<< HEAD\n專案說明：主分支補上安裝方式。\n=======\n專案說明：功能分支新增使用步驟。\n>>>>>>> 14e315bf777c176af7157e9a30dc68fa756810d7\n",
+        "indexReadme": null,
+        "remotes": ""
+      },
+      "afterSave": {
+        "stage": "after-save",
+        "head": "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+        "main": "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+        "feature": "14e315bf777c176af7157e9a30dc68fa756810d7",
+        "currentBranch": "main",
+        "mergeHead": "14e315bf777c176af7157e9a30dc68fa756810d7",
+        "parents": [
+          "f7a95fd4db951ba5966634159685ac40f5171110"
+        ],
+        "commitCount": 3,
+        "unmerged": "100644 248895372992fb70febc857b6b6cae38a6a22908 1\tREADME.md\n100644 c3ad340f281d75f7c49c458062dc26ff09553b5e 2\tREADME.md\n100644 50e16139d37b1db87ba7afdce6ccc3c80f3b2389 3\tREADME.md",
+        "status": "UU README.md",
+        "staged": "U\tREADME.md",
+        "readme": "# 分支合併衝突示範\n\n專案說明：主分支補上安裝方式。\n專案說明：功能分支新增使用步驟。\n",
+        "indexReadme": null,
+        "remotes": ""
+      },
+      "afterMarkResolved": {
+        "stage": "after-mark-resolved",
+        "head": "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+        "main": "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+        "feature": "14e315bf777c176af7157e9a30dc68fa756810d7",
+        "currentBranch": "main",
+        "mergeHead": "14e315bf777c176af7157e9a30dc68fa756810d7",
+        "parents": [
+          "f7a95fd4db951ba5966634159685ac40f5171110"
+        ],
+        "commitCount": 3,
+        "unmerged": "",
+        "status": "M  README.md",
+        "staged": "M\tREADME.md",
+        "readme": "# 分支合併衝突示範\n\n專案說明：主分支補上安裝方式。\n專案說明：功能分支新增使用步驟。\n",
+        "indexReadme": "# 分支合併衝突示範\n\n專案說明：主分支補上安裝方式。\n專案說明：功能分支新增使用步驟。",
+        "remotes": ""
+      },
+      "afterMergeCommit": {
+        "stage": "after-merge-commit",
+        "head": "0b3b87e473684b4541bda52ee57b3ba3b0dec5b6",
+        "main": "0b3b87e473684b4541bda52ee57b3ba3b0dec5b6",
+        "feature": "14e315bf777c176af7157e9a30dc68fa756810d7",
+        "currentBranch": "main",
+        "mergeHead": null,
+        "parents": [
+          "a1217b99f8e1267475b94d3524b62a3c7ee834e7",
+          "14e315bf777c176af7157e9a30dc68fa756810d7"
+        ],
+        "commitCount": 4,
+        "unmerged": "",
+        "status": "",
+        "staged": "",
+        "readme": "# 分支合併衝突示範\n\n專案說明：主分支補上安裝方式。\n專案說明：功能分支新增使用步驟。\n",
+        "indexReadme": "# 分支合併衝突示範\n\n專案說明：主分支補上安裝方式。\n專案說明：功能分支新增使用步驟。",
+        "remotes": ""
       }
     }
   }

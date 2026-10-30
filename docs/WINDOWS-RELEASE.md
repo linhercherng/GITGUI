@@ -1,8 +1,18 @@
 # Windows x64 免安裝發行
 
-從 [v0.7.3 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.3)
-下載 `GITGUI-0.7.3-win-x64-portable.zip`，完整解壓縮後開啟
+從 [v0.7.4 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.4)
+下載 `GITGUI-0.7.4-win-x64-portable.zip`，完整解壓縮後開啟
 `GITGUI.vbs`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+
+## v0.7.4：合併衝突處理圖文手冊更新
+
+第 24.4 節新增 9 張實際 Windows 操作截圖，標示辨識 U 衝突、比較 BASE／OURS／THEIRS、編輯與儲存合併結果、標記已解決並暫存、檢查已暫存內容、提交及核對合流歷史。以獨立本機倉庫實際觸發衝突，由 GUI 完成處理；Git refs、未合併的暫存區階段、MERGE_HEAD、雙父合併提交與工作檔均另行核對。手冊清楚區分「儲存」「標記／暫存」「提交完成合併」，並保留單邊採用、中止與常見問題說明。
+
+全手冊共 24 章、44 張標示截圖，原有分支、一般合併、版本還原及 GitHub 備份／更新範例均保留。HTML、Markdown、圖片與引用文件隨主 ZIP 提供，另附獨立離線手冊 ZIP。
+
+以已驗證的 v0.7.3 ZIP 為基底，只更新 5 份手冊／發行中繼資料並新增 9 張標示圖。其餘程式、Runtime、完整 Portable Git、授權與原有圖片逐檔保持相同位元組。`build-info.json` 保留程式版本 0.7.1 與來源 `4fdfd9c8c9e74df2ebd0b358ff53766aec0bf763`；`release-info.json` 另記錄套件版本 0.7.4 與本次文件來源。
+
+發布前針對新的 ZIP 執行隔離套件功能、AskPass、apphost／一般 WScript 桌面啟閉及內附 Git 偵測測試，核對原生示範、離線圖片／連結及 SHA-256，結果隨 Release 提供。v0.7.1 的完整回歸與 v0.7.0 的 M4 數據保留原有歷史範圍，本版不把舊證據當作重新執行正式效能驗收。先前 Release 與附件保留，必要時可重新下載前版。
 
 ## v0.7.3：建立分支與合併回主分支圖文手冊更新
 
