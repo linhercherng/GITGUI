@@ -1,6 +1,8 @@
 # GITGUI 操作手冊
 
-適用版本：0.7.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 [效能報告](M4-PERFORMANCE.md)，v0.7.1 下載與校驗檔見 [Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.1)。
+適用版本：0.7.1；套件與手冊版本：0.7.2（程式功能相同）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 [效能報告](M4-PERFORMANCE.md)，v0.7.2 下載與校驗檔見 [Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.2)。
+
+v0.7.2 是圖文手冊更新套件，收錄本機提交、單檔／整個專案還原、分支與合併範例，以及第 23.4 節新增的 10 張還原操作截圖。程式、Runtime 與 Portable Git 沿用已驗證的 v0.7.1 檔案；`build-info.json` 保留真正程式建置版本與來源，`release-info.json` 記錄本次套件及文件來源。新套件的測試、逐檔校驗與 SHA-256 以本版 Release 附件為準。
 
 v0.7.1 新增「已有檔案資料夾初始化」與初始化時的本機提交者設定，通過 504 項 Windows 本機自動化回歸與解壓啟動檢查。下列第 20.2 節說明此流程；v0.7.0 的舊截圖未顯示新增的姓名、電子郵件與瀏覽按鈕。既有正式效能數據仍僅對應報告中記錄的受測版本。
 
@@ -14,7 +16,7 @@ v0.7.1 新增「已有檔案資料夾初始化」與初始化時的本機提交�
 
 ## 1. 解壓縮與啟動
 
-1. 從本專案 v0.7.1 Release 下載 `GITGUI-0.7.1-win-x64-portable.zip`。
+1. 從本專案 v0.7.2 Release 下載 `GITGUI-0.7.2-win-x64-portable.zip`。
 2. 在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。
 3. 開啟解壓縮資料夾，執行 **`GITGUI.vbs`**。請勿直接從 ZIP 內執行。
 4. 第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 `PortableGit\cmd\git.exe`。
@@ -26,7 +28,7 @@ v0.7.1 新增「已有檔案資料夾初始化」與初始化時的本機提交�
 若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 `SHA256SUMS.txt`；此版本未提供程式碼簽章。
 
 ```powershell
-Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.1-win-x64-portable.zip' -Algorithm SHA256
+Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.2-win-x64-portable.zip' -Algorithm SHA256
 ```
 
 上方 `C:\下載` 是範例，請換成實際下載位置。

@@ -1,8 +1,16 @@
 # Windows x64 免安裝發行
 
-從 [v0.7.1 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.1)
-下載 `GITGUI-0.7.1-win-x64-portable.zip`，完整解壓縮後開啟
+從 [v0.7.2 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.2)
+下載 `GITGUI-0.7.2-win-x64-portable.zip`，完整解壓縮後開啟
 `GITGUI.vbs`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+
+## v0.7.2：本機版本還原圖文手冊更新
+
+本版套件收錄 24 章操作手冊與 26 張標示截圖。第 22～24 章涵蓋本機提交與 GPG 錯誤、單檔／整個專案還原、分支建立與合併；第 23.4 節新增 10 張實際還原截圖，標示建立備用分支、選取目標 SHA、Hard Reset、確認執行、檢查還原結果及切回備用版本的點擊位置。HTML、Markdown、圖片與引用文件隨主程式 ZIP 提供，另附獨立離線手冊 ZIP。
+
+v0.7.2 沿用 v0.7.1 公開 ZIP 內的程式、.NET Runtime、完整 Portable Git 與原始授權檔案，不重新編譯或變更產品功能。逐檔核對只允許更新手冊、說明文件、發行中繼資料及新增 10 張標示圖片；`build-info.json` 仍記錄程式版本 0.7.1 與原始來源 `4fdfd9c8c9e74df2ebd0b358ff53766aec0bf763`，`release-info.json` 另記錄套件版本 0.7.2 與本次文件來源。
+
+發布前對新的 ZIP 執行隔離環境下的套件功能測試、AskPass 與桌面啟閉檢查，並檢查離線圖片、連結及 SHA-256；具體結果隨本版 Release 提供。v0.7.1 的 504 項完整回歸與 v0.7.0 的 M4 效能數據是歷史證據，不冒稱為 v0.7.2 重新執行的完整回歸或正式效能量測。舊版 Release 與 ZIP 保留，不覆寫同版附件。
 
 ## v0.7.1：已有檔案資料夾初始化
 
