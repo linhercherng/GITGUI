@@ -9,7 +9,8 @@ const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 
 async function main() {
   const manifest = JSON.parse(await fs.readFile(path.join(root, 'callouts.json'), 'utf8'));
-  for (const figure of manifest.figures) {
+  const figures = manifest.figures.filter(figure => figure.name.startsWith(process.argv[2] || ''));
+  for (const figure of figures) {
     const raw = await fs.readFile(path.join(root, 'raw', figure.source + '.png'));
     const metadata = await sharp(raw).metadata();
     const [left, top, width, height] = figure.crop || [0, 0, metadata.width, metadata.height];
@@ -38,6 +39,6 @@ async function main() {
     figure.annotatedSHA256 = hash(output);
   }
   await fs.writeFile(path.join(root, 'callouts.json'), JSON.stringify(manifest, null, 2) + '\n');
-  console.log(`Rendered ${manifest.figures.length} annotated screenshots.`);
+  console.log(`Rendered ${figures.length} annotated screenshots.`);
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

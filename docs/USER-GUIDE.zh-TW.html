@@ -20,6 +20,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
 <p>第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。</p>
 <p>只在本機管理版本，請看第 22 章；單檔／整個專案還原，請看第 23 章；建立分支、合併回主分支與處理衝突，請看第 24 章。這些操作都不需要先設定 Server 或 GitHub。</p>
+<p>第 23.4 節提供 10 張實際操作截圖與點擊標示，示範從第 5 版還原到第 2 版，以及如何從備用分支取回第 5 版。點擊圖片可開啟原尺寸查看。</p>
 <h2 id="guide-chapter-1">1. 解壓縮與啟動</h2>
 <ol>
 <li>從本專案 v0.7.1 Release 下載 <code>GITGUI-0.7.1-win-x64-portable.zip</code>。</li>
@@ -1008,14 +1009,209 @@ git config --local user.email &quot;you@example.com&quot;
 </ol>
 <p>路徑是相對專案根目錄的路徑，例如 <code>docs/說明.txt</code>，請保留雙引號。本指令會覆蓋該工作檔，且不自動暫存；若指定來源中沒有該已追蹤路徑，Git 可能移除它以符合來源。重新命名過的檔案應先核對來源版本中的實際路徑。終端機指令不會自動建立 GITGUI 復原快照，執行前應自行保存需要的內容。</p>
 <h3 id="reset-hard">23.4 整個專案回到舊提交（Reset Hard）</h3>
-<p>只有確定要讓整個目前分支回到舊版時才使用；只想取回單檔請用第 23.3 節。</p>
-<ol>
-<li>將未提交的內容先提交或另行備份，確認「未暫存」「已暫存」都沒有待保存變更。</li>
-<li>依第 24.1 節在目前最新提交建立一條備用分支，例如 <code>backup/before-reset</code>；建立後保持原分支，不切換到備用分支。這只保留提交歷史，不會保存未提交內容。</li>
-<li>從「提交歷史」取得目標舊提交的完整 SHA。</li>
-<li>按「進階功能」→「提交操作」，填入 SHA，選擇 <code>Hard（替換工作檔）</code> 模式，按「執行 Reset」，讀完確認視窗後再確認。</li>
-<li>核對目前分支的最新提交與已追蹤檔案已回到目標版本。需要找回先前最新提交時，可切換到剛才的備用分支。</li>
-</ol>
+<p>只有確定要讓整個目前分支回到舊版時才使用；只想取回單檔請用第 23.3 節。本節全程不需要遠端，也不使用終端機。</p>
+<p><strong>示範情境：</strong> <code>main</code> 已有第 1～5 版，現在要回到第 2 版。先建立 <code>backup/before-restore</code> 保留第 5 版，再將 <code>main</code> 還原到第 2 版；最後示範切回備用分支取回第 5 版。</p>
+<p>以下圖片於 2026-10-30 以本專案實際主視窗、進階視窗及真實 Git 後端操作獨立示範倉庫拍攝；僅隔離啟動設定、示範資料與視窗尺寸／標題，沒有模擬後端。圖片只加上編號、框線與裁切。圖中的路徑、作者與 SHA 都屬於示範資料，請改用自己的專案與目標版本。</p>
+<h4 id="section-28">23.4.1 先保存修改，確認目前版本</h4>
+<p>將需要保留的修改先提交或另行備份，確認「未暫存」「已暫存」都沒有待保存變更。<strong>只有暫存仍不算保存成歷史版本。</strong></p>
+<p><strong>圖 23-A：核對專案、main 與乾淨的工作區。</strong></p>
+<p><a href="images/walkthrough/23-01-clean.png"><img src="images/walkthrough/23-01-clean.png" alt="專案路徑、main 與零變更、未暫存及已暫存頁籤、重新整理位置" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>核對是要還原的原專案資料夾，不要另選一個空資料夾初始化。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>確認目前分支是 <code>main</code>，且顯示 <code>0 檔案變更</code>；本例目前有 5 筆提交。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>分別點「未暫存」「已暫存」，確認沒有尚待保存的修改。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>有外部編輯或狀態不確定時，按「重新整理」再核對。</td>
+</tr>
+</tbody>
+</table>
+<h4 id="section-29">23.4.2 建立備用分支，保留第 5 版</h4>
+<p><strong>圖 23-B：只建立備用分支，暫時不要切換。</strong></p>
+<p><a href="images/walkthrough/23-02-backup.png"><img src="images/walkthrough/23-02-backup.png" alt="確認 main、輸入 backup before restore 與建立分支按鈕" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>確認頂端仍是 <code>main</code>，此時指向第 5 版。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>展開左側「分支操作」，在「分支名稱 / 合併來源」輸入 <code>backup/before-restore</code>。若同名分支已存在，請換一個新的備用名稱。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>按「建立」，等待成功。<strong>不要按旁邊的「切換」</strong>，接下來要還原的仍是 <code>main</code>。</td>
+</tr>
+</tbody>
+</table>
+<p>備用分支會保留目前已提交的版本與歷史，不會保存未提交的工作檔修改。完成後才繼續下一步。</p>
+<h4 id="sha">23.4.3 選取要還原的第 2 版，取得 SHA</h4>
+<p><strong>圖 23-C：在歷史中選擇目標版本，再開啟進階功能。</strong></p>
+<p><a href="images/walkthrough/23-03-target.png"><img src="images/walkthrough/23-03-target.png" alt="提交歷史頁籤、第 2 版提交、完整 SHA 與進階功能按鈕" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>點「提交歷史」。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>點要取回的提交；本例是 <code>第 2 版：本機還原示範</code>。只選取它不會立刻還原工作檔。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>右側「提交詳情」顯示完整 SHA，可選取 SHA 文字後按 Ctrl+C 複製。本例目標為 <code>c9805165dc9f4184fa612d1a122252d60a9541b2</code>；<strong>請使用自己專案的實際 SHA</strong>。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>點「進階功能」。</td>
+</tr>
+</tbody>
+</table>
+<h4 id="hard-reset">23.4.4 選擇 Hard，核對後執行 Reset</h4>
+<p><strong>圖 23-D：展開模式選單，選擇 Hard。</strong></p>
+<p><a href="images/walkthrough/23-04-mode.png"><img src="images/walkthrough/23-04-mode.png" alt="提交操作頁籤、目標 SHA 欄位、Reset 模式選單與 Hard 選項" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>在進階視窗點「提交操作」。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>將完整 SHA 貼到「目標版本 / Commit SHA」。若已自動帶入剛才選取的提交，仍需核對。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>展開 Reset 模式選單；預設可能是 Mixed，不要直接執行。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>選擇 <code>Hard（替換工作檔）</code>，才會讓暫存區與已追蹤工作檔一起回到目標版本。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>圖 23-E：再次核對目標與模式，按執行 Reset。</strong></p>
+<p><a href="images/walkthrough/23-05-reset.png"><img src="images/walkthrough/23-05-reset.png" alt="完整目標 SHA、Hard 已選取及執行 Reset 按鈕" /></a></p>
+<p>圖中 <strong>1</strong> 核對完整 SHA；<strong>2</strong> 確認模式顯示 <code>Hard（替換工作檔）</code>；<strong>3</strong> 點「執行 Reset」。本流程不要按上方的 Cherry-pick 或 Revert，它們的用途不同。</p>
+<h4 id="section-30">23.4.5 閱讀確認視窗，等待完成</h4>
+<p><strong>圖 23-F：核對即將替換的檔案與目前分支將退出的提交。</strong></p>
+<p><a href="images/walkthrough/23-06-confirm.png"><img src="images/walkthrough/23-06-confirm.png" alt="Reset 確認視窗中的檔案、將退出的提交與確認執行按鈕" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>核對會替換的檔案；本例為 <code>README.md</code> 與 <code>settings.json</code>。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>核對 <code>main</code> 將退出的提交；本例列出第 3、4、5 版。它們仍由剛才建立的備用分支保留。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>確認目前修改已妥善保存、備用分支已建立且目標正確後，按「確認執行」。若有疑慮，按「取消」。</td>
+</tr>
+</tbody>
+</table>
+<p>GITGUI 執行前會建立安全快照，但備用分支與獨立檔案備份仍應先做好。等待本次操作結束，不要連續重複按 Reset。</p>
+<p><strong>圖 23-G：看到完成訊息後，關閉進階視窗。</strong></p>
+<p><a href="images/walkthrough/23-07-completed.png"><img src="images/walkthrough/23-07-completed.png" alt="Reset 完成狀態與關閉進階視窗按鈕" /></a></p>
+<p>圖中 <strong>1</strong> 等待出現「已完成 · Reset 完成」；<strong>2</strong> 按「關閉」回到主畫面。如果顯示錯誤，應先讀取指令輸出並處理原因，不能只因確認視窗消失就當作還原成功。</p>
+<h4 id="main-2">23.4.6 核對 main 與工作檔已回到第 2 版</h4>
+<p>**圖 23-H：回到主畫面核對目前分支與目標提交。**為了同時看見兩條分支，本圖已收合左側「分支操作」。</p>
+<p><a href="images/walkthrough/23-08-restored.png"><img src="images/walkthrough/23-08-restored.png" alt="main 目前分支、備用分支仍存在、第 2 版提交與完整 SHA" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>確認目前仍在 <code>main</code>，工作區沒有待保存修改。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>可收合「分支操作」檢查清單；<code>main</code> 與 <code>backup/before-restore</code> 都還在。</td>
+</tr>
+<tr>
+<td>3、4</td>
+<td>選取目標第 2 版，核對「提交詳情」的 SHA 與步驟 23.4.3 相同。<strong>選取歷史只是查閱</strong>，還要依下方方式檢查工作檔與分支指向。</td>
+</tr>
+</tbody>
+</table>
+<p>接著用原本的編輯器開啟專案工作檔，確認內容確實回到目標版本。本例實際核對 <code>README.md</code> 顯示 <code>這是第 2 版。</code>，<code>settings.json</code> 的 <code>version</code> 為 <code>2</code>；<code>main</code> 也已指向第 2 版 SHA。</p>
+<p>因為備用分支仍保留第 3～5 版，提交歷史仍可能顯示 5 筆，<strong>這不代表還原失敗，也不需要刪掉那些提交</strong>。應核對目前分支、工作檔內容與目標 SHA；若要額外查閱指向，可開「進階功能」→「標籤與 Reflog」查看本機 HEAD 移動紀錄。</p>
+<p>還原後可以直接在 <code>main</code> 修改、暫存並提交，從第 2 版繼續發展；原來的第 5 版仍保存在備用分支。</p>
+<h4 id="section-31">23.4.7 想取回原來第 5 版時，切換備用分支</h4>
+<p>先將當前需要保留的修改提交或另行備份，確認工作區乾淨，再展開左側「分支操作」。</p>
+<p><strong>圖 23-I：輸入既有備用分支，按切換。</strong></p>
+<p><a href="images/walkthrough/23-09-switch-back.png"><img src="images/walkthrough/23-09-switch-back.png" alt="輸入 backup before restore 與切換分支按鈕" /></a></p>
+<p>圖中 <strong>1</strong> 在「分支名稱 / 合併來源」輸入 <code>backup/before-restore</code>；<strong>2</strong> 按「切換」。這條分支已存在，不必再次按「建立」，也不要按「合併分支」。</p>
+<p><strong>圖 23-J：確認已切回保留第 5 版的分支。</strong></p>
+<p><a href="images/walkthrough/23-10-backup-verified.png"><img src="images/walkthrough/23-10-backup-verified.png" alt="目前備用分支、第 5 版提交與完整 SHA 的核對位置" /></a></p>
+<table>
+<thead>
+<tr>
+<th>圖中編號</th>
+<th>要做的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>確認頂端目前分支已變成 <code>backup/before-restore</code>。</td>
+</tr>
+<tr>
+<td>2、3</td>
+<td>點第 5 版，核對完整 SHA；本例是 <code>3a2cfa266491c21891b92442d5a76696a8327012</code>。再開啟工作檔，本例 README 與設定值均已回到第 5 版。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>切換備用分支不會把 <code>main</code> 一起改回第 5 版。</strong> 本例最後是 <code>main</code> 保留第 2 版、<code>backup/before-restore</code> 保留第 5 版；需要哪一條版本線，就在保存目前修改後切換過去。</p>
 <p>Reset Hard 會移動目前分支，替換暫存區與已追蹤工作檔，可能移除阻擋寫入的未追蹤資料；它不等於清空所有未追蹤／忽略檔案後再做完整資料夾備份還原。若分支已分享或推送，優先考慮 Revert；本機 Reset 不會自動修改伺服器，也不要接著為了對齊而直接強制推送。</p>
 <p>Git 官方說明：<a href="https://git-scm.com/docs/git-restore">Restore</a>、<a href="https://git-scm.com/docs/git-revert">Revert</a>、<a href="https://git-scm.com/docs/git-reset">Reset</a>。</p>
 <h2 id="guide-chapter-24">24. 完整範例：建立分支並合併回主分支</h2>
@@ -1030,7 +1226,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>確認頂端目前分支已變成 <code>feature/readme-update</code>，才開始編輯檔案。</li>
 </ol>
 <p>也可單擊左側既有分支來填入欄位，再按「切換」。單擊選取分支與實際切換是不同動作，請以頂端目前分支為準。</p>
-<h3 id="section-29">24.2 在新分支修改、暫存與提交</h3>
+<h3 id="section-33">24.2 在新分支修改、暫存與提交</h3>
 <ol>
 <li>在編輯器開啟專案的 <code>README.md</code>，加入一行 <code>新增功能分支的使用說明。</code>，並儲存。</li>
 <li>回到 GITGUI 按「重新整理」，再次確認目前分支是 <code>feature/readme-update</code>。</li>
@@ -1079,7 +1275,7 @@ git config --local user.email &quot;you@example.com&quot;
 合併完成後：A ── B  (main、feature/readme-update)
 </code></pre>
 <p>合併只變更目前接收分支，來源分支不會自動刪除，也不會自動與之永久同步。之後來源分支新增提交，仍需再次合併。Git 官方的方向與 fast-forward 說明見 <a href="https://git-scm.com/docs/git-merge">Merge 文件</a>。</p>
-<h3 id="section-30">24.4 合併遇到衝突時怎麼做</h3>
+<h3 id="section-34">24.4 合併遇到衝突時怎麼做</h3>
 <p>如果 <code>main</code> 與功能分支修改了同一段內容，Git 可能要求人工決定。此時保持在 <code>main</code>，不要重新初始化，也不要用 Reset Hard 當作解決衝突。</p>
 <ol>
 <li>在變更清單選取衝突檔案，查看右側衝突內容。<strong>本章的一般合併中，ours 是目前接收的 <code>main</code>，theirs 是來源 <code>feature/readme-update</code>。</strong> Rebase 的含義可能不同，勿直接套用。</li>
@@ -1090,7 +1286,7 @@ git config --local user.email &quot;you@example.com&quot;
 </ol>
 <p>若確定要整檔採其中一邊，可使用「採用 ours」或「採用 theirs」，檢查內容後再「標記已解決」；這會捨去另一邊在該檔案的內容。二進位檔無法以文字編輯合併，需挑選正確版本或使用合適外部工具。</p>
 <p>若暫時不想合併，使用「進階功能」中的「中止操作」或主畫面的「中止合併」，回到合併前狀態。合併開始後另外新增的編輯，應先另行保存；不要假設中止會保留它們。</p>
-<h3 id="section-31">24.5 合併成功後，保留或刪除功能分支</h3>
+<h3 id="section-35">24.5 合併成功後，保留或刪除功能分支</h3>
 <ol>
 <li>合併成功後可以保留功能分支，繼續查閱；刪除不是必要步驟。</li>
 <li>若要刪除，先確認目前在 <code>main</code>，功能提交已納入且工作區乾淨。</li>
@@ -1098,7 +1294,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>如果提示尚未合併，先檢查分支與歷史，不要直接改勾強制刪除。正常刪除已合併的本機分支，<code>main</code> 中已納入的提交與檔案仍保留。</li>
 </ol>
 <p>以上只處理本機分支。若之後要上傳已合併結果，確認目前分支是 <code>main</code>，依第 21.3 節檢查遠端再 Push；刪除本機功能分支不會同時刪除遠端分支。</p>
-<h3 id="section-32">24.6 分支操作常見問題</h3>
+<h3 id="section-36">24.6 分支操作常見問題</h3>
 <table>
 <thead>
 <tr>

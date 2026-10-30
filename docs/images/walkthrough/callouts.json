@@ -1113,6 +1113,632 @@
       ],
       "rawSHA256": "961693ddee1fad05de0beca94f04bef441bf11c715b5fcff800350766452e642",
       "annotatedSHA256": "058b0ad54989467c9d2b7561b48b97b0a53685349065b91bbe8edcc9c6c00c31"
+    },
+    {
+      "name": "23-01-clean",
+      "source": "23-01-clean",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        0,
+        30,
+        1282,
+        739
+      ],
+      "points": [
+        {
+          "rect": [
+            180,
+            48,
+            554,
+            34
+          ],
+          "marker": [
+            630,
+            34
+          ],
+          "action": "確認原專案路徑"
+        },
+        {
+          "rect": [
+            42,
+            106,
+            198,
+            30
+          ],
+          "marker": [
+            279,
+            122
+          ],
+          "action": "確認 main、0 檔案變更與目前 5 筆提交"
+        },
+        {
+          "rect": [
+            281,
+            329,
+            112,
+            30
+          ],
+          "marker": [
+            440,
+            344
+          ],
+          "action": "檢查未暫存與已暫存都沒有待保存內容"
+        },
+        {
+          "rect": [
+            1164,
+            713,
+            92,
+            35
+          ],
+          "marker": [
+            1200,
+            682
+          ],
+          "action": "必要時點擊重新整理"
+        }
+      ],
+      "rawSHA256": "a676f851eba38389f0847b27e0c85149dc5310ec88343c1135d9a3fe72f8dd99",
+      "annotatedSHA256": "7c7ba11e212e3a175b9237f3b8bb57b0b53b7bd3863d7de7a53be8234799c621"
+    },
+    {
+      "name": "23-02-backup",
+      "source": "23-02-backup",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        250,
+        400
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            46,
+            29
+          ],
+          "marker": [
+            128,
+            145
+          ],
+          "action": "確認仍在要還原的 main 分支"
+        },
+        {
+          "rect": [
+            42,
+            376,
+            151,
+            36
+          ],
+          "marker": [
+            239,
+            395
+          ],
+          "action": "填入 backup/before-restore"
+        },
+        {
+          "rect": [
+            43,
+            417,
+            70,
+            35
+          ],
+          "marker": [
+            22,
+            434
+          ],
+          "action": "只按建立，不按切換"
+        }
+      ],
+      "rawSHA256": "b50be1b03ba1f3f53a54973956066c0def9684c84dc62214e9036ad1b3b00ad8",
+      "annotatedSHA256": "370eb6d4c3c1229e9816b4d0f6590c442f1918676831edaeb059a87b560f498d"
+    },
+    {
+      "name": "23-03-target",
+      "source": "23-03-target",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        251,
+        99,
+        1019,
+        584
+      ],
+      "points": [
+        {
+          "rect": [
+            330,
+            175,
+            61,
+            31
+          ],
+          "marker": [
+            434,
+            189
+          ],
+          "action": "點擊提交歷史"
+        },
+        {
+          "rect": [
+            279,
+            431,
+            438,
+            25
+          ],
+          "marker": [
+            744,
+            443
+          ],
+          "action": "點選要還原的第 2 版"
+        },
+        {
+          "rect": [
+            789,
+            349,
+            450,
+            37
+          ],
+          "marker": [
+            1047,
+            331
+          ],
+          "action": "從提交詳情複製完整 SHA"
+        },
+        {
+          "rect": [
+            970,
+            104,
+            94,
+            36
+          ],
+          "marker": [
+            927,
+            122
+          ],
+          "action": "點擊進階功能"
+        }
+      ],
+      "rawSHA256": "2ffdd835e44f3eb0999755e39f0eb3c4cef4600f427442652aa9da67b95591bf",
+      "annotatedSHA256": "2fea2e8b29c843a70c894a5474ea17bb443399b10ef405979f326e7a874cf90d"
+    },
+    {
+      "name": "23-04-mode",
+      "source": "23-04-mode",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        18,
+        129,
+        1086,
+        362
+      ],
+      "points": [
+        {
+          "rect": [
+            194,
+            132,
+            55,
+            39
+          ],
+          "marker": [
+            285,
+            149
+          ],
+          "action": "點擊提交操作頁籤"
+        },
+        {
+          "rect": [
+            39,
+            238,
+            1044,
+            34
+          ],
+          "marker": [
+            1051,
+            210
+          ],
+          "action": "貼上或核對目標 SHA"
+        },
+        {
+          "rect": [
+            39,
+            350,
+            1044,
+            33
+          ],
+          "marker": [
+            1048,
+            327
+          ],
+          "action": "展開 Reset 模式"
+        },
+        {
+          "rect": [
+            40,
+            448,
+            1040,
+            30
+          ],
+          "marker": [
+            1090,
+            460
+          ],
+          "action": "選擇 Hard（替換工作檔）"
+        }
+      ],
+      "rawSHA256": "687ee9a897a080472ccc9c0a37f2eba491ff1b1b80330540044f029a8fdac627",
+      "annotatedSHA256": "018f9729f1ae3d00b7bd0ef03c6f73ce4290ca464751a3f1260a2cadaedb0e09"
+    },
+    {
+      "name": "23-05-reset",
+      "source": "23-05-reset",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        18,
+        183,
+        1086,
+        263
+      ],
+      "points": [
+        {
+          "rect": [
+            39,
+            238,
+            1044,
+            34
+          ],
+          "marker": [
+            1051,
+            214
+          ],
+          "action": "再次核對完整目標 SHA"
+        },
+        {
+          "rect": [
+            39,
+            350,
+            1044,
+            33
+          ],
+          "marker": [
+            1048,
+            327
+          ],
+          "action": "確認模式已是 Hard"
+        },
+        {
+          "rect": [
+            39,
+            390,
+            103,
+            36
+          ],
+          "marker": [
+            194,
+            408
+          ],
+          "action": "點擊執行 Reset"
+        }
+      ],
+      "rawSHA256": "8af7c7c86c04e5fb45f4af47dfc704ddad68f7bb77c7a6d56273c284ec00fa20",
+      "annotatedSHA256": "ca07bb7bbf3b60eefd1429e65bb6e2117b2243a88493fda36776ed4fed125679"
+    },
+    {
+      "name": "23-06-confirm",
+      "source": "23-06-confirm",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        0,
+        0,
+        662,
+        408
+      ],
+      "points": [
+        {
+          "rect": [
+            23,
+            195,
+            180,
+            54
+          ],
+          "marker": [
+            235,
+            218
+          ],
+          "action": "核對將替換的檔案"
+        },
+        {
+          "rect": [
+            23,
+            264,
+            286,
+            70
+          ],
+          "marker": [
+            353,
+            288
+          ],
+          "action": "核對 main 將退出的第 3 至第 5 版提交"
+        },
+        {
+          "rect": [
+            541,
+            348,
+            98,
+            36
+          ],
+          "marker": [
+            587,
+            319
+          ],
+          "action": "確認備份與目標正確後，點擊確認執行"
+        }
+      ],
+      "rawSHA256": "38de7215035e77d0bfe84a6c19c6f4dd86f57fd8f0103f55c18e19b29609b681",
+      "annotatedSHA256": "dce6733f8b976ae39b5614522cc2c190761de5deb02b2aeab009fc8963545405"
+    },
+    {
+      "name": "23-07-completed",
+      "source": "23-07-completed",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        10,
+        772,
+        1102,
+        69
+      ],
+      "points": [
+        {
+          "rect": [
+            18,
+            790,
+            415,
+            31
+          ],
+          "marker": [
+            505,
+            807
+          ],
+          "action": "等待已完成與 Reset 完成訊息"
+        },
+        {
+          "rect": [
+            1023,
+            792,
+            74,
+            36
+          ],
+          "marker": [
+            1060,
+            775
+          ],
+          "action": "點擊關閉返回主畫面"
+        }
+      ],
+      "rawSHA256": "93b54b51826e4ccc49515775a1d24f054095ad15cfa4747e2002d5b6083f1cd1",
+      "annotatedSHA256": "335fa79316d14d4cb36f9bd2ee40c2ca4786b4ad1208fd6649e133f538566fa5"
+    },
+    {
+      "name": "23-08-restored",
+      "source": "23-08-restored",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        1258,
+        591
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            198,
+            30
+          ],
+          "marker": [
+            279,
+            122
+          ],
+          "action": "確認目前仍在 main"
+        },
+        {
+          "rect": [
+            25,
+            271,
+            202,
+            115
+          ],
+          "marker": [
+            251,
+            306
+          ],
+          "action": "收合分支操作後，確認 main 與 backup 分支都存在"
+        },
+        {
+          "rect": [
+            279,
+            431,
+            438,
+            25
+          ],
+          "marker": [
+            744,
+            443
+          ],
+          "action": "核對目標第 2 版提交"
+        },
+        {
+          "rect": [
+            789,
+            349,
+            450,
+            37
+          ],
+          "marker": [
+            1047,
+            331
+          ],
+          "action": "核對第 2 版完整 SHA"
+        }
+      ],
+      "rawSHA256": "ab0063efdf43a7a8c0aafec364d33be0521d38b5a4938e81b080e7e3b85a5286",
+      "annotatedSHA256": "8e7eaa5eacc71c9ab6b21a2399340384ecd648fc3f2e037b70432987a0b21343"
+    },
+    {
+      "name": "23-09-switch-back",
+      "source": "23-09-switch-back",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        26,
+        334,
+        213,
+        132
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            377,
+            151,
+            34
+          ],
+          "marker": [
+            213,
+            389
+          ],
+          "action": "要取回第 5 版時，填入既有 backup/before-restore"
+        },
+        {
+          "rect": [
+            117,
+            417,
+            75,
+            36
+          ],
+          "marker": [
+            214,
+            439
+          ],
+          "action": "點擊切換，不是建立或合併"
+        }
+      ],
+      "rawSHA256": "a2eb4e9e075879f0c234d7ccde4da00deb1c21e1c63c82a2e5d71e6f4037f767",
+      "annotatedSHA256": "642466a15c352649b1574b4a6ce9cacc9c6842a73890872a51dc67704fc795c9"
+    },
+    {
+      "name": "23-10-backup-verified",
+      "source": "23-10-backup-verified",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        1258,
+        591
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            157,
+            29
+          ],
+          "marker": [
+            230,
+            153
+          ],
+          "action": "確認目前分支為 backup/before-restore"
+        },
+        {
+          "rect": [
+            279,
+            359,
+            438,
+            25
+          ],
+          "marker": [
+            744,
+            371
+          ],
+          "action": "點選保留下來的第 5 版"
+        },
+        {
+          "rect": [
+            789,
+            349,
+            450,
+            37
+          ],
+          "marker": [
+            1047,
+            331
+          ],
+          "action": "核對第 5 版完整 SHA"
+        }
+      ],
+      "rawSHA256": "012c2cbdec0518447cf4cae915844c66143e026654a9ecd41ed1dec8be70964d",
+      "annotatedSHA256": "fcc2715f2cc652c987eff5d0bf956ef91aa11cbd7acc60214da01d8ceb295319"
     }
-  ]
+  ],
+  "restoreWalkthrough": {
+    "capturedOn": "2026-10-30",
+    "sourceCommit": "3eabd4559c9c0d9791c19ba3f9d5134532a4129a",
+    "sourceUiTree": "d388864e76802565aa2ea85a22231cb021cb0887",
+    "method": "Native Windows screenshots via @oai/sky of production MainWindow, AdvancedWindow and real Git engine in an isolated tutorial launcher. Only numbered vector callouts and crops are applied; raw captures are retained.",
+    "demo": {
+      "project": "C:\\GitGui-Guide-Restore-185987c9\\local-notes",
+      "remote": "None; local-only demonstration",
+      "versions": [
+        {
+          "version": 1,
+          "sha": "d3db0124bf9e5807adb836f55bab361f57796172"
+        },
+        {
+          "version": 2,
+          "sha": "c9805165dc9f4184fa612d1a122252d60a9541b2"
+        },
+        {
+          "version": 3,
+          "sha": "c3185b08d764bd63d1be20c10ae5c5ed29e47bc8"
+        },
+        {
+          "version": 4,
+          "sha": "0464cc9a3d6d123e1620c2f6d927f62ece32442b"
+        },
+        {
+          "version": 5,
+          "sha": "3a2cfa266491c21891b92442d5a76696a8327012"
+        }
+      ],
+      "backupBranch": "backup/before-restore",
+      "restoredBranch": "main",
+      "restoredVersion": 2,
+      "backupVersion": 5
+    },
+    "verification": {
+      "guiCreatedBackup": true,
+      "guiResetHard": true,
+      "guiSwitchBack": true,
+      "afterReset": {
+        "stage": "after-gui-reset",
+        "main": "c9805165dc9f4184fa612d1a122252d60a9541b2",
+        "backup": "3a2cfa266491c21891b92442d5a76696a8327012",
+        "currentBranch": "main",
+        "worktreeMatchesVersion": 2,
+        "readme": "# 本機版本還原示範\r\n\r\n這是第 2 版。\r\n",
+        "remote": null,
+        "status": null
+      },
+      "afterSwitchBack": {
+        "stage": "after-gui-switch-back",
+        "currentBranch": "backup/before-restore",
+        "head": "3a2cfa266491c21891b92442d5a76696a8327012",
+        "main": "c9805165dc9f4184fa612d1a122252d60a9541b2",
+        "worktreeMatchesVersion": 5,
+        "readme": "# 本機版本還原示範\r\n\r\n這是第 5 版。\r\n",
+        "status": null
+      }
+    }
+  }
 }
