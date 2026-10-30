@@ -1,8 +1,16 @@
 # Windows x64 免安裝發行
 
-從 [v0.7.2 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.2)
-下載 `GITGUI-0.7.2-win-x64-portable.zip`，完整解壓縮後開啟
+從 [v0.7.3 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.3)
+下載 `GITGUI-0.7.3-win-x64-portable.zip`，完整解壓縮後開啟
 `GITGUI.vbs`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+
+## v0.7.3：建立分支與合併回主分支圖文手冊更新
+
+本版套件收錄 24 章操作手冊與 35 張標示截圖。第 24.1～24.3 節新增 9 張實際 Windows 主視窗截圖，依序標示建立分支、另外切換到功能分支、檢查與暫存修改、提交、切回 main、指定功能分支為合併來源，以及核對合併後的提交 SHA 與檔案差異；第 23.4 節的 10 張還原截圖全部保留。本次示範是本機、無衝突的 fast-forward 合併，真實 Git refs 與工作檔均核對，沒有新增 GitHub 示範倉庫。衝突處理仍見第 24.4 節文字說明。另附可離線閱讀的獨立手冊 ZIP。
+
+以已驗證的 v0.7.2 ZIP 為基底，只更新 5 份手冊／發行中繼資料並新增 9 張標示圖片，其餘程式、Runtime、完整 Portable Git、授權及原有圖片全部逐檔保持相同位元組。`build-info.json` 保留程式版本 0.7.1 與原始來源 `4fdfd9c8c9e74df2ebd0b358ff53766aec0bf763`；`release-info.json` 另記錄套件版本 0.7.3 與本次文件來源。
+
+發布前對本次 ZIP 執行隔離套件功能測試、AskPass、apphost 與一般 WScript 桌面啟閉檢查，並檢查原生示範、離線圖檔、連結及 SHA-256；結果隨本版 Release 提供。v0.7.1 的 504 項完整回歸與 v0.7.0 的 M4 效能數據保留原本歷史範圍，本版不冒稱重新執行完整回歸或正式效能量測。先前 Release 與同版附件均保留。
 
 ## v0.7.2：本機版本還原圖文手冊更新
 

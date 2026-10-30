@@ -1,6 +1,8 @@
 # GITGUI 操作手冊
 
-適用版本：0.7.1；套件與手冊版本：0.7.2（程式功能相同）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 [效能報告](M4-PERFORMANCE.md)，v0.7.2 下載與校驗檔見 [Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.2)。
+適用版本：0.7.1；套件與手冊版本：0.7.3（程式功能相同）。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。已發布的 0.7.0 通過 M4 正式效能驗收，完整結果見 [效能報告](M4-PERFORMANCE.md)，v0.7.3 下載與校驗檔見 [Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.3)。
+
+v0.7.3 新增第 24 章建立分支、提交與合併回 main 的 9 張實際操作截圖；全手冊共 24 章、35 張標示截圖，保留第 23.4 節的 10 張還原截圖。程式、Runtime、Portable Git 與授權沿用已驗證版本，只更新手冊、圖片與發行說明；本版 ZIP 的測試及 SHA-256 見 Release 附件。
 
 v0.7.2 是圖文手冊更新套件，收錄本機提交、單檔／整個專案還原、分支與合併範例，以及第 23.4 節新增的 10 張還原操作截圖。程式、Runtime 與 Portable Git 沿用已驗證的 v0.7.1 檔案；`build-info.json` 保留真正程式建置版本與來源，`release-info.json` 記錄本次套件及文件來源。新套件的測試、逐檔校驗與 SHA-256 以本版 Release 附件為準。
 
@@ -16,7 +18,7 @@ v0.7.1 新增「已有檔案資料夾初始化」與初始化時的本機提交�
 
 ## 1. 解壓縮與啟動
 
-1. 從本專案 v0.7.2 Release 下載 `GITGUI-0.7.2-win-x64-portable.zip`。
+1. 從本專案 v0.7.3 Release 下載 `GITGUI-0.7.3-win-x64-portable.zip`。
 2. 在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。
 3. 開啟解壓縮資料夾，執行 **`GITGUI.vbs`**。請勿直接從 ZIP 內執行。
 4. 第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 `PortableGit\cmd\git.exe`。
@@ -28,7 +30,7 @@ v0.7.1 新增「已有檔案資料夾初始化」與初始化時的本機提交�
 若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 `SHA256SUMS.txt`；此版本未提供程式碼簽章。
 
 ```powershell
-Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.2-win-x64-portable.zip' -Algorithm SHA256
+Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.3-win-x64-portable.zip' -Algorithm SHA256
 ```
 
 上方 `C:\下載` 是範例，請換成實際下載位置。
@@ -889,6 +891,8 @@ Git 官方說明：[Restore](https://git-scm.com/docs/git-restore)、[Revert](ht
 
 本章全程可在本機完成。**先有至少一筆成功提交，再建立分支；只有暫存但未提交，還沒有可作為分支起點的版本。**
 
+第 24.1～24.3 節的 9 張圖於 2026-10-30 使用本專案實際主視窗與真實 Git 後端，在獨立示範倉庫拍攝；僅隔離啟動設定、資料與視窗尺寸／標題，沒有模擬後端。圖片只加編號、框線與裁切，可點擊放大。本組示範正常、無衝突的 fast-forward 合併；若遇到衝突請看第 24.4 節。圖中的路徑、提交者與 SHA 都是示範資料。
+
 ### 24.1 從 main 建立並切換到新分支
 
 1. 開啟專案，確認頂端目前分支是 `main`，且工作區與暫存區乾淨。若不是 `main`，先在左側「分支名稱 / 合併來源」輸入 `main`，按「切換」。
@@ -896,6 +900,22 @@ Git 官方說明：[Restore](https://git-scm.com/docs/git-restore)、[Revert](ht
 3. 按「建立」（滑鼠提示為「建立分支」）。新分支從目前 `main` 的最新提交開始。
 4. **建立不會自動切換。** 保持欄位為 `feature/readme-update`，再按「切換」。
 5. 確認頂端目前分支已變成 `feature/readme-update`，才開始編輯檔案。
+
+**圖 24-A：從乾淨的 main 建立功能分支。**
+
+[![核對 main 與乾淨狀態、填寫功能分支名稱及建立按鈕](images/walkthrough/24-01-create.png)](images/walkthrough/24-01-create.png)
+
+| 圖中編號 | 要做的事 |
+| --- | --- |
+| 1 | 確認頂端是 `main`、`0 檔案變更`，且至少有一筆成功提交。本例目前只有初始版本。 |
+| 2 | 在左側「分支名稱 / 合併來源」輸入 `feature/readme-update`；同名已存在時可直接使用既有分支，或改用另一個名稱。 |
+| 3 | 點「建立」，等待完成；這一步建立新分支，但不會自動切換。 |
+
+**圖 24-B：建立後仍在 main，接著必須切換。**
+
+[![建立後仍在 main、欄位保持功能分支名稱與切換按鈕](images/walkthrough/24-02-switch-feature.png)](images/walkthrough/24-02-switch-feature.png)
+
+圖中 **1** 頂端仍是 `main`；**2** 欄位保持 `feature/readme-update`；**3** 點「切換」。等待完成後，頂端必須顯示 `feature/readme-update`，才進行下一節的編輯。此時不必按「合併分支」。
 
 也可單擊左側既有分支來填入欄位，再按「切換」。單擊選取分支與實際切換是不同動作，請以頂端目前分支為準。
 
@@ -906,6 +926,34 @@ Git 官方說明：[Restore](https://git-scm.com/docs/git-restore)、[Revert](ht
 3. 在「未暫存」選取 `README.md` 檢查差異，按「暫存選取」。
 4. 到「已暫存」確認內容，輸入 `補上 README 使用說明`，保持「修改上一筆提交」未勾選，按「提交」。
 5. 確認成功且工作區乾淨。此時新提交屬於功能分支；`main` 尚未加入這筆修改。
+
+**圖 24-C：核對目前分支、檢查差異，再暫存選取檔案。**本圖已用編輯器保存示範修改。
+
+[![目前功能分支、未暫存頁籤、選取 README、綠色新增文字與暫存選取按鈕](images/walkthrough/24-03-review-stage.png)](images/walkthrough/24-03-review-stage.png)
+
+| 圖中編號 | 要做的事 |
+| --- | --- |
+| 1 | 確認頂端是 `feature/readme-update`；如果仍是 `main`，先完成切換再編輯。 |
+| 2、3 | 在「工作區」→「未暫存」選 `README.md`；沒有出現修改時，先確認編輯器已儲存，再按「重新整理」。 |
+| 4 | 核對綠色新增行是 `新增功能分支的使用說明。`，沒有混入不想提交的修改。 |
+| 5 | 點「暫存選取」，不要誤按旁邊的捨棄變更。 |
+
+**圖 24-D：核對已暫存內容，建立功能分支的新提交。**
+
+[![已暫存 README、提交訊息、保持未勾選的提交選項及提交按鈕](images/walkthrough/24-04-commit.png)](images/walkthrough/24-04-commit.png)
+
+| 圖中編號 | 要做的事 |
+| --- | --- |
+| 1、2 | 切到「已暫存」，核對 `README.md` 與右側差異。 |
+| 3 | 輸入新訊息 `補上 README 使用說明`。 |
+| 4 | 本範例保持「修改上一筆提交」「此次略過 hooks」「簽署提交」未勾選；簽章設定問題依第 22.4 節處理。 |
+| 5 | 點「提交」，等待成功後再切換分支。 |
+
+**圖 24-E：確認新提交確實保存在功能分支。**
+
+[![功能分支與乾淨狀態、新提交及完整 SHA 的核對位置](images/walkthrough/24-05-feature-history.png)](images/walkthrough/24-05-feature-history.png)
+
+圖中 **1** 確認目前仍在功能分支且工作區乾淨；**2** 到「提交歷史」點新提交；**3** 在「提交詳情」核對完整 SHA。本例功能提交是 `7466d0c2d299a733781d8abe0be98078a8514c2d`。此時 `main` 仍指向初始版本；下一節才把這筆修改合併過去。
 
 分支隔離的是提交歷史；尚未提交的工作區修改不會因建立分支就自動被隔離保存。GITGUI 會阻擋帶著已追蹤檔案的未提交修改直接切換／合併；請先提交，或依第 7 章使用 Stash 保存。未追蹤或忽略檔案也可能造成覆蓋衝突，請妥善保存。
 
@@ -924,6 +972,40 @@ Git 官方說明：[Restore](https://git-scm.com/docs/git-restore)、[Revert](ht
 4. 將同一欄位改為 `feature/readme-update`，保持頂端目前分支為 `main`，按「合併分支」。**這一步不要再按「切換」。**
 5. 等待完成，重新整理，確認仍在 `main`，開啟 `README.md` 檢查新增說明，並在歷史中確認功能提交已納入 `main`。
 6. 若是 fast-forward，`main` 直接推進至功能分支提交，不會多出一筆合併提交；若兩邊都有各自的新提交且可自動整合，通常會產生合併提交。若出現衝突，依下一節處理；不要當作已完成。
+
+**圖 24-F：先切回接收變更的 main。**
+
+[![目前功能分支、改填 main 與切換按鈕](images/walkthrough/24-06-switch-main.png)](images/walkthrough/24-06-switch-main.png)
+
+圖中 **1** 顯示此時還在功能分支；**2** 將欄位改填 `main`；**3** 點「切換」，等待頂端確實變為 `main`。本例切回後，工作資料夾的 README 暫時回到原本的主分支內容，功能提交仍保存在功能分支，並沒有遺失。
+
+**圖 24-G：保持目前分支為 main，指定功能分支為合併來源。**
+
+[![目前 main、來源 feature readme update 與合併分支按鈕](images/walkthrough/24-07-merge-source.png)](images/walkthrough/24-07-merge-source.png)
+
+| 圖中編號 | 要做的事 |
+| --- | --- |
+| 1 | 確認頂端目前分支已是 `main`，工作區乾淨。 |
+| 2 | 將「分支名稱 / 合併來源」改填 `feature/readme-update`。這時只是指定來源，不是切換目前分支。 |
+| 3 | 點「合併分支」，**不要按「切換」**。等待操作結束；若回報衝突或錯誤，依提示處理，不能當作已合併成功。 |
+
+**圖 24-H：核對 main 已納入功能提交，來源分支也仍保留。**本圖已收合「分支操作」，方便看見兩條分支。
+
+[![main 與乾淨狀態、兩條分支、新提交及相同完整 SHA 的核對位置](images/walkthrough/24-08-merged-history.png)](images/walkthrough/24-08-merged-history.png)
+
+| 圖中編號 | 要做的事 |
+| --- | --- |
+| 1 | 確認目前分支仍是 `main`，且 `0 檔案變更`。 |
+| 2 | `main` 與 `feature/readme-update` 都仍存在；單擊分支只是選取，切換時仍要用「切換」。 |
+| 3、4 | 選取新提交，核對完整 SHA 與圖 24-E 相同。此範例是 fast-forward，只有原先的兩筆提交，沒有額外的 merge 提交。 |
+
+**圖 24-I：核對納入的差異，最後檢查實際工作檔。**
+
+[![所選功能提交、README 檔名、差異頁籤與新增使用說明的位置](images/walkthrough/24-09-merged-diff.png)](images/walkthrough/24-09-merged-diff.png)
+
+圖中 **1** 選功能提交，**2** 確認檔案為 `README.md`，**3** 切到「差異」，**4** 核對新增說明。這裡顯示所選提交的差異；另用編輯器開啟工作資料夾的 README，確認也已包含 `新增功能分支的使用說明。`。只是在歷史中看得到提交，不能取代檢查目前分支及工作檔。
+
+本組實際操作另外以 Git 核對：合併前 `main` 保留初始 SHA `4ff4d65b34092bccafd36b1202930245a91c8aaf`，合併後 `main` 與功能分支都指向 `7466d0c2d299a733781d8abe0be98078a8514c2d`，工作區乾淨、README 已加入示範文字，且沒有設定任何遠端。實際使用時請核對自己的提交 SHA。
 
 簡單情境的版本線如下；字母代表提交，不是檔案名稱：
 

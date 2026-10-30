@@ -1679,6 +1679,570 @@
       ],
       "rawSHA256": "012c2cbdec0518447cf4cae915844c66143e026654a9ecd41ed1dec8be70964d",
       "annotatedSHA256": "fcc2715f2cc652c987eff5d0bf956ef91aa11cbd7acc60214da01d8ceb295319"
+    },
+    {
+      "name": "24-01-create",
+      "source": "24-01-create",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        250,
+        400
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            198,
+            30
+          ],
+          "marker": [
+            128,
+            145
+          ],
+          "action": "確認 main、工作區乾淨且已有初始提交"
+        },
+        {
+          "rect": [
+            42,
+            377,
+            151,
+            34
+          ],
+          "marker": [
+            239,
+            390
+          ],
+          "action": "輸入 feature/readme-update"
+        },
+        {
+          "rect": [
+            43,
+            417,
+            70,
+            35
+          ],
+          "marker": [
+            22,
+            434
+          ],
+          "action": "點擊建立，尚未切換分支"
+        }
+      ],
+      "rawSHA256": "d880cc60eb30646c951f897814e9fe4decff4d044e5e0f2ba214bc0f1ff520ba",
+      "annotatedSHA256": "069ed6b3aa453f2c33bf210989a52abfde4f2ed8a4d19e290a573a9410076e50"
+    },
+    {
+      "name": "24-02-switch-feature",
+      "source": "24-02-switch-feature",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        250,
+        400
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            46,
+            29
+          ],
+          "marker": [
+            128,
+            145
+          ],
+          "action": "建立後頂端仍是 main"
+        },
+        {
+          "rect": [
+            42,
+            377,
+            151,
+            34
+          ],
+          "marker": [
+            239,
+            390
+          ],
+          "action": "欄位保持 feature/readme-update"
+        },
+        {
+          "rect": [
+            117,
+            417,
+            75,
+            36
+          ],
+          "marker": [
+            236,
+            438
+          ],
+          "action": "再點切換，才進入功能分支"
+        }
+      ],
+      "rawSHA256": "da1cf3ca3a58a0b33768313e1e1a9f9173bc4f53a664bc22559969b8223e6c62",
+      "annotatedSHA256": "8844dfb39989384c33d347c6a5d8a7b7f1c8fd9c1aedeabaffb989eeadad178f"
+    },
+    {
+      "name": "24-03-review-stage",
+      "source": "24-03-review-stage",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        1258,
+        591
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            157,
+            29
+          ],
+          "marker": [
+            231,
+            153
+          ],
+          "action": "確認目前分支為 feature/readme-update"
+        },
+        {
+          "rect": [
+            282,
+            329,
+            53,
+            29
+          ],
+          "marker": [
+            437,
+            343
+          ],
+          "action": "點未暫存"
+        },
+        {
+          "rect": [
+            290,
+            370,
+            416,
+            44
+          ],
+          "marker": [
+            741,
+            391
+          ],
+          "action": "選取 README.md"
+        },
+        {
+          "rect": [
+            795,
+            535,
+            370,
+            22
+          ],
+          "marker": [
+            1199,
+            548
+          ],
+          "action": "核對新增文字"
+        },
+        {
+          "rect": [
+            279,
+            237,
+            94,
+            34
+          ],
+          "marker": [
+            325,
+            216
+          ],
+          "action": "點暫存選取"
+        }
+      ],
+      "rawSHA256": "a53be0b6a4d7ab6cb0b0d992280814d3b0ab22367140b35399939cb7993177c7",
+      "annotatedSHA256": "fc927ce34ba64ae87151baefd90b119c8676e1b0650cadbf3aa6fb33bf4d5dae"
+    },
+    {
+      "name": "24-04-commit",
+      "source": "24-04-commit",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        251,
+        315,
+        1019,
+        372
+      ],
+      "points": [
+        {
+          "rect": [
+            340,
+            329,
+            61,
+            29
+          ],
+          "marker": [
+            441,
+            343
+          ],
+          "action": "切到已暫存"
+        },
+        {
+          "rect": [
+            291,
+            370,
+            415,
+            43
+          ],
+          "marker": [
+            739,
+            391
+          ],
+          "action": "核對已暫存 README"
+        },
+        {
+          "rect": [
+            280,
+            481,
+            436,
+            91
+          ],
+          "marker": [
+            743,
+            524
+          ],
+          "action": "填入新的提交訊息"
+        },
+        {
+          "rect": [
+            279,
+            584,
+            337,
+            27
+          ],
+          "marker": [
+            651,
+            596
+          ],
+          "action": "保持修改上一筆、略過 hooks 與簽署提交未勾選"
+        },
+        {
+          "rect": [
+            279,
+            619,
+            437,
+            38
+          ],
+          "marker": [
+            741,
+            639
+          ],
+          "action": "點提交"
+        }
+      ],
+      "rawSHA256": "2426afe57a531fa95791b8d6582fede56f1bb2a08c49b98030422b4c5f728c09",
+      "annotatedSHA256": "cba0b8a894a12d0219e7788f0200c5b222d01b9a4160e6a521f1a7a066b951f8"
+    },
+    {
+      "name": "24-05-feature-history",
+      "source": "24-05-feature-history",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        1258,
+        591
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            157,
+            29
+          ],
+          "marker": [
+            231,
+            153
+          ],
+          "action": "目前仍在功能分支且工作區乾淨"
+        },
+        {
+          "rect": [
+            279,
+            359,
+            438,
+            25
+          ],
+          "marker": [
+            744,
+            371
+          ],
+          "action": "提交歷史選取新提交"
+        },
+        {
+          "rect": [
+            789,
+            349,
+            450,
+            37
+          ],
+          "marker": [
+            1047,
+            331
+          ],
+          "action": "記下功能提交完整 SHA"
+        }
+      ],
+      "rawSHA256": "b13babb3d7213defc99ca4e8dd4cbfebee52ed7ad53afbb7de49f4b553527d23",
+      "annotatedSHA256": "7b3c025fa8f37d446c484f2569d7fa19b52f72a964eee3e7ef834be1c9541ea3"
+    },
+    {
+      "name": "24-06-switch-main",
+      "source": "24-06-switch-main",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        250,
+        400
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            157,
+            29
+          ],
+          "marker": [
+            230,
+            153
+          ],
+          "action": "此時仍在功能分支"
+        },
+        {
+          "rect": [
+            42,
+            377,
+            151,
+            34
+          ],
+          "marker": [
+            239,
+            390
+          ],
+          "action": "改填 main"
+        },
+        {
+          "rect": [
+            117,
+            417,
+            75,
+            36
+          ],
+          "marker": [
+            236,
+            438
+          ],
+          "action": "點切換回到接收分支"
+        }
+      ],
+      "rawSHA256": "b619228d4e011c50a6b8e78bb5180f1b08be171079ffa2d0b33312a690c970e8",
+      "annotatedSHA256": "8b23bc8e0b1403e308f37eb92a975f8bdee7f3b54717fdbb8ee5c059f6ad040e"
+    },
+    {
+      "name": "24-07-merge-source",
+      "source": "24-07-merge-source",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        250,
+        402
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            46,
+            29
+          ],
+          "marker": [
+            128,
+            145
+          ],
+          "action": "確認目前分支已是 main"
+        },
+        {
+          "rect": [
+            42,
+            377,
+            151,
+            34
+          ],
+          "marker": [
+            239,
+            390
+          ],
+          "action": "欄位改填來源 feature/readme-update"
+        },
+        {
+          "rect": [
+            42,
+            459,
+            151,
+            36
+          ],
+          "marker": [
+            238,
+            477
+          ],
+          "action": "點合併分支，不是切換"
+        }
+      ],
+      "rawSHA256": "5bedc57aa87b35ec6a57092de7a0ee370ee6779701f632d9afea34c3375ae7a7",
+      "annotatedSHA256": "1a6c1faef38ece4bdd2c7d20e54a934f3de8d57e858c9150b2c920a2d1b7053d"
+    },
+    {
+      "name": "24-08-merged-history",
+      "source": "24-08-merged-history",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        12,
+        98,
+        1258,
+        591
+      ],
+      "points": [
+        {
+          "rect": [
+            42,
+            106,
+            198,
+            30
+          ],
+          "marker": [
+            279,
+            122
+          ],
+          "action": "確認仍在 main 且沒有待保存修改"
+        },
+        {
+          "rect": [
+            25,
+            271,
+            202,
+            115
+          ],
+          "marker": [
+            251,
+            306
+          ],
+          "action": "main 與功能分支均保留"
+        },
+        {
+          "rect": [
+            279,
+            359,
+            438,
+            25
+          ],
+          "marker": [
+            744,
+            371
+          ],
+          "action": "核對新提交已納入 main"
+        },
+        {
+          "rect": [
+            789,
+            349,
+            450,
+            37
+          ],
+          "marker": [
+            1047,
+            331
+          ],
+          "action": "完整 SHA 與功能分支新提交相同"
+        }
+      ],
+      "rawSHA256": "b092a6280072c907e95f54167625db3c300b5c1be53bd68109fdde9774e95693",
+      "annotatedSHA256": "5d20840fa7af384a8db0bc8ede9e1ff17da7d49d2ac567a3e8fb162306642716"
+    },
+    {
+      "name": "24-09-merged-diff",
+      "source": "24-09-merged-diff",
+      "capturedOn": "2026-10-30",
+      "crop": [
+        251,
+        171,
+        1019,
+        512
+      ],
+      "points": [
+        {
+          "rect": [
+            279,
+            359,
+            438,
+            25
+          ],
+          "marker": [
+            744,
+            371
+          ],
+          "action": "選取剛合併的功能提交"
+        },
+        {
+          "rect": [
+            769,
+            171,
+            200,
+            26
+          ],
+          "marker": [
+            1030,
+            186
+          ],
+          "action": "確認檔案是 README.md"
+        },
+        {
+          "rect": [
+            779,
+            296,
+            38,
+            29
+          ],
+          "marker": [
+            798,
+            276
+          ],
+          "action": "切到差異"
+        },
+        {
+          "rect": [
+            795,
+            535,
+            370,
+            22
+          ],
+          "marker": [
+            1199,
+            548
+          ],
+          "action": "核對新增說明，並另開工作檔確認"
+        }
+      ],
+      "rawSHA256": "b1915ae31e6475a602d891637ff3c6267151d7d106e7a720b4bd5f1d4b19dcc2",
+      "annotatedSHA256": "9dba1ac5ac4707ae260f588da748b4dd555e247f48a26a6271020ea471bc294d"
     }
   ],
   "restoreWalkthrough": {
@@ -1738,6 +2302,46 @@
         "worktreeMatchesVersion": 5,
         "readme": "# 本機版本還原示範\r\n\r\n這是第 5 版。\r\n",
         "status": null
+      }
+    }
+  },
+  "branchWalkthrough": {
+    "capturedOn": "2026-10-30",
+    "sourceCommit": "44d8da3a0b33e19429b04d7284a83824a543d8d4",
+    "sourceUiTree": "d388864e76802565aa2ea85a22231cb021cb0887",
+    "method": "Native Windows captures via @oai/sky, production MainWindow and real Git backend in an isolated launcher; only paths/title/size differ. Raw captures retained; annotations are numbered vector overlays and crops.",
+    "demo": {
+      "project": "C:\\GitGui-Guide-Branch-7951b750\\hello-branch",
+      "remote": "None; local only",
+      "mainBranch": "main",
+      "featureBranch": "feature/readme-update",
+      "baseCommit": "4ff4d65b34092bccafd36b1202930245a91c8aaf"
+    },
+    "verification": {
+      "afterFeatureCommit": {
+        "stage": "after-gui-feature-commit",
+        "main": "4ff4d65b34092bccafd36b1202930245a91c8aaf",
+        "feature": "7466d0c2d299a733781d8abe0be98078a8514c2d",
+        "currentBranch": "feature/readme-update",
+        "readme": "# 本機分支與合併示範\r\n\r\n原本的主分支說明。\r\n\n新增功能分支的使用說明。\n",
+        "status": null
+      },
+      "beforeMerge": {
+        "stage": "after-gui-switch-main-before-merge",
+        "main": "4ff4d65b34092bccafd36b1202930245a91c8aaf",
+        "currentBranch": "main",
+        "readme": "# 本機分支與合併示範\r\n\r\n原本的主分支說明。\r\n"
+      },
+      "afterMerge": {
+        "stage": "after-gui-merge",
+        "main": "7466d0c2d299a733781d8abe0be98078a8514c2d",
+        "feature": "7466d0c2d299a733781d8abe0be98078a8514c2d",
+        "base": "4ff4d65b34092bccafd36b1202930245a91c8aaf",
+        "currentBranch": "main",
+        "commitCount": "2",
+        "readme": "# 本機分支與合併示範\r\n\r\n原本的主分支說明。\r\n\n新增功能分支的使用說明。\n",
+        "status": null,
+        "remotes": null
       }
     }
   }
