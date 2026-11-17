@@ -7,30 +7,33 @@ public sealed partial class MainWindowViewModel
     public async Task RefreshStatusAsync()
     {
         if (IsBusy || disposed || state is null) return;
-        IsBusy = true;
+        readCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IsRefreshing = true; IsBusy = true;
         try
         {
             var root = Root;
             var update = await workspace.RefreshStatusAsync(root, lifetime.Token);
             var groups = await Task.Run(() => GroupStatus(update.Status.Files), lifetime.Token);
             if (Root != root || disposed) return;
+            var selectedPaths = SelectedFiles.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
             var selectedPath = SelectedChange?.Path;
             state = state with { Status = update.Status, InProgress = update.InProgress };
             applyingReadState = true;
             try
             {
                 Changes.ReplaceAll(update.Status.Files); (unstaged, staged) = groups;
-                SelectedChange = Changes.FirstOrDefault(f => f.Path == selectedPath) ?? (ShowStaged ? staged : unstaged).FirstOrDefault();
+                RestoreFileSelection(selectedPaths, selectedPath);
             }
             finally { applyingReadState = false; }
             Branch = update.Status.Branch; InProgress = update.InProgress.IsActive;
             InProgressText = InProgress ? $"{update.InProgress.Kind} · {L[update.InProgress.HasConflicts ? "ResolveConflicts" : "ReadyToContinue"]}" : "";
+            OnPropertyChanged(nameof(SelectedFiles));
             OnPropertyChanged(nameof(UnstagedChanges)); OnPropertyChanged(nameof(StagedChanges)); OnPropertyChanged(nameof(Summary)); Notice = Summary;
             if (!IsHistoryDiff) { await LoadDiffAsync(); await LoadConflictAsync(SelectedChange); }
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { Notice = ex.Message; }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; IsRefreshing = false; readCompletion.TrySetResult(); }
     }
 
     private sealed record DiffProjection(bool Large, string Left, string Right, IReadOnlyList<PatchSelection> Rows);

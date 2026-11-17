@@ -37,6 +37,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private int historyLimit = 500;
     private string? historyGeneration;
     private bool applyingReadState;
+    internal bool IsApplyingReadState => applyingReadState;
+    private TaskCompletionSource? readCompletion;
+    [ObservableProperty] private bool isRefreshing;
     private bool openingHistoryPreview;
     private IReadOnlyList<FileChange> unstaged = [];
     private IReadOnlyList<FileChange> staged = [];
@@ -131,9 +134,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public string Summary => $"{Changes.Count} {L["Changes"]}  ·  {Commits.Count} {L["Commits"]}";
     [ObservableProperty] private bool terminalActive;
     [ObservableProperty] private bool externalWriteActive;
-    partial void OnExternalWriteActiveChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
-    partial void OnTerminalActiveChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    partial void OnExternalWriteActiveChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanStageFiles)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    partial void OnTerminalActiveChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanStageFiles)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
     public bool CanConfigure => !IsBusy && !TerminalActive && !ExternalWriteActive;
+    public bool CanStageFiles => HasRepository && RepositoryPath.Trim() == state?.Root && !TerminalActive && !ExternalWriteActive && (!IsBusy || IsRefreshing);
+    partial void OnIsRefreshingChanged(bool value) => OnPropertyChanged(nameof(CanStageFiles));
     public bool CanOperate => CanConfigure && HasRepository;
     public bool CanApplyPatch => CanOperate && SelectedChange?.IsPathSupported != false && !IsDiffLoading && !IsHistoryDiff && !IsLargeDiff && sourceIdentity is not null && sourceIdentity == CurrentDiffIdentity();
     public bool CanSaveConflict => CanOperate && SelectedChange?.IsPathSupported != false && HasConflict && !ConflictLoading && !ConflictBinary;
@@ -150,7 +155,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         Notice = L["OpenRepositoryHint"];
         workspace.CommandExecuted += CommandExecuted;
     }
-    partial void OnRepositoryPathChanged(string value) => CommitSigningChoice = 0;
+    partial void OnRepositoryPathChanged(string value) { CommitSigningChoice = 0; OnPropertyChanged(nameof(CanStageFiles)); }
     partial void OnEnglishChanged(bool value)
     {
         var initialNotice = Notice == L["OpenRepositoryHint"];
@@ -159,8 +164,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged("SelectedEncodingText"); OnPropertyChanged("RepositoryTextSettingsText"); OnPropertyChanged(nameof(CommitSigningDefaultText));
         if (state is not null) InProgressText = state.InProgress.IsActive ? $"{state.InProgress.Kind} · {L[state.InProgress.HasConflicts ? "ResolveConflicts" : "ReadyToContinue"]}" : "";
     }
-    partial void OnIsBusyChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
-    partial void OnHasRepositoryChanged(bool value) { OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    partial void OnIsBusyChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanStageFiles)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
+    partial void OnHasRepositoryChanged(bool value) { OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanStageFiles)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
     partial void OnIsDiffLoadingChanged(bool value) => OnPropertyChanged(nameof(CanApplyPatch));
     partial void OnIsLargeDiffChanged(bool value) => OnPropertyChanged(nameof(CanApplyPatch));
     partial void OnIsHistoryDiffChanged(bool value) => OnPropertyChanged(nameof(CanApplyPatch));
@@ -214,6 +219,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         InvalidateCommitSelection();
         var visible = value ? StagedChanges : UnstagedChanges;
         if (SelectedChange is null || !visible.Contains(SelectedChange)) SelectedChange = visible.FirstOrDefault();
+        SelectedFiles.Clear(); OnPropertyChanged(nameof(SelectedFiles));
         IsHistoryDiff = false; _ = LoadDiffAsync();
     }
     partial void OnSelectedCommitChanged(CommitInfo? value) { if (!applyingReadState && !openingHistoryPreview && value is not null) { HasConflict = false; CancelRead(ref conflictRequest); ConflictLoading = false; _ = LoadCommitAsync(value); } }
@@ -234,11 +240,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task RefreshAsync()
     {
         if (IsBusy || disposed) return;
-        IsBusy = true;
+        readCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IsRefreshing = true; IsBusy = true;
         try { await RefreshStateAsync(); }
         catch (OperationCanceledException) { }
         catch (Exception ex) { ClearState(); Notice = ex.Message; }
-        finally { IsBusy = false; }
+        finally { IsBusy = false; IsRefreshing = false; readCompletion.TrySetResult(); }
     }
     private async Task RefreshStateAsync()
     {
@@ -278,7 +285,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 preview = value;
             });
         }
+        if (disposed || RepositoryPath.Trim() != requestedPath) return;
         var groups = await Task.Run(() => GroupStatus(opened.Status.Files), lifetime.Token);
+        if (disposed || RepositoryPath.Trim() != requestedPath) return;
+        var selectedPaths = SelectedFiles.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
+        previousSelectedPath = SelectedChange?.Path;
         state = opened;
         RepositoryPath = state.Root;
         Branch = state.Status.Branch;
@@ -295,8 +306,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         Replace(Changes, state.Status.Files);
         (unstaged, staged) = groups;
         OnPropertyChanged(nameof(UnstagedChanges)); OnPropertyChanged(nameof(StagedChanges));
-        SelectedFiles.Clear();
-        SelectedChange = Changes.FirstOrDefault(f => f.Path == selectedPath) ?? (ShowStaged ? staged : unstaged).FirstOrDefault();
+        RestoreFileSelection(previous == state.Root ? selectedPaths : [], selectedPath);
         if (!ReferenceEquals(preview?.Page.Commits, state.Commits) &&
             (historyGeneration is null || historyGeneration != state.HistoryGeneration || previous != state.Root))
             Replace(Commits, state.Commits);
@@ -307,6 +317,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         if (Remotes.Count > 0 && !Remotes.Any(r => r.Name == RemoteName)) RemoteName = Remotes[0].Name;
         SelectedCommit = Commits.FirstOrDefault(c => c.Hash == selectedHash);
         applyingReadState = false;
+        OnPropertyChanged(nameof(SelectedFiles));
         OnPropertyChanged(nameof(RepositoryTextSettingsText)); OnPropertyChanged(nameof(CommitSigningDefaultText));
         if (previous != state.Root)
         {
@@ -335,6 +346,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         }
         Notice = Summary;
         OnPropertyChanged(nameof(Summary));
+    }
+    private void RestoreFileSelection(IReadOnlySet<string> paths, string? focusedPath)
+    {
+        var visible = (ShowStaged ? staged : unstaged);
+        SelectedFiles.Clear();
+        foreach (var file in visible.Where(f => paths.Contains(f.Path))) SelectedFiles.Add(file);
+        SelectedChange = visible.FirstOrDefault(f => f.Path == focusedPath) ?? SelectedFiles.FirstOrDefault() ?? visible.FirstOrDefault();
     }
     private LogFilter CurrentFilter() => new(Search, AuthorFilter, PathFilter, SinceFilter, UntilFilter, Take: historyLimit);
     [RelayCommand] private async Task SearchHistoryAsync() { if (!CanConfigure || disposed) return; historyLimit = 500; historyGeneration = null; await RefreshAsync(); }
@@ -393,14 +411,28 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task ActionAsync(string? action)
     {
-        if (action is null || IsBusy || TerminalActive || ExternalWriteActive || disposed) return;
+        if (action is null || TerminalActive || ExternalWriteActive || disposed) return;
         try
         {
+            GitOperation? selectedOperation = null;
+            if (action is "Stage" or "StageAll" or "Unstage" or "UnstageAll" && !CanStageFiles) return;
+            if (IsBusy)
+            {
+                if (action is not ("Stage" or "StageAll" or "Unstage" or "UnstageAll") || !IsRefreshing || readCompletion is null) return;
+                var root = Root;
+                if (!action.EndsWith("All", StringComparison.Ordinal)) selectedOperation = CreateOperation(action);
+                do
+                {
+                    Notice = L["WaitingForRefresh"];
+                    await readCompletion.Task.WaitAsync(lifetime.Token);
+                } while (IsBusy && IsRefreshing && !disposed && Root == root);
+                if (disposed || IsBusy || TerminalActive || ExternalWriteActive || !HasRepository || Root != root || RepositoryPath.Trim() != root) return;
+            }
             if (action == "Trust")
             {
                 await workspace.TrustAsync(Root, lifetime.Token); await RefreshAsync(); return;
             }
-            var operation = CreateOperation(action);
+            var operation = selectedOperation ?? CreateOperation(action);
             if (operation is null) return;
             await RunAsync(operation);
         }

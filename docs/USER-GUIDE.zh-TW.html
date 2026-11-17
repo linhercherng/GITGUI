@@ -16,7 +16,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M4</div>
 <h1 id="gitgui">GITGUI 操作手冊</h1>
 <p>適用版本：0.9.0。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.9.0">Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#guide-chapter-1">1. 解壓縮與啟動</a></li><li><a href="#guide-chapter-2">2. 畫面與外觀</a></li><li><a href="#guide-chapter-3">3. 開啟、建立或複製倉庫</a></li><li><a href="#guide-chapter-4">4. 修改、暫存與提交</a></li><li><a href="#guide-chapter-5">5. 分支、同步與衝突</a></li><li><a href="#guide-chapter-6">6. 快照復原與重做</a></li><li><a href="#guide-chapter-7">7. 進階歷史操作</a></li><li><a href="#guide-chapter-8">8. 內建終端機</a></li><li><a href="#guide-chapter-9">9. 子模組（Submodules）</a></li><li><a href="#guide-chapter-10">10. 工作樹（Worktrees）</a></li><li><a href="#guide-chapter-11">11. Git LFS</a></li><li><a href="#guide-chapter-12">12. 二分定位（Bisect）</a></li><li><a href="#guide-chapter-13">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#guide-chapter-14">14. 簽章提交與標籤</a></li><li><a href="#guide-chapter-15">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#guide-chapter-16">16. 中文訊息、路徑與換行設定</a></li><li><a href="#guide-chapter-17">17. 狀態刷新與提交分頁</a></li><li><a href="#guide-chapter-18">18. 錯誤建議與本機日誌</a></li><li><a href="#guide-chapter-19">19. 常見問題與驗證範圍</a></li><li><a href="#guide-chapter-20">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#guide-chapter-21">21. 完整範例：專案修改後再次更新上傳</a></li><li><a href="#guide-chapter-22">22. 完整範例：只在本機保存版本與再次提交</a></li><li><a href="#guide-chapter-23">23. 完整範例：單檔還原、撤銷提交與整個專案還原</a></li><li><a href="#guide-chapter-24">24. 完整範例：建立分支並合併回主分支</a></li></ol></nav>
-<p>v0.9.0 改善大型衝突編輯的輸入回應，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。本版重新建置程式，<code>build-info.json</code> 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。</p>
+<p>v0.9.0 改善大型衝突編輯的輸入回應，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。另修正工作區多選及重新整理時批次暫存點擊被忽略的問題。本版重新建置程式，<code>build-info.json</code> 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。</p>
 <p>本版完整測試、CI 與免安裝 ZIP 的驗證結果隨 Release 提供；固定案例的改善量測與限制見 <a href="V0.9-PERFORMANCE.md">v0.9.0 改善驗證</a>。既有 <a href="M4-PERFORMANCE.md">M4 正式效能數據</a> 仍僅對應報告中記錄的 v0.7.0 受測版本，門檻未調整。</p>
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
 <p>第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。</p>
@@ -59,6 +59,9 @@ git config --local user.email &quot;you@example.com&quot;
 <li>文字差異可選擇 hunk 或行來暫存／取消暫存；二進位檔以整檔處理。</li>
 <li>輸入提交訊息，按「提交」。只有已暫存的內容進入提交。</li>
 </ol>
+<p>工作區清單支援多選：按住 <strong>Ctrl</strong> 逐筆點選，按住 <strong>Shift</strong> 選取連續範圍；先點清單再按 <strong>Ctrl+A</strong> 可全選目前分頁。右側差異顯示目前聚焦的一個檔案，「暫存選取／取消暫存」會處理整批選取的檔案。差異預覽與重新整理不再把多選重設成單筆；若檔案已不在目前分頁，會從選取清單移除。</p>
+<p><strong>「全部暫存」會處理目前倉庫所有未暫存變更，不受選取筆數或目前分頁影響。</strong> 若剛好在背景重新整理，按一次後會顯示「等待重新整理完成後執行暫存操作…」，待讀取完成才執行，不會默默忽略點擊；「暫存選取」「取消暫存」「全部取消」亦適用。等待時若改填其他倉庫路徑，會取消這次暫存意圖，請先開啟正確倉庫後重試。終端機或其他寫入執行期間仍會阻擋操作，請先完成或關閉它。</p>
+<p>執行後切換到「已暫存」，核對檔案與差異；暫存尚未建立版本，仍須輸入訊息並提交。沒有未暫存變更時，不會再產生額外修改。</p>
 <p>「修改上一筆」會重寫最新提交。使用前先確認這筆提交是否已分享給其他人。「略過 hooks」只對本次操作生效；預設不勾選。</p>
 <p>「提交簽章」選單預設為「簽章：沿用 Git 設定」，下方顯示目前 Git 合併設定中的 <code>commit.gpgsign</code> 值（未設定時為 <code>false</code>）。需要強制簽章時選「簽章：本次提交啟用」；只有專案允許未簽章提交時，才選「簽章：本次提交停用」。選擇只影響這一次提交命令，不改全域或倉庫設定；成功提交後回到沿用設定。失敗時保留訊息與選擇，可檢查指令輸出後重試；GPG 找不到私鑰的完整步驟見第 22.4 節。外部修改設定後請重新整理。</p>
 <p>「捨棄變更」會替換選取的工作檔案，執行前有確認與快照。請先看清楚檔案清單。</p>

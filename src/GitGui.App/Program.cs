@@ -37,7 +37,13 @@ internal static class Program
                     output.WriteLine(answer);
                 }
             }
-            catch (Exception) { Environment.ExitCode = 1; }
+            catch (Exception error)
+            {
+                // Error type/code aid diagnosis without exposing prompts or credentials.
+                var cause = error.GetBaseException();
+                Console.Error.WriteLine($"AskPass helper failed: {cause.GetType().Name} (0x{cause.HResult:X8}).");
+                Environment.ExitCode = 1;
+            }
             return;
         }
         try { Performance = DesktopPerformanceProbe.Parse(args); }

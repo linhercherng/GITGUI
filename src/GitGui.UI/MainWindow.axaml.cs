@@ -38,6 +38,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private string? watchedGitDirectory;
     private string? watchedCommonDirectory;
     private bool closed;
+    private bool syncingFileSelection;
     private int openDialogs;
     private bool skipNextActivationRefresh;
     private bool closePromptOpen;
@@ -117,6 +118,7 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private bool CanExecuteUiCommand(string action)
     {
         if (viewModel is not { } vm || closed || openDialogs > 0) return false;
+        if (action is "Stage" or "StageAll" or "Unstage" or "UnstageAll") return vm.CanStageFiles;
         if (action == "Cancel") return vm.CanCancel;
         if (action is "StagePatch" or "UnstagePatch") return vm.CanApplyPatch;
         if (action is "WriteConflictResult" or "UseOursFile" or "UseTheirsFile" or "UseBothFile" or "SectionOurs" or "SectionTheirs" or "SectionBoth") return vm.CanSaveConflict;
@@ -265,7 +267,17 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         if (e.PropertyName == nameof(MainWindowViewModel.SelectedChange) && viewModel?.SelectedChange is not null)
         {
             this.FindControl<TabControl>("DetailTabs")!.SelectedIndex = viewModel.HasConflict ? 3 : 0;
-            this.FindControl<ListBox>(viewModel.ShowStaged ? "StagedChangesList" : "ChangesList")!.SelectedItem = viewModel.SelectedChange;
+            var list = this.FindControl<ListBox>(viewModel.ShowStaged ? "StagedChangesList" : "ChangesList")!;
+            if (!viewModel.IsApplyingReadState && !syncingFileSelection && list.SelectedItems?.Contains(viewModel.SelectedChange) != true)
+                list.SelectedItem = viewModel.SelectedChange;
+        }
+        if (e.PropertyName == nameof(MainWindowViewModel.SelectedFiles) && viewModel is { } selection)
+        {
+            var list = this.FindControl<ListBox>(selection.ShowStaged ? "StagedChangesList" : "ChangesList")!;
+            var files = selection.SelectedFiles.Count > 0 ? selection.SelectedFiles.ToArray() : selection.SelectedChange is { } focused ? [focused] : [];
+            syncingFileSelection = true;
+            try { list.SelectedItems!.Clear(); foreach (var file in files) list.SelectedItems.Add(file); }
+            finally { syncingFileSelection = false; }
         }
         if (e.PropertyName == nameof(MainWindowViewModel.ShowStaged) && viewModel is not null)
             this.FindControl<TabControl>("ChangeTabs")!.SelectedIndex = viewModel.ShowStaged ? 1 : 0;
@@ -383,12 +395,13 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     }
     private void ChangesSelectionChanged(object? sender, SelectionChangedEventArgs args)
     {
-        if (viewModel is null || sender is not ListBox list) return;
+        if (viewModel is null || sender is not ListBox list || syncingFileSelection || viewModel.IsApplyingReadState) return;
+        if (args.AddedItems.Count == 0 && (list.Name == "StagedChangesList") != viewModel.ShowStaged) return;
         if (args.AddedItems.Count > 0)
         {
             viewModel.ShowStaged = list.Name == "StagedChangesList";
-            viewModel.SelectedChange = args.AddedItems[0] as FileChange;
         }
+        viewModel.SelectedChange = args.AddedItems.Count > 0 ? args.AddedItems[0] as FileChange : list.SelectedItem as FileChange;
         viewModel.SelectedFiles.Clear();
         if (list.SelectedItems is not null) foreach (var item in list.SelectedItems.OfType<FileChange>()) viewModel.SelectedFiles.Add(item);
     }

@@ -16,6 +16,33 @@ namespace GitGui.UI.Tests;
 public class RepositoryInitializationWindowTests
 {
     [AvaloniaFact]
+    public async Task Multiple_files_stage_unstage_and_stage_all_through_real_window_controls()
+    {
+        await using var fixture = new ProjectFolder();
+        await fixture.Git("init", "-b", "main");
+        foreach (var name in new[] { "a.txt", "b.txt", "c.txt" }) await File.WriteAllTextAsync(Path.Combine(fixture.Root, name), name);
+        using var vm = new MainWindowViewModel(fixture.Service, new MemoryRecent()) { RepositoryPath = fixture.Root };
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            await vm.RefreshCommand.ExecuteAsync(null); await WaitForIdle(vm);
+            var list = Find<ListBox>(window, "ChangesList");
+            list.SelectedItems!.Clear(); list.SelectedItems.Add(list.Items[0]); list.SelectedItems.Add(list.Items[1]);
+            Assert.Equal(2, vm.SelectedFiles.Count);
+            await ClickAction(window, Button(window, vm.L["Stage"]), vm);
+            Assert.Equal(new[] { "a.txt", "b.txt" }, (await fixture.Git("diff", "--cached", "--name-only")).Split('\n', StringSplitOptions.RemoveEmptyEntries));
+            Find<TabControl>(window, "ChangeTabs").SelectedIndex = 1;
+            var staged = Find<ListBox>(window, "StagedChangesList");
+            staged.SelectedItems!.Clear(); foreach (var item in staged.Items) staged.SelectedItems.Add(item);
+            await ClickAction(window, Button(window, vm.L["Unstage"]), vm);
+            Assert.Empty((await fixture.Git("diff", "--cached", "--name-only")).Trim());
+            await ClickAction(window, Button(window, vm.L["StageAll"]), vm);
+            Assert.Equal(new[] { "a.txt", "b.txt", "c.txt" }, (await fixture.Git("diff", "--cached", "--name-only")).Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        }
+        finally { await CloseWindow(window, vm); }
+    }
+
+    [AvaloniaFact]
     public async Task Existing_project_can_complete_first_commit_using_window_controls_and_real_git()
     {
         await using var fixture = new ProjectFolder();

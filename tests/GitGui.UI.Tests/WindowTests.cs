@@ -282,6 +282,115 @@ public sealed class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     [AvaloniaFact]
+    public async Task Workspace_pointer_ctrl_shift_and_keyboard_select_all_preserve_the_selection()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            await vm.RefreshCommand.ExecuteAsync(null); Dispatcher.UIThread.RunJobs();
+            if (vm.RefreshCommand.ExecutionTask is { } startup) await startup;
+            var list = window.FindControl<ListBox>("ChangesList")!;
+            void Select(int index, RawInputModifiers modifiers)
+            {
+                window.UpdateLayout(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var item = list.ContainerFromIndex(index)!;
+                var point = item.TranslatePoint(new Point(item.Bounds.Width / 2, item.Bounds.Height / 2), window)!.Value;
+                window.MouseMove(point); window.MouseDown(point, MouseButton.Left, modifiers); window.MouseUp(point, MouseButton.Left, modifiers);
+                Dispatcher.UIThread.RunJobs();
+            }
+            Select(0, RawInputModifiers.None); Select(1, RawInputModifiers.Control);
+            Assert.Equal(2, vm.SelectedFiles.Count);
+            Select(0, RawInputModifiers.None); Select(2, RawInputModifiers.Shift);
+            Assert.Equal(3, vm.SelectedFiles.Count);
+            Select(1, RawInputModifiers.Control);
+            Assert.Equal(2, vm.SelectedFiles.Count); Assert.Contains(vm.SelectedChange!, vm.SelectedFiles);
+            list.Focus(); window.KeyPressQwerty(PhysicalKey.A, RawInputModifiers.Control); window.KeyReleaseQwerty(PhysicalKey.A, RawInputModifiers.Control); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(3, vm.SelectedFiles.Count);
+            list.SelectedItems!.Clear();
+            Assert.Empty(vm.SelectedFiles); Assert.Null(vm.SelectedChange);
+            Assert.Throws<InvalidOperationException>(() => vm.CreateOperation("Stage"));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Queued_stage_all_does_not_write_when_the_repository_path_changes_during_refresh()
+    {
+        var backend = new SampleWorkspace();
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        await vm.RefreshCommand.ExecuteAsync(null);
+        backend.DeferredOpen = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refresh = vm.RefreshCommand.ExecuteAsync(null);
+        var action = vm.ActionCommand.ExecuteAsync("StageAll");
+        Assert.False(action.IsCompleted);
+        var next = Path.Combine(Path.GetTempPath(), "another-project"); vm.RepositoryPath = next;
+        backend.DeferredOpen.SetResult(backend.DeferredOpenState!); backend.DeferredOpen = null;
+        await refresh; await action;
+        Assert.Empty(backend.Executed); Assert.Equal(next, vm.RepositoryPath); Assert.False(vm.CanStageFiles);
+    }
+
+    [AvaloniaFact]
+    public async Task Workspace_multiple_selection_survives_diff_focus_and_refresh_and_stages_all_selected_files()
+    {
+        var backend = new SampleWorkspace();
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            await vm.RefreshCommand.ExecuteAsync(null);
+            Dispatcher.UIThread.RunJobs();
+            if (vm.RefreshCommand.ExecutionTask is { } startup) await startup;
+            var list = window.FindControl<ListBox>("ChangesList")!;
+            list.SelectedItems!.Clear();
+            list.SelectedItems.Add(list.Items[0]); list.SelectedItems.Add(list.Items[1]);
+            Assert.Equal(2, list.SelectedItems.Count); Assert.Equal(2, vm.SelectedFiles.Count);
+            var paths = vm.SelectedFiles.Select(f => f.Path).ToArray();
+            await vm.RefreshCommand.ExecuteAsync(null);
+            Assert.Equal(paths, vm.SelectedFiles.Select(f => f.Path));
+            Assert.Equal(2, list.SelectedItems.Count);
+            await vm.RefreshStatusAsync();
+            Assert.Equal(paths, vm.SelectedFiles.Select(f => f.Path)); Assert.Equal(2, list.SelectedItems.Count);
+            await vm.ActionCommand.ExecuteAsync("Stage");
+            Assert.Equal(paths, Assert.Single(backend.Executed).Paths);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Stage_all_waits_for_active_refresh_instead_of_dropping_the_click()
+    {
+        var backend = new SampleWorkspace();
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var window = new MainWindow(vm); window.Show(); Task? refresh = null; Task? action = null;
+        try
+        {
+            await vm.RefreshCommand.ExecuteAsync(null); Dispatcher.UIThread.RunJobs();
+            if (vm.RefreshCommand.ExecutionTask is { } startup) await startup;
+            backend.DeferredOpen = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            refresh = vm.RefreshCommand.ExecuteAsync(null);
+            Assert.True(vm.IsBusy);
+            window.UpdateLayout();
+            var button = window.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.CommandParameter, "StageAll"));
+            Assert.True(button.IsEnabled);
+            action = vm.ActionCommand.ExecuteAsync("StageAll");
+            Assert.False(action.IsCompleted); Assert.Empty(backend.Executed);
+            backend.DeferredOpen.TrySetResult(backend.DeferredOpenState!); backend.DeferredOpen = null;
+            await refresh; await action;
+            var stage = Assert.Single(backend.Executed);
+            Assert.Equal(GitAction.Stage, stage.Action);
+            Assert.Equal(new[] { "src/Workspace.cs", "docs/README.md", "notes/new.txt" }, stage.Paths);
+        }
+        finally
+        {
+            if (backend.DeferredOpen is { } pending) { pending.TrySetResult(backend.DeferredOpenState!); backend.DeferredOpen = null; }
+            if (refresh is not null) await refresh;
+            if (action is not null) await action;
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public async Task Workspace_binds_actions_diff_and_graph_and_can_capture_actual_frame()
     {
         var backend = new SampleWorkspace();

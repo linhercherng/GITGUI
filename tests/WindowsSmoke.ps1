@@ -10,6 +10,7 @@ $pipe = [IO.Pipes.NamedPipeServerStream]::new($pipeName, [IO.Pipes.PipeDirection
     [IO.Pipes.PipeTransmissionMode]::Byte, [IO.Pipes.PipeOptions]::Asynchronous)
 $waiting = $pipe.WaitForConnectionAsync()
 $start = [Diagnostics.ProcessStartInfo]::new($appExe)
+$start.WorkingDirectory = [IO.Path]::GetTempPath()
 $start.UseShellExecute = $false
 $start.CreateNoWindow = $true
 $start.RedirectStandardOutput = $true
@@ -26,16 +27,23 @@ if($NativeHostPath) {
 }
 $start.Environment['GITGUI_ASKPASS_PIPE'] = $pipeName
 $child = [Diagnostics.Process]::Start($start)
+$stdout = $child.StandardOutput.ReadToEndAsync()
+$stderr = $child.StandardError.ReadToEndAsync()
 try {
     if (-not $waiting.Wait(10000)) { throw 'AskPass pipe did not connect' }
     $encoding = [Text.UTF8Encoding]::new($false)
     $reader = [IO.StreamReader]::new($pipe, $encoding, $false, 1024, $true)
     $writer = [IO.StreamWriter]::new($pipe, $encoding, 1024, $true)
     $writer.AutoFlush = $true
-    $request = $reader.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(10)).GetAwaiter().GetResult() | ConvertFrom-Json
+    $line = $reader.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(10)).GetAwaiter().GetResult()
+    if ($null -eq $line) {
+        if (-not $child.WaitForExit(10000)) { throw 'AskPass helper closed its request pipe without exiting' }
+        throw "AskPass helper closed before its request (exit $($child.ExitCode)): $($stderr.GetAwaiter().GetResult())"
+    }
+    $request = $line | ConvertFrom-Json
     $writer.WriteLine(('smoke-密碼' | ConvertTo-Json -Compress))
     if (-not $child.WaitForExit(10000)) { throw 'AskPass helper did not exit' }
-    $answer = $child.StandardOutput.ReadToEnd().Trim()
+    $answer = $stdout.GetAwaiter().GetResult().Trim()
     if ($request -ne 'Smoke credential prompt' -or $answer -ne 'smoke-密碼' -or $child.ExitCode -ne 0) {
         throw 'AskPass helper UTF-8 protocol mismatch'
     }

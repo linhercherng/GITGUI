@@ -421,5 +421,7 @@
   "ConflictSectionsUpdating": "正在更新衝突區段…",
   "ErrorSigningFailed": "提交簽章失敗",
   "RemedySigningHelp": "簽章設定說明",
-  "HelpSigningHelp": "Git 無法簽署本次提交；提交訊息與暫存檔案仍保留。請檢查 GPG／SSH 簽章程式、user.signingkey 及私鑰是否可用。簽章選單可沿用 Git 設定、強制啟用，或僅停用本次提交的簽章。只有專案允許未簽章提交時，才選擇本次停用並再次按「提交」。GITGUI 不會變更 commit.gpgsign，也不會自動停用簽章。"
+  "HelpSigningHelp": "Git 無法簽署本次提交；提交訊息與暫存檔案仍保留。請檢查 GPG／SSH 簽章程式、user.signingkey 及私鑰是否可用。簽章選單可沿用 Git 設定、強制啟用，或僅停用本次提交的簽章。只有專案允許未簽章提交時，才選擇本次停用並再次按「提交」。GITGUI 不會變更 commit.gpgsign，也不會自動停用簽章。",
+  "WaitingForRefresh": "等待重新整理完成後執行暫存操作…",
+  "MultiSelectHint": "Ctrl／Shift 多選 · Ctrl+A 全選"
 }
