@@ -80,7 +80,7 @@ public sealed class WorkspaceStorage(string databasePath) : IRepositorySettings,
     {
         await using var connection = await Open(ct);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id,title,created,state_ref,head,file_count FROM snapshots WHERE root=$root ORDER BY created DESC";
+        command.CommandText = "SELECT id,title,created,state_ref,head,file_count FROM snapshots WHERE root=$root ORDER BY created DESC,id DESC";
         command.Parameters.AddWithValue("$root", Normalize(root));
         await using var reader = await command.ExecuteReaderAsync(ct);
         var result = new List<SnapshotInfo>();

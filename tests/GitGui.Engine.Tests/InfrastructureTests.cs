@@ -7,6 +7,18 @@ namespace GitGui.Engine.Tests;
 public class InfrastructureTests
 {
     [Fact]
+    public async Task Recovered_snapshots_with_equal_commit_timestamps_keep_newest_snapshot_first()
+    {
+        using var repo = new TemporaryRepository();
+        var store = new WorkspaceStorage(Path.Combine(repo.Root, "settings.db"));
+        var time = DateTimeOffset.UtcNow;
+        var first = new SnapshotInfo("20261117T1200001000000-a", repo.Root, "Recovered", time, "refs/gitgui/snapshots/20261117T1200001000000-a/state", null, 1);
+        var second = first with { Id = "20261117T1200009000000-b", StateRef = "refs/gitgui/snapshots/20261117T1200009000000-b/state" };
+        await store.SaveBatchAsync([first, second], default);
+        Assert.Equal(new[] { second.Id, first.Id }, (await store.ListAsync(repo.Root, default)).Select(s => s.Id));
+    }
+
+    [Fact]
     public async Task Trust_and_snapshot_index_survive_database_reopening()
     {
         using var repo = new TemporaryRepository();
