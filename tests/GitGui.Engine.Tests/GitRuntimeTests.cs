@@ -47,6 +47,6 @@ public class GitRuntimeTests
     {
         var name = OperatingSystem.IsWindows() ? "git.exe" : "git";
         return Environment.GetEnvironmentVariable("PATH")!.Split(Path.PathSeparator)
-            .Select(p => Path.Combine(p.Trim('"'), name)).First(File.Exists);
+            .Select(p => Path.GetFullPath(Path.Combine(p.Trim('"'), name))).First(File.Exists);
     }
 }

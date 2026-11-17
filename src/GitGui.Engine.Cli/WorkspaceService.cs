@@ -112,7 +112,7 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
                     return new(false, "操作已取消 / Cancelled", Cancelled: true);
             }
             var needsSnapshot = op.Action is not (GitAction.Stage or GitAction.Unstage or GitAction.StagePatch or
-                GitAction.UnstagePatch or GitAction.Fetch or GitAction.Push or GitAction.MarkResolved);
+                GitAction.UnstagePatch or GitAction.Fetch or GitAction.Push or GitAction.MarkResolved or GitAction.RebuildSnapshotIndex);
             SnapshotInfo? target = null;
             if (op.Action == GitAction.RestoreSnapshot)
             {
@@ -132,6 +132,8 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
             async Task Run(string[] args, byte[]? input = null) => await RunWrite(root, args, input, executionToken, progress);
             switch (op.Action)
             {
+                case GitAction.RebuildSnapshotIndex:
+                    await snapshots.RebuildCatalogAsync(root, executionToken); break;
                 case GitAction.Stage: case GitAction.MarkResolved:
                     await Run(["add", "--all", "--", .. op.Paths]); break;
                 case GitAction.Unstage:
@@ -267,7 +269,7 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
         if (File.Exists(Path.Combine(gitDirectory, "index.lock"))) throw new InvalidOperationException("index.lock exists; wait for the other Git process.");
         var sequenceAllowed = op.Action is GitAction.Fetch or GitAction.Stage or GitAction.Unstage or GitAction.StagePatch or GitAction.UnstagePatch or
             GitAction.ResolveOurs or GitAction.ResolveTheirs or GitAction.MarkResolved or GitAction.ExternalMergeTool or GitAction.WriteConflictResult or
-            GitAction.ContinueOperation or GitAction.SkipOperation or GitAction.AbortOperation or GitAction.RestoreSnapshot;
+            GitAction.ContinueOperation or GitAction.SkipOperation or GitAction.AbortOperation or GitAction.RestoreSnapshot or GitAction.RebuildSnapshotIndex;
         var stateCommit = op.Action == GitAction.Commit && (state.InProgress.Kind == "merge" || state.InProgress.Kind == "rebase" && op.Amend);
         if (state.InProgress.IsActive && !sequenceAllowed && !stateCommit && !(state.InProgress.Kind == "merge" && op.Action == GitAction.AbortMerge))
             throw new InvalidOperationException("Finish the active " + state.InProgress.Kind + " operation first.");

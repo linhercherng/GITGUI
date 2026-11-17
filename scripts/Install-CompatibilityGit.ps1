@@ -4,6 +4,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. "$PSScriptRoot/Get-VerifiedArchive.ps1"
 $manifest = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'compatibility-git.json') -Raw | ConvertFrom-Json -AsHashtable
 $pin = $manifest.versions[$Version]
 $destinationPath = [IO.Path]::GetFullPath($Destination)
@@ -15,29 +16,15 @@ $null = New-Item -ItemType Directory -Path $downloadRoot -Force
 $executable = Join-Path $destinationPath $(if ($IsWindows) { 'cmd/git.exe' } else { 'bin/git' })
 $expectedVersion = if ($IsWindows) { $pin.windowsVersion } else { "git version $Version" }
 
-function Get-VerifiedArchive([string]$Url, [string]$ExpectedHash) {
-    $archive = Join-Path $downloadRoot ([IO.Path]::GetFileName(([Uri]$Url).AbsolutePath))
-    if (-not (Test-Path -LiteralPath $archive)) {
-        $partial = "$archive.partial-$([Guid]::NewGuid().ToString('N'))"
-        try {
-            Invoke-WebRequest -Uri $Url -OutFile $partial
-            if ((Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ExpectedHash) { throw "Archive SHA-256 mismatch: $Url" }
-            Move-Item -LiteralPath $partial -Destination $archive
-        } finally { if (Test-Path -LiteralPath $partial) { Remove-Item -LiteralPath $partial } }
-    }
-    if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ExpectedHash) { throw "Cached archive SHA-256 mismatch: $archive" }
-    return $archive
-}
-
 if (-not (Test-Path -LiteralPath $executable)) {
     if ($IsWindows) {
         if ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne 'X64') { throw 'The pinned compatibility PortableGit archive targets Windows x64.' }
-        $archive = Get-VerifiedArchive $pin.windowsUrl $pin.windowsSHA256
+        $archive = Get-VerifiedArchive @($pin.windowsUrl) $pin.windowsSHA256 (Join-Path $downloadRoot ([IO.Path]::GetFileName(([Uri]$pin.windowsUrl).AbsolutePath)))
         $extract = Start-Process -FilePath $archive -ArgumentList @('-y', ('-o"' + $destinationPath + '"')) -WindowStyle Hidden -PassThru -Wait
         if ($extract.ExitCode -ne 0) { throw "PortableGit extraction failed: $($extract.ExitCode)" }
     } else {
         $null = Get-Command make -ErrorAction Stop
-        $archive = Get-VerifiedArchive $pin.sourceUrl $pin.sourceSHA256
+        $archive = Get-VerifiedArchive @($pin.sourceUrl, $pin.sourceMirrorUrl) $pin.sourceSHA256 (Join-Path $downloadRoot "git-$Version.tar.xz")
         $buildRoot = Join-Path $temporaryRoot "gitgui-compat-build-$Version"
         $null = New-Item -ItemType Directory -Path $buildRoot -Force
         & tar -xJf $archive -C $buildRoot

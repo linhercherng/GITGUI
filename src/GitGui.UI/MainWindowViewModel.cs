@@ -29,6 +29,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private (string Root, string Path)? loadedConflict;
     private bool assigningConflict;
     private readonly Dictionary<(string Root, string Path), ConflictDraft> conflictDrafts = [];
+    public bool HasUnsavedConflictDrafts => conflictDrafts.Count > 0;
     private sealed record ConflictDraft(string Base, string Ours, string Theirs, string Result, long Revision);
     private long conflictRevision;
     private int historyLimit = 500;
@@ -420,6 +421,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 if (!CanSaveConflict || SelectedChange is null) throw new InvalidOperationException(L["ConflictUnavailable"]);
                 return new(GitAction.WriteConflictResult) { Paths = [SelectedChange.Path], Message = ConflictResult };
             case "RestoreSnapshot": return SelectedSnapshot is null ? throw new InvalidOperationException(L["SelectSnapshot"]) : new(GitAction.RestoreSnapshot) { SnapshotId = SelectedSnapshot.Id };
+            case "RebuildSnapshotIndex": return new(GitAction.RebuildSnapshotIndex);
             default: throw new InvalidOperationException(action);
         }
         GitOperation WithPaths(GitAction kind, string[] selected) => selected.Length == 0 ? throw new InvalidOperationException(L["SelectFile"]) : new(kind) { Paths = selected };

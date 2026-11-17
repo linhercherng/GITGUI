@@ -1,4 +1,7 @@
 {
+  "RebuildSnapshotIndex": "重建快照索引",
+  "DiscardConflictDrafts": "放棄未儲存的衝突草稿並離開？",
+  "DiscardConflictDraftsDetails": "一個或多個檔案仍有未儲存的衝突編輯（包含其他專案或檔案）。確認將永久放棄這些草稿。若要保留，請取消，回到各衝突檔案按「寫入結果」後再離開。",
   "Open": "開啟",
   "Browse": "瀏覽…",
   "Refresh": "重新整理",

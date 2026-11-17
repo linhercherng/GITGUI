@@ -40,6 +40,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private bool closed;
     private int openDialogs;
     private bool skipNextActivationRefresh;
+    private bool closePromptOpen;
+    private bool discardDraftsConfirmed;
     public MainWindow()
     {
         if (!Application.Current!.Resources.ContainsKey("CanvasBrush")) _ = new AppearanceManager();
@@ -83,10 +85,23 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         vm.RepositoryOpened += RepositoryOpened;
         vm.PropertyChanged += ViewModelChanged;
         ExpandActiveHistoryFilters();
-        Closing += (_, args) =>
+        Closing += async (_, args) =>
         {
             if (vm.IsBusy || advancedWindow?.ViewModel.IsWriting == true || toolsWindow?.ViewModel.IsWriting == true)
-            { args.Cancel = true; vm.Notice = vm.L["ToolsWait"]; }
+            { args.Cancel = true; vm.Notice = vm.L["ToolsWait"]; return; }
+            if (discardDraftsConfirmed || !vm.HasUnsavedConflictDrafts) return;
+            args.Cancel = true;
+            if (closePromptOpen) return;
+            closePromptOpen = true;
+            try
+            {
+                var answer = await ConfirmAsync(new(vm.L["DiscardConflictDrafts"], vm.L["DiscardConflictDraftsDetails"], RiskLevel.High), CancellationToken.None);
+                if (!answer.Accepted) return;
+                discardDraftsConfirmed = true;
+                try { Close(); }
+                finally { discardDraftsConfirmed = false; }
+            }
+            finally { closePromptOpen = false; }
         };
         debounce.Tick += async (_, _) =>
         {

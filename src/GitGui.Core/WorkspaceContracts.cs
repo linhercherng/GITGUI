@@ -7,7 +7,7 @@ public enum GitAction
     AbortMerge, ResolveOurs, ResolveTheirs, MarkResolved, ExternalMergeTool, RestoreSnapshot, WriteConflictResult,
     StashPush, StashApply, StashPop, StashDrop, RebaseInteractive, CherryPick, Revert, Reset,
     CreateTag, DeleteTag, AddRemote, RenameRemote, SetRemoteUrl, RemoveRemote,
-    ContinueOperation, SkipOperation, AbortOperation
+    ContinueOperation, SkipOperation, AbortOperation, RebuildSnapshotIndex
 }
 
 public sealed record GitOperation(GitAction Action)
@@ -97,6 +97,10 @@ public interface IRepositorySettings
 public interface ISnapshotCatalog
 {
     Task SaveAsync(SnapshotInfo snapshot, CancellationToken ct);
+    async Task SaveBatchAsync(IReadOnlyList<SnapshotInfo> snapshots, CancellationToken ct)
+    {
+        foreach (var snapshot in snapshots) await SaveAsync(snapshot, ct);
+    }
     Task<IReadOnlyList<SnapshotInfo>> ListAsync(string root, CancellationToken ct);
     Task RemoveAsync(string id, CancellationToken ct);
 }

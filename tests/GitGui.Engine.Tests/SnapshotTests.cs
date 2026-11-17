@@ -6,6 +6,45 @@ namespace GitGui.Engine.Tests;
 public class SnapshotTests
 {
     [Fact]
+    public async Task Lost_catalog_is_rebuilt_idempotently_and_recovered_snapshot_restores_bytes()
+    {
+        using var repo = new TemporaryRepository();
+        await repo.Init();
+        var runner = new GitProcessRunner();
+        var original = await new SnapshotManager(runner, new MemoryCatalog()).CreateAsync(repo.Root, "before edit", default);
+        var catalog = new GitGui.Infrastructure.WorkspaceStorage(Path.Combine(repo.Root, ".git", "rebuilt.db"));
+        var manager = new SnapshotManager(runner, catalog);
+        Assert.Empty(await catalog.ListAsync(repo.Root, default));
+        Assert.Equal(1, await manager.RebuildCatalogAsync(repo.Root, default));
+        var recovered = Assert.Single(await catalog.ListAsync(repo.Root, default));
+        Assert.Equal(original.Id, recovered.Id); Assert.Equal(original.Head, recovered.Head);
+        Assert.Equal(original.FileCount, recovered.FileCount);
+        Assert.Equal(0, await manager.RebuildCatalogAsync(repo.Root, default));
+        Assert.Single(await catalog.ListAsync(repo.Root, default));
+        await File.WriteAllTextAsync(Path.Combine(repo.Root, "tracked.txt"), "changed");
+        await manager.RestoreAsync(repo.Root, recovered, default);
+        Assert.Equal("base\n", await File.ReadAllTextAsync(Path.Combine(repo.Root, "tracked.txt")));
+    }
+
+    [Fact]
+    public async Task Rebuild_does_not_import_another_worktrees_snapshots_or_partially_import_invalid_metadata()
+    {
+        using var repo = new TemporaryRepository();
+        await repo.Init();
+        var manager = new SnapshotManager(new GitProcessRunner(), new MemoryCatalog());
+        var snapshot = await manager.CreateAsync(repo.Root, "original", default);
+        var linked = Path.Combine(repo.Root, "linked");
+        await repo.Git("worktree", "add", "-b", "linked", linked);
+        var catalog = new GitGui.Infrastructure.WorkspaceStorage(Path.Combine(repo.Root, ".git", "rebuilt.db"));
+        var recovery = new SnapshotManager(new GitProcessRunner(), catalog);
+        Assert.Equal(0, await recovery.RebuildCatalogAsync(linked, default));
+        await repo.Git("update-ref", "refs/gitgui/snapshots/zz-invalid/state", "HEAD");
+        await Assert.ThrowsAnyAsync<Exception>(() => recovery.RebuildCatalogAsync(repo.Root, default));
+        Assert.Empty(await catalog.ListAsync(repo.Root, default));
+        Assert.NotEmpty(await repo.Git("rev-parse", snapshot.StateRef));
+    }
+
+    [Fact]
     public async Task Snapshot_manifest_bytes_match_the_legacy_reflection_contract()
     {
         using var repo = new TemporaryRepository();

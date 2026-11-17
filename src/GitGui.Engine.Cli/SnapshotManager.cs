@@ -33,6 +33,28 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
     public int MinimumRetainedCount { get; set; } = 50;
     public TimeSpan MinimumRetainedAge { get; set; } = TimeSpan.FromDays(14);
 
+    public async Task<int> RebuildCatalogAsync(string root, CancellationToken ct)
+    {
+        root = await git.Root(root, ct);
+        var existing = (await catalog.ListAsync(root, ct)).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        var recovered = new List<SnapshotInfo>();
+        var refs = await git.Text(root, ct, "for-each-ref", "--format=%(refname)%00%(committerdate:iso-strict)", "refs/gitgui/snapshots/");
+        foreach (var line in refs.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var fields = line.Split('\0');
+            var match = Regex.Match(fields[0], "^refs/gitgui/snapshots/([a-zA-Z0-9-]+)/state$");
+            if (!match.Success) continue;
+            var info = new SnapshotInfo(match.Groups[1].Value, root, "重建的快照 / Recovered snapshot",
+                DateTimeOffset.Parse(fields[1], CultureInfo.InvariantCulture), fields[0], null, 0);
+            var manifest = await ReadManifest(root, info, ct, requireSameWorktree: false);
+            if (!GitAccess.SamePath(root, manifest.Root) || existing.Contains(info.Id)) continue;
+            recovered.Add(info with { Head = manifest.HeadOid, FileCount = manifest.Files.Count });
+        }
+        // Validate every manifest before starting the catalog transaction.
+        await catalog.SaveBatchAsync(recovered, ct);
+        return recovered.Count;
+    }
+
     public async Task PruneAsync(string root, CancellationToken ct)
     {
         var all = (await catalog.ListAsync(root, ct)).OrderByDescending(s => s.CreatedAt).ToArray();
@@ -354,13 +376,13 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         }
     }
 
-    private async Task<SnapshotManifest> ReadManifest(string root, SnapshotInfo info, CancellationToken ct)
+    private async Task<SnapshotManifest> ReadManifest(string root, SnapshotInfo info, CancellationToken ct, bool requireSameWorktree = true)
     {
         if (!Regex.IsMatch(info.Id, "^[a-zA-Z0-9-]+$") || info.StateRef != $"refs/gitgui/snapshots/{info.Id}/state")
             throw new InvalidOperationException("Invalid snapshot reference.");
         var content = await git.Bytes(root, ct, ["cat-file", "blob", info.StateRef + ":manifest"], new() { HideOutput = true });
         var manifest = JsonSerializer.Deserialize(content, SnapshotJsonContext.Default.SnapshotManifest) ?? throw new InvalidOperationException("Invalid snapshot metadata.");
-        if (!GitAccess.SamePath(manifest.Root, root)) throw new InvalidOperationException("Snapshot belongs to a different worktree.");
+        if (requireSameWorktree && !GitAccess.SamePath(manifest.Root, root)) throw new InvalidOperationException("Snapshot belongs to a different worktree.");
         foreach (var path in manifest.Files.Select(f => f.Path).Concat(manifest.Index.Select(e => e.Path))) GitAccess.FullPath(root, path);
         if (manifest.Files.Select(f => f.Path).Distinct().Count() != manifest.Files.Count ||
             manifest.Files.Any(f => !IsOid(f.Oid) || f.Mode is not ("100644" or "100755" or "120000")) ||

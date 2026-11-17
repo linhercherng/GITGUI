@@ -17,6 +17,8 @@ internal static class Program
 {
     private static IDisposable? renderClock;
     internal static DesktopPerformanceProbe? Performance { get; private set; }
+    internal static string DataDirectory => Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
+    internal static bool AlreadyRunning { get; private set; }
     [STAThread]
     public static void Main(string[] args)
     {
@@ -41,6 +43,8 @@ internal static class Program
         try { Performance = DesktopPerformanceProbe.Parse(args); }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException) { Environment.ExitCode = 2; return; }
         Performance?.StartupCheckpoint("Main parsed probe arguments");
+        using var instance = SingleInstance.TryAcquire(DataDirectory);
+        AlreadyRunning = instance is null;
         try { BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }
         finally { renderClock?.Dispose(); }
     }
@@ -72,8 +76,8 @@ public sealed class DesktopApp : Application
         Program.Performance?.StartupCheckpoint("DesktopApp.Initialize enter");
         RequestedThemeVariant = ThemeVariant.Dark;
         Styles.Add(new FluentTheme());
-        appearance = new AppearanceManager(new AppearancePreferences(Path.Combine(
-            Program.Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui"), "appearance.json")));
+        if (!Program.AlreadyRunning)
+            appearance = new AppearanceManager(new AppearancePreferences(Path.Combine(Program.DataDirectory, "appearance.json")));
         Program.Performance?.StartupCheckpoint("DesktopApp.Initialize exit");
     }
 
@@ -81,8 +85,21 @@ public sealed class DesktopApp : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            if (Program.AlreadyRunning)
+            {
+                var close = new Avalonia.Controls.Button { Content = "關閉 / Close", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
+                var window = new Avalonia.Controls.Window { Title = "GITGUI", Width = 480, Height = 210, CanResize = false,
+                    Content = new Avalonia.Controls.StackPanel { Margin = new Thickness(24), Spacing = 24, Children =
+                    {
+                        new Avalonia.Controls.TextBlock { Text = "GITGUI 已在執行，請回到原本的視窗。\nGITGUI is already running. Return to its existing window.", TextWrapping = Avalonia.Media.TextWrapping.Wrap }, close
+                    } } };
+                close.Click += (_, _) => window.Close();
+                desktop.MainWindow = window;
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
             Program.Performance?.StartupCheckpoint("OnFrameworkInitializationCompleted enter");
-            var directory = Program.Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
+            var directory = Program.DataDirectory;
             var log = AppLogging.Create(directory);
             log.Information("GITGUI M4 started; repository content and credential logging are disabled");
             var services = new ServiceCollection();

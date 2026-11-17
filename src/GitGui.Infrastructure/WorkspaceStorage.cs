@@ -55,19 +55,26 @@ public sealed class WorkspaceStorage(string databasePath) : IRepositorySettings,
         command.Parameters.AddWithValue("$root", Normalize(root));
         await command.ExecuteNonQueryAsync(ct);
     }
-    public async Task SaveAsync(SnapshotInfo snapshot, CancellationToken ct)
+    public Task SaveAsync(SnapshotInfo snapshot, CancellationToken ct) => SaveBatchAsync([snapshot], ct);
+    public async Task SaveBatchAsync(IReadOnlyList<SnapshotInfo> snapshots, CancellationToken ct)
     {
         await using var connection = await Open(ct);
-        using var command = connection.CreateCommand();
-        command.CommandText = "INSERT OR REPLACE INTO snapshots VALUES($id,$root,$title,$created,$state,$head,$count)";
-        command.Parameters.AddWithValue("$id", snapshot.Id);
-        command.Parameters.AddWithValue("$root", Normalize(snapshot.Repository));
-        command.Parameters.AddWithValue("$title", snapshot.Title);
-        command.Parameters.AddWithValue("$created", snapshot.CreatedAt.ToString("O"));
-        command.Parameters.AddWithValue("$state", snapshot.StateRef);
-        command.Parameters.AddWithValue("$head", (object?)snapshot.Head ?? DBNull.Value);
-        command.Parameters.AddWithValue("$count", snapshot.FileCount);
-        await command.ExecuteNonQueryAsync(ct);
+        using var transaction = connection.BeginTransaction();
+        foreach (var snapshot in snapshots)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "INSERT OR REPLACE INTO snapshots VALUES($id,$root,$title,$created,$state,$head,$count)";
+            command.Parameters.AddWithValue("$id", snapshot.Id);
+            command.Parameters.AddWithValue("$root", Normalize(snapshot.Repository));
+            command.Parameters.AddWithValue("$title", snapshot.Title);
+            command.Parameters.AddWithValue("$created", snapshot.CreatedAt.ToString("O"));
+            command.Parameters.AddWithValue("$state", snapshot.StateRef);
+            command.Parameters.AddWithValue("$head", (object?)snapshot.Head ?? DBNull.Value);
+            command.Parameters.AddWithValue("$count", snapshot.FileCount);
+            await command.ExecuteNonQueryAsync(ct);
+        }
+        await transaction.CommitAsync(ct);
     }
     public async Task<IReadOnlyList<SnapshotInfo>> ListAsync(string root, CancellationToken ct)
     {

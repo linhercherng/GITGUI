@@ -1,11 +1,14 @@
 param(
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version = '0.7.1',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
     [string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'Build this package on Windows with PowerShell 7 and the .NET 10 SDK.' }
 $repo = Split-Path $PSScriptRoot -Parent
+$sourceVersion = & "$PSScriptRoot/Get-ReleaseVersion.ps1"
+if ($Version -and $Version -cne $sourceVersion) { throw 'Package version must match Directory.Build.props.' }
+$Version = $sourceVersion
 $sourceStatus = @(& git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0 -or $sourceStatus.Count -ne 0) { throw 'Commit the complete source and start from a clean checkout before producing a release package.' }
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repo ('artifacts/windows-' + [Guid]::NewGuid().ToString('N')) }
@@ -38,7 +41,7 @@ try {
     $guideDocs = Join-Path $app 'docs'
     $guideImages = Join-Path $app 'images'
     $null = New-Item -ItemType Directory -Path $guideDocs, $guideImages
-    foreach ($document in @('M3-COMPATIBILITY.md', 'M3-ARM-DECISION.md', 'M4-ACCEPTANCE.md', 'M4-PERFORMANCE.md', 'specification.md', 'WINDOWS-RELEASE.md')) {
+    foreach ($document in @('M3-COMPATIBILITY.md', 'M3-ARM-DECISION.md', 'M4-ACCEPTANCE.md', 'M4-PERFORMANCE.md', 'specification.md', 'WINDOWS-RELEASE.md', 'RELEASING.md')) {
         Copy-Item -LiteralPath (Join-Path "$repo/docs" $document) -Destination $guideDocs
     }
     foreach ($image in @('m3-main.png', 'm3-tools.png', 'm4-main.png', 'm4-main-history.png')) {

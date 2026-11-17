@@ -1,4 +1,7 @@
 {
+  "RebuildSnapshotIndex": "Rebuild snapshot index",
+  "DiscardConflictDrafts": "Discard unsaved conflict drafts and exit?",
+  "DiscardConflictDraftsDetails": "One or more files have unsaved conflict edits, including files in other repositories. Confirming permanently discards these drafts. To keep them, cancel and save the result of each conflict before exiting.",
   "Open": "Open",
   "Browse": "Browse…",
   "Refresh": "Refresh",

@@ -10,7 +10,9 @@
 
 ## Windows 免安裝版
 
-從 [v0.7.4 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.4) 下載 `GITGUI-0.7.4-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。v0.7.4 沿用 v0.7.1 已驗證的程式與依賴，更新為 24 章手冊與 44 張標示截圖，新增 9 張合併衝突處理的實際截圖，並保留建立分支、一般合併與本機還原完整範例；新 ZIP 的測試與逐檔校驗見 Release 附件。v0.7.1 新增 GUI 初始化已有檔案資料夾與倉庫本機提交者設定，當時完成 504 項 Windows 本機回歸及解壓啟動檢查。v0.7.0 的 M4 正式效能驗收原門檻保持不變，其受測版本結果為：首次啟動 1,319.86ms、五組捲動均通過、單次產品 UI 工作最大 13.9479ms；詳見 [驗收表](docs/M4-ACCEPTANCE.md)。本版執行檔未簽章，支援OS限制見驗收說明。
+從 [v0.8.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.8.0) 下載 `GITGUI-0.8.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
+
+v0.8.0 新增未儲存衝突草稿的離開確認、單一實例保護及快照索引重建，並修正 CI 下載與版號一致性。保留 24 章操作手冊、44 張實際標示截圖與本機版本管理完整範例。完整測試、六格 CI 與本版 ZIP 的驗證證據隨 Release 提供；可重現發布步驟見 [RELEASING.md](docs/RELEASING.md)。既有 [M4 正式效能數據](docs/M4-ACCEPTANCE.md) 仍對應原報告的 v0.7.0 受測版本，門檻未調整。本版執行檔未簽章。
 
 預設啟動使用 Windows Script Host；環境不允許 VBS 時，可改用 `GitGui.App.exe`，但備用方式不沿用 1.5 秒啟動驗收結果。
 

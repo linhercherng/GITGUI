@@ -685,6 +685,41 @@ public sealed class WindowTests
     }
 
     [AvaloniaFact]
+    public async Task Closing_checks_hidden_conflict_drafts_and_requires_explicit_discard()
+    {
+        var backend = new SampleWorkspace { HasConflict = true };
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var window = new MainWindow(vm); window.Show(); await vm.RefreshCommand.ExecuteAsync(null);
+        vm.ConflictResult += "unsaved edit\n";
+        vm.SelectedChange = vm.Changes[1];
+        Assert.False(vm.ConflictDirty);
+        window.Close();
+        Assert.True(window.IsVisible);
+        var dialog = Assert.Single(window.OwnedWindows);
+        window.Close(); Assert.Single(window.OwnedWindows);
+        dialog.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ConfirmationCancelButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Task.Yield();
+        Assert.True(window.IsVisible);
+        window.Close();
+        dialog = Assert.Single(window.OwnedWindows);
+        dialog.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ConfirmationAcceptButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Task.Yield();
+        Assert.False(window.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task Saved_conflict_draft_does_not_block_closing()
+    {
+        var backend = new SampleWorkspace { HasConflict = true };
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        var window = new MainWindow(vm); window.Show(); await vm.RefreshCommand.ExecuteAsync(null);
+        vm.UseConflictSideCommand.Execute("Ours");
+        await vm.ActionCommand.ExecuteAsync("WriteConflictResult");
+        window.Close();
+        Assert.False(window.IsVisible);
+    }
+
+    [AvaloniaFact]
     public async Task Binary_conflict_disables_text_save_and_image_preview_owns_native_bitmap()
     {
         using var png = new MemoryStream();

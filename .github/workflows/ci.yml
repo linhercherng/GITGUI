@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/compat-git/${{ matrix.git }}
-          key: compat-git-${{ runner.os }}-${{ runner.arch }}-${{ matrix.git }}-${{ hashFiles('scripts/Install-CompatibilityGit.ps1', 'scripts/compatibility-git.json') }}
+          key: compat-git-${{ runner.os }}-${{ runner.arch }}-${{ matrix.git }}-${{ hashFiles('scripts/Install-CompatibilityGit.ps1', 'scripts/Get-VerifiedArchive.ps1', 'scripts/compatibility-git.json') }}
       - name: Install and assert exact Git version
         shell: pwsh
         run: ./scripts/Install-CompatibilityGit.ps1 -Version '${{ matrix.git }}' -Destination '${{ runner.temp }}/compat-git/${{ matrix.git }}'
@@ -51,7 +51,7 @@ jobs:
         timeout-minutes: 10
         run: dotnet test tests/GitGui.Core.Tests/GitGui.Core.Tests.csproj -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame-hang-timeout 5m --blame-hang-dump-type mini --results-directory TestResults
       - name: Test Engine
-        timeout-minutes: 10
+        timeout-minutes: 30
         run: dotnet test tests/GitGui.Engine.Tests/GitGui.Engine.Tests.csproj -c Release --no-build --logger trx --logger "console;verbosity=normal" --blame-hang-timeout 5m --blame-hang-dump-type mini --results-directory TestResults
       - name: Test UI
         timeout-minutes: 10
@@ -66,6 +66,8 @@ jobs:
           ./tests/Test-PerformanceComparison.ps1
           ./tests/Test-NativePhaseIndex.ps1
           ./tests/Test-DesktopPerformanceAcceptance.ps1
+          ./tests/Test-VerifiedArchive.ps1
+          ./tests/Test-ReleaseWorkflow.ps1
       - name: Build independent dispatcher diagnostic
         run: |
           dotnet restore tests/GitGui.DispatcherProfiler/GitGui.DispatcherProfiler.csproj --locked-mode
@@ -78,8 +80,9 @@ jobs:
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
         run: |
-          ./scripts/Build-WindowsPortable.ps1 -Version 0.7.1 -OutputDirectory "$env:RUNNER_TEMP/windows-package"
-          ./tests/Test-WindowsPortable.ps1 -Archive "$env:RUNNER_TEMP/windows-package/GITGUI-0.7.1-win-x64-portable.zip"
+          $version = ./scripts/Get-ReleaseVersion.ps1
+          ./scripts/Build-WindowsPortable.ps1 -OutputDirectory "$env:RUNNER_TEMP/windows-package"
+          ./tests/Test-WindowsPortable.ps1 -Archive "$env:RUNNER_TEMP/windows-package/GITGUI-$version-win-x64-portable.zip"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         with:
