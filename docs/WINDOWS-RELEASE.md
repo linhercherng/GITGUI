@@ -1,8 +1,14 @@
 # Windows x64 免安裝發行
 
-從 [v0.7.4 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.7.4)
-下載 `GITGUI-0.7.4-win-x64-portable.zip`，完整解壓縮後開啟
+從 [v0.9.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.9.0)
+下載 `GITGUI-0.9.0-win-x64-portable.zip`，完整解壓縮後開啟
 `GITGUI.vbs`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+
+## v0.9.0：大型衝突編輯、快照批次處理與提交簽章
+
+本版重新建置全部程式組件，沿用完整 Portable Git 2.56.0.3、.NET 10.0.13 與對應授權／來源。大型衝突區段改為低配置解析與取消過期背景工作；草稿立即保留。快照既有的一般檔案批次處理不變，另改善狀態檔、符號連結與重複空樹建置。提交簽章選單明確區分沿用設定、本次啟用及本次停用，簽章失敗不自動改為未簽章提交，也不變更 Git 設定。
+
+操作說明見手冊第 4、5、6、22.4 節。保留既有 44 張標示截圖；舊圖中的簽章核取方塊以新版選單文字為準。本版測試與精確 ZIP 的驗證附件隨 Release 提供；既有正式 M4 數據仍只適用原 v0.7.0 受測版本，未放寬門檻。執行檔未提供程式碼簽章。
 
 ## v0.8.0：草稿保護、單一實例、快照索引與發布流程
 

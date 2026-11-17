@@ -41,7 +41,7 @@ try {
     $guideDocs = Join-Path $app 'docs'
     $guideImages = Join-Path $app 'images'
     $null = New-Item -ItemType Directory -Path $guideDocs, $guideImages
-    foreach ($document in @('M3-COMPATIBILITY.md', 'M3-ARM-DECISION.md', 'M4-ACCEPTANCE.md', 'M4-PERFORMANCE.md', 'specification.md', 'WINDOWS-RELEASE.md', 'RELEASING.md')) {
+    foreach ($document in @('M3-COMPATIBILITY.md', 'M3-ARM-DECISION.md', 'M4-ACCEPTANCE.md', 'M4-PERFORMANCE.md', 'specification.md', 'WINDOWS-RELEASE.md', 'RELEASING.md', 'V0.9-PERFORMANCE.md')) {
         Copy-Item -LiteralPath (Join-Path "$repo/docs" $document) -Destination $guideDocs
     }
     foreach ($image in @('m3-main.png', 'm3-tools.png', 'm4-main.png', 'm4-main-history.png')) {
@@ -53,11 +53,11 @@ try {
     Copy-Item -Path "$repo/docs/images/walkthrough/*.png" -Destination $walkthroughImages
     # Root guide has the same links in the repository and portable package.
     $guide = Join-Path $app 'USER-GUIDE.zh-TW.md'
-    (Get-Content -LiteralPath $guide -Raw) -replace '\]\((M3-COMPATIBILITY|M3-ARM-DECISION|M4-ACCEPTANCE|M4-PERFORMANCE|specification|WINDOWS-RELEASE)\.md\)', '](docs/$1.md)' |
+    (Get-Content -LiteralPath $guide -Raw) -replace '\]\((M3-COMPATIBILITY|M3-ARM-DECISION|M4-ACCEPTANCE|M4-PERFORMANCE|V0\.9-PERFORMANCE|specification|WINDOWS-RELEASE)\.md\)', '](docs/$1.md)' |
         Set-Content -LiteralPath $guide -Encoding utf8
     & "$repo/scripts/Render-UserGuide.ps1" -OutputPath (Join-Path $app 'USER-GUIDE.zh-TW.html')
     $htmlGuide = Join-Path $app 'USER-GUIDE.zh-TW.html'
-    (Get-Content -LiteralPath $htmlGuide -Raw) -replace 'href="(M3-COMPATIBILITY|M3-ARM-DECISION|M4-ACCEPTANCE|M4-PERFORMANCE|specification|WINDOWS-RELEASE)\.md"', 'href="docs/$1.md"' |
+    (Get-Content -LiteralPath $htmlGuide -Raw) -replace 'href="(M3-COMPATIBILITY|M3-ARM-DECISION|M4-ACCEPTANCE|M4-PERFORMANCE|V0\.9-PERFORMANCE|specification|WINDOWS-RELEASE)\.md"', 'href="docs/$1.md"' |
         Set-Content -LiteralPath $htmlGuide -Encoding utf8
     $licenses = Join-Path $app 'licenses'
     $null = New-Item -ItemType Directory -Path $licenses

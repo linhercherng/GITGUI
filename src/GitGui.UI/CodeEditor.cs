@@ -29,7 +29,15 @@ public sealed class CodeEditor : TextEditor
         AppearanceManager.Bind(this, LineNumbersForegroundProperty, "MutedBrush");
         HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
         VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
-        TextChanged += (_, _) => { if (!updatingText && CodeText != Text) SetCurrentValue(CodeTextProperty, Text); };
+        TextChanged += (_, _) =>
+        {
+            if (updatingText) return;
+            var text = Text;
+            if (CodeText == text) return;
+            updatingText = true;
+            try { SetCurrentValue(CodeTextProperty, text); }
+            finally { updatingText = false; }
+        };
     }
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -38,7 +46,7 @@ public sealed class CodeEditor : TextEditor
             ControlAutomationPeer.FromElement(this)?.RaisePropertyChangedEvent(AutomationElementIdentifiers.NameProperty, change.OldValue, change.NewValue);
         if (change.Property == CodeTextProperty)
             ControlAutomationPeer.FromElement(this)?.RaisePropertyChangedEvent(ValuePatternIdentifiers.ValueProperty, change.OldValue, change.NewValue);
-        if (change.Property != CodeTextProperty || Text == CodeText) return;
+        if (change.Property != CodeTextProperty || updatingText || Text == CodeText) return;
         updatingText = true;
         try
         {

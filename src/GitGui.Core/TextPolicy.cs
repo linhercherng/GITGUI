@@ -14,7 +14,7 @@ public sealed record CommitText(string Message, CommitMessageEncoding Encoding)
         .Split("\n\n", 2)[0].Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim())).TrimEnd();
 }
 public sealed record RepositoryTextSettings(string AutoCrlf = "unset", string SafeCrlf = "unset", string Eol = "unset",
-    string CommitEncoding = "UTF-8")
+    string CommitEncoding = "UTF-8", string CommitSigning = "false")
 {
     public string EffectiveAutoCrlf => AutoCrlf == "unset" ? "false" : AutoCrlf;
 }

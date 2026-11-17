@@ -411,5 +411,15 @@
   "RetryWithoutHooks": "僅這次略過 hooks 重試提交",
   "RetryWithoutHooksDetails": "提交遭到 hook 拒絕。是否對相同且已檢視的提交，僅這次使用 --no-verify 重試？這會略過 Git pre-commit 與 commit-msg hooks。請先檢視原始輸出；簽章、重新驗證與復原快照仍會執行。",
   "OpenRepositoryHint": "開啟倉庫以開始工作。",
-  "AdvancedFilters": "進階篩選"
+  "AdvancedFilters": "進階篩選",
+  "CommitSigning": "提交簽章",
+  "SigningInherit": "簽章：沿用 Git 設定",
+  "SigningEnabled": "簽章：本次提交啟用",
+  "SigningDisabled": "簽章：本次提交停用",
+  "CommitSigningDefault": "Git 預設：commit.gpgsign = {0}",
+  "SigningChoiceRequired": "請選擇提交簽章方式。",
+  "ConflictSectionsUpdating": "正在更新衝突區段…",
+  "ErrorSigningFailed": "提交簽章失敗",
+  "RemedySigningHelp": "簽章設定說明",
+  "HelpSigningHelp": "Git 無法簽署本次提交；提交訊息與暫存檔案仍保留。請檢查 GPG／SSH 簽章程式、user.signingkey 及私鑰是否可用。簽章選單可沿用 Git 設定、強制啟用，或僅停用本次提交的簽章。只有專案允許未簽章提交時，才選擇本次停用並再次按「提交」。GITGUI 不會變更 commit.gpgsign，也不會自動停用簽章。"
 }

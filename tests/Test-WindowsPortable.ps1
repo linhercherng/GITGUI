@@ -14,7 +14,7 @@ $null = New-Item -ItemType Directory -Path $temporary
 $package = @(Get-ChildItem -LiteralPath $temporary -Directory)
 if ($package.Count -ne 1) { throw 'ZIP must have exactly one top-level directory' }
 $app = $package[0].FullName
-foreach ($document in @('LICENSE', 'USER-GUIDE.zh-TW.md', 'USER-GUIDE.zh-TW.html', 'docs/M3-COMPATIBILITY.md', 'docs/M3-ARM-DECISION.md', 'docs/M4-ACCEPTANCE.md', 'docs/M4-PERFORMANCE.md', 'images/m3-main.png', 'images/m3-tools.png')) {
+foreach ($document in @('LICENSE', 'USER-GUIDE.zh-TW.md', 'USER-GUIDE.zh-TW.html', 'docs/M3-COMPATIBILITY.md', 'docs/M3-ARM-DECISION.md', 'docs/M4-ACCEPTANCE.md', 'docs/M4-PERFORMANCE.md', 'docs/V0.9-PERFORMANCE.md', 'images/m3-main.png', 'images/m3-tools.png')) {
     if (-not (Test-Path -LiteralPath (Join-Path $app $document) -PathType Leaf)) { throw "Missing offline guide asset: $document" }
 }
 $guide = Get-Content -LiteralPath (Join-Path $app 'USER-GUIDE.zh-TW.md') -Raw

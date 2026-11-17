@@ -7,6 +7,53 @@ namespace GitGui.Engine.Tests;
 
 public class SigningTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Explicit_unsigned_commit_overrides_config_for_one_invocation_only(bool configured)
+    {
+        using var repo = new TemporaryRepository(); await repo.Init();
+        await repo.Git("config", "commit.gpgsign", configured ? "true" : "false");
+        await repo.Git("config", "gpg.program", "gitgui-missing-signer");
+        await File.AppendAllTextAsync(Path.Combine(repo.Root, "tracked.txt"), "unsigned\n"); await repo.Git("add", ".");
+        var runner = new GitProcessRunner(); var catalog = new MemoryCatalog();
+        var commands = new List<CommandEntry>(); runner.CommandExecuted += (_, entry) => commands.Add(entry);
+        var service = new WorkspaceService(runner, new TestSettings(), catalog, new(runner, catalog), new TestInteraction());
+        var state = await service.OpenAsync(repo.Root, new(), default);
+        Assert.Equal(configured ? "true" : "false", state.TextSettings.CommitSigning);
+        var invalid = await service.ExecuteAsync(repo.Root, new(GitAction.Commit) { Sign = true, DisableSigning = true, Message = "invalid" }, null, default);
+        Assert.False(invalid.Success); Assert.Empty(await catalog.ListAsync(repo.Root, default));
+        var result = await service.ExecuteAsync(repo.Root, new(GitAction.Commit) { DisableSigning = true, Message = "explicit unsigned" }, null, default);
+        Assert.True(result.Success, result.Message);
+        Assert.DoesNotContain("gpgsig ", await repo.Git("cat-file", "commit", "HEAD"));
+        Assert.Equal(configured ? "true" : "false", (await repo.Git("config", "commit.gpgsign")).Trim());
+        var command = Assert.Single(commands, c => c.Arguments.Contains("commit"));
+        Assert.Contains("--no-gpg-sign", command.Arguments); Assert.DoesNotContain("--no-verify", command.Arguments);
+        await File.AppendAllTextAsync(Path.Combine(repo.Root, "tracked.txt"), "sign\n"); await repo.Git("add", ".");
+        var signed = await service.ExecuteAsync(repo.Root, new(GitAction.Commit) { Sign = true, Message = "must sign" }, null, default);
+        Assert.False(signed.Success); Assert.Equal(GitErrorKind.SigningFailed, signed.Error);
+        Assert.Equal(configured ? "true" : "false", (await repo.Git("config", "commit.gpgsign")).Trim());
+    }
+
+    [Fact]
+    public async Task Inherited_signing_failure_is_identified_without_changing_config_or_losing_staged_changes()
+    {
+        using var repo = new TemporaryRepository(); await repo.Init();
+        await repo.Git("config", "commit.gpgsign", "true");
+        await repo.Git("config", "gpg.program", "gitgui-missing-signer");
+        await File.AppendAllTextAsync(Path.Combine(repo.Root, "tracked.txt"), "sign me\n");
+        await repo.Git("add", ".");
+        var before = (await repo.Git("rev-parse", "HEAD")).Trim();
+        var runner = new GitProcessRunner(); var catalog = new MemoryCatalog();
+        var service = new WorkspaceService(runner, new TestSettings(), catalog, new(runner, catalog), new TestInteraction());
+        var result = await service.ExecuteAsync(repo.Root, new(GitAction.Commit) { Message = "signed by config" }, null, default);
+        Assert.False(result.Success);
+        Assert.Equal("SigningFailed", result.Error.ToString());
+        Assert.Equal(before, (await repo.Git("rev-parse", "HEAD")).Trim());
+        Assert.Equal("true", (await repo.Git("config", "commit.gpgsign")).Trim());
+        Assert.Contains("tracked.txt", await repo.Git("diff", "--cached", "--name-only"));
+    }
+
     [Fact]
     public async Task Unchecked_tag_signing_is_explicit_and_never_starts_an_editor()
     {

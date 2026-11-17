@@ -10,9 +10,9 @@
 
 ## Windows 免安裝版
 
-從 [v0.8.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.8.0) 下載 `GITGUI-0.8.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
+從 [v0.9.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.9.0) 下載 `GITGUI-0.9.0-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
 
-v0.8.0 新增未儲存衝突草稿的離開確認、單一實例保護及快照索引重建，並修正 CI 下載與版號一致性。保留 24 章操作手冊、44 張實際標示截圖與本機版本管理完整範例。完整測試、六格 CI 與本版 ZIP 的驗證證據隨 Release 提供；可重現發布步驟見 [RELEASING.md](docs/RELEASING.md)。既有 [M4 正式效能數據](docs/M4-ACCEPTANCE.md) 仍對應原報告的 v0.7.0 受測版本，門檻未調整。本版執行檔未簽章。
+v0.9.0 改善大型衝突編輯與快照狀態檔／符號連結的批次處理；提交簽章提供「沿用 Git 設定／本次啟用／本次停用」，失敗時保留訊息並提供說明。手冊保留 24 章、44 張實際標示截圖與本機版本管理範例，並更新第 4、5、6、22.4 節。完整測試、六格 CI 與本版 ZIP 的驗證證據隨 Release 提供；發布步驟見 [RELEASING.md](docs/RELEASING.md)，改善量測見 [v0.9.0 驗證](docs/V0.9-PERFORMANCE.md)。既有 [M4 正式效能數據](docs/M4-ACCEPTANCE.md) 仍對應 v0.7.0 受測版本，門檻未調整。本版執行檔未簽章。
 
 預設啟動使用 Windows Script Host；環境不允許 VBS 時，可改用 `GitGui.App.exe`，但備用方式不沿用 1.5 秒啟動驗收結果。
 

@@ -25,7 +25,7 @@ public class TestApplication : Application
     public override void Initialize() { RequestedThemeVariant = ThemeVariant.Dark; Styles.Add(new FluentTheme()); }
 }
 
-public sealed class WindowTests
+public sealed class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [AvaloniaFact]
     public void Idle_or_determinate_progress_stops_the_indeterminate_animation()
@@ -266,6 +266,8 @@ public sealed class WindowTests
                     var button = window.FindControl<Button>(name)!;
                     var point = button.TranslatePoint(default, window)!.Value;
                     Assert.InRange(point.X + button.Bounds.Width, 0, window.Bounds.Width);
+                    Assert.InRange(point.Y, 0, window.Bounds.Height);
+                    Assert.InRange(point.Y + button.Bounds.Height, 0, window.Bounds.Height);
                     Assert.True(button.Bounds.Height >= 34);
                 }
             }
@@ -312,10 +314,43 @@ public sealed class WindowTests
     }
 
     [AvaloniaFact]
+    public async Task Signing_failure_preserves_message_and_choice_and_success_resets_to_inherit()
+    {
+        var backend = new SampleWorkspace { NextOutcome = new(false, "gpg failed to sign the data", GitErrorKind.SigningFailed) };
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath };
+        await vm.RefreshCommand.ExecuteAsync(null);
+        vm.CommitMessage = "keep message"; vm.CommitSigningChoice = 1;
+        await vm.ActionCommand.ExecuteAsync("Commit");
+        Assert.Equal("keep message", vm.CommitMessage); Assert.Equal(1, vm.CommitSigningChoice);
+        Assert.True(vm.Feedback.HasAction); Assert.Equal(vm.L["RemedySigningHelp"], vm.Feedback.ActionLabel);
+        backend.NextOutcome = new(true, "committed"); vm.CommitSigningChoice = 2;
+        await vm.ActionCommand.ExecuteAsync("Commit");
+        Assert.Empty(vm.CommitMessage); Assert.Equal(0, vm.CommitSigningChoice);
+    }
+
+    [AvaloniaFact]
+    public void Commit_signing_choices_map_to_explicit_flags_and_reject_invalid_selection()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent()) { CommitMessage = "message" };
+        var inherited = vm.CreateOperation("Commit")!;
+        Assert.False(inherited.Sign); Assert.False(inherited.DisableSigning);
+        vm.CommitSigningChoice = 1;
+        var enabled = vm.CreateOperation("Commit")!;
+        Assert.True(enabled.Sign); Assert.False(enabled.DisableSigning);
+        vm.CommitSigningChoice = 2;
+        var disabled = vm.CreateOperation("Commit")!;
+        Assert.False(disabled.Sign); Assert.True(disabled.DisableSigning);
+        vm.CommitSigningChoice = -1;
+        Assert.Throws<InvalidOperationException>(() => vm.CreateOperation("Commit"));
+        vm.CommitSigningChoice = 2; vm.RepositoryPath = "another repository";
+        Assert.Equal(0, vm.CommitSigningChoice);
+    }
+
+    [AvaloniaFact]
     public async Task Every_P0_operation_is_mapped_with_its_explicit_options()
     {
         var backend = new SampleWorkspace();
-        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath, BranchName = "feature/work", NewBranchName = "feature/review", CloneUrl = "https://example.org/project.git", CommitMessage = "Complete M1", Amend = true, SkipHooks = true, SignCommit = true, ForcePush = true, ForceDelete = true };
+        using var vm = new MainWindowViewModel(backend, new MemoryRecent()) { RepositoryPath = SampleWorkspace.RootPath, BranchName = "feature/work", NewBranchName = "feature/review", CloneUrl = "https://example.org/project.git", CommitMessage = "Complete M1", Amend = true, SkipHooks = true, CommitSigningChoice = 1, ForcePush = true, ForceDelete = true };
         await vm.RefreshCommand.ExecuteAsync(null);
         vm.SelectedChange = vm.Changes[0];
         foreach (var action in new[] { "Init", "Clone", "Stage", "StageAll", "Unstage", "UnstageAll", "Discard", "Commit", "CreateBranch", "SwitchBranch", "RenameBranch", "DeleteBranch", "Fetch", "Pull", "Push", "Merge", "AbortMerge", "ResolveOurs", "ResolveTheirs", "MarkResolved", "ExternalMergeTool" })
@@ -682,6 +717,30 @@ public sealed class WindowTests
             if (activationRefresh is not null) await activationRefresh.WaitAsync(TimeSpan.FromSeconds(5));
             window.Close();
         }
+    }
+
+    [AvaloniaFact]
+    public async Task Large_conflict_edits_do_not_reparse_on_the_input_callback_and_only_publish_current_results()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());
+        var text = string.Concat(Enumerable.Repeat("context\n", 200000)) + "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\n";
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        vm.ConflictResult = text;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        output.WriteLine($"200000 context lines input callback allocation: {allocated} bytes");
+        Assert.True(allocated < 200000, $"Input callback allocated {allocated:N0} bytes.");
+        Assert.True(vm.ConflictSectionsUpdating);
+        await vm.ConflictSectionsReady;
+        Assert.Single(vm.ConflictSections);
+        Assert.False(vm.ConflictSectionsUpdating);
+        vm.ConflictResult = text + "tail";
+        var pending = vm.ConflictSectionsReady;
+        vm.ConflictResult = "resolved\n";
+        await pending;
+        Assert.Empty(vm.ConflictSections);
+        vm.ConflictResult = text; pending = vm.ConflictSectionsReady;
+        vm.Dispose(); await pending;
+        Assert.Empty(vm.ConflictSections);
     }
 
     [AvaloniaFact]

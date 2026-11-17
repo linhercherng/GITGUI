@@ -22,6 +22,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? selectionRequest;
     private CancellationTokenSource? commitRequest;
     private CancellationTokenSource? conflictRequest;
+    private CancellationTokenSource? conflictSectionsRequest;
+    public Task ConflictSectionsReady { get; private set; } = Task.CompletedTask;
     private CancellationTokenSource? operationRequest;
     private WorkspaceState? state;
     private string sourceDiff = "";
@@ -82,6 +84,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool conflictBinary;
     [ObservableProperty] private bool conflictLoading;
     [ObservableProperty] private bool conflictDirty;
+    [ObservableProperty] private bool conflictSectionsUpdating;
     [ObservableProperty] private string conflictBase = "";
     [ObservableProperty] private string conflictOurs = "";
     [ObservableProperty] private string conflictTheirs = "";
@@ -94,7 +97,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string previewNotice = "";
     [ObservableProperty] private bool amend;
     [ObservableProperty] private bool skipHooks;
-    [ObservableProperty] private bool signCommit;
+    [ObservableProperty] private int commitSigningChoice;
     [ObservableProperty] private bool forcePush;
     [ObservableProperty] private bool forceDelete;
     [ObservableProperty] private bool isHistoryDiff;
@@ -122,6 +125,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public BatchObservableCollection<ConflictSection> ConflictSections { get; } = [];
     public BatchObservableCollection<string> Recent { get; } = [];
     public string SelectedEncodingText => L["Encoding" + selectedEncoding.Source] + " · " + selectedEncoding.Name;
+    public string CommitSigningDefaultText => state is null ? L["OpenRepositoryHint"] : string.Format(L["CommitSigningDefault"], state.TextSettings.CommitSigning);
     public string RepositoryTextSettingsText => string.Format(L["AutoCrlfSummary"], state?.TextSettings.AutoCrlf ?? "unset", state?.TextSettings.SafeCrlf ?? "unset", state?.TextSettings.Eol ?? "unset");
     public string Root => state?.Root ?? RepositoryPath.Trim();
     public string Summary => $"{Changes.Count} {L["Changes"]}  ·  {Commits.Count} {L["Commits"]}";
@@ -146,12 +150,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         Notice = L["OpenRepositoryHint"];
         workspace.CommandExecuted += CommandExecuted;
     }
+    partial void OnRepositoryPathChanged(string value) => CommitSigningChoice = 0;
     partial void OnEnglishChanged(bool value)
     {
         var initialNotice = Notice == L["OpenRepositoryHint"];
         L.SetCulture(value ? "en" : "zh-TW"); if (initialNotice) Notice = L["OpenRepositoryHint"];
         OnPropertyChanged(nameof(Summary)); OnPropertyChanged(nameof(DiffTitle)); OnPropertyChanged(nameof(PreviewSummary));
-        OnPropertyChanged("SelectedEncodingText"); OnPropertyChanged("RepositoryTextSettingsText");
+        OnPropertyChanged("SelectedEncodingText"); OnPropertyChanged("RepositoryTextSettingsText"); OnPropertyChanged(nameof(CommitSigningDefaultText));
         if (state is not null) InProgressText = state.InProgress.IsActive ? $"{state.InProgress.Kind} · {L[state.InProgress.HasConflicts ? "ResolveConflicts" : "ReadyToContinue"]}" : "";
     }
     partial void OnIsBusyChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
@@ -168,13 +173,38 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     partial void OnAfterImageChanged(byte[]? value) => OnPropertyChanged(nameof(HasImages));
     partial void OnConflictResultChanged(string value)
     {
-        Replace(ConflictSections, ConflictMarkers.Parse(value));
-        SelectedConflictSection = ConflictSections.FirstOrDefault();
         if (!assigningConflict && loadedConflict is { } key)
         {
             ConflictDirty = true;
             conflictDrafts[key] = new(ConflictBase, ConflictOurs, ConflictTheirs, value, ++conflictRevision);
         }
+        CancelRead(ref conflictSectionsRequest);
+        if (value.Length <= 65536)
+        {
+            ConflictSectionsUpdating = false;
+            Replace(ConflictSections, ConflictMarkers.Parse(value));
+            SelectedConflictSection = ConflictSections.FirstOrDefault();
+            ConflictSectionsReady = Task.CompletedTask;
+        }
+        else
+        {
+            ConflictSections.Clear(); SelectedConflictSection = null; ConflictSectionsUpdating = true;
+            var request = conflictSectionsRequest = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+            ConflictSectionsReady = ParseConflictSectionsAsync(value, request);
+        }
+    }
+    private async Task ParseConflictSectionsAsync(string text, CancellationTokenSource request)
+    {
+        var token = request.Token;
+        try
+        {
+            await Task.Delay(150, token);
+            var sections = await Task.Run(() => ConflictMarkers.Parse(text, token), token);
+            if (disposed || token.IsCancellationRequested || !ReferenceEquals(request, conflictSectionsRequest)) return;
+            Replace(ConflictSections, sections); SelectedConflictSection = ConflictSections.FirstOrDefault();
+        }
+        catch (OperationCanceledException) { }
+        finally { if (ReferenceEquals(request, conflictSectionsRequest)) ConflictSectionsUpdating = false; }
     }
     partial void OnSelectedRefChanged(RefInfo? value) { if (value is not null) BranchName = value.Name; }
     partial void OnSelectedChangeChanged(FileChange? value) { if (applyingReadState) return; InvalidateCommitSelection(); IsHistoryDiff = false; _ = LoadDiffAsync(); _ = LoadConflictAsync(value); }
@@ -277,9 +307,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         if (Remotes.Count > 0 && !Remotes.Any(r => r.Name == RemoteName)) RemoteName = Remotes[0].Name;
         SelectedCommit = Commits.FirstOrDefault(c => c.Hash == selectedHash);
         applyingReadState = false;
-        OnPropertyChanged(nameof(RepositoryTextSettingsText));
+        OnPropertyChanged(nameof(RepositoryTextSettingsText)); OnPropertyChanged(nameof(CommitSigningDefaultText));
         if (previous != state.Root)
         {
+            if (previous is not null) CommitSigningChoice = 0;
             undoId = redoId = null; CanUndo = CanRedo = false;
             SelectedChange = (ShowStaged ? StagedChanges : UnstagedChanges).FirstOrDefault();
             CommitFiles.Clear(); CommitDetails = "";
@@ -399,7 +430,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 return new(action == "StagePatch" ? GitAction.StagePatch : GitAction.UnstagePatch) { Patch = UnifiedPatch.Build(sourceDiff, hunks, lines, action == "UnstagePatch") };
             case "Commit":
                 if (string.IsNullOrWhiteSpace(CommitMessage)) throw new InvalidOperationException(L["MessageRequired"]);
-                return new(GitAction.Commit) { Message = CommitMessage, Amend = Amend, SkipHooks = SkipHooks, Sign = SignCommit };
+                if (CommitSigningChoice is < 0 or > 2) throw new InvalidOperationException(L["SigningChoiceRequired"]);
+                return new(GitAction.Commit) { Message = CommitMessage, Amend = Amend, SkipHooks = SkipHooks, Sign = CommitSigningChoice == 1, DisableSigning = CommitSigningChoice == 2 };
             case "Init": return new(GitAction.Init) { InitAuthorName = InitAuthorName, InitAuthorEmail = InitAuthorEmail };
             case "Clone": return new(GitAction.Clone) { Url = Require(CloneUrl, "UrlRequired") };
             case "CreateBranch": return new(GitAction.CreateBranch) { Name = Require(BranchName, "BranchRequired") };
@@ -449,7 +481,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 canOfferHookBypass ? "RetryWithoutHooks" : null,
                 canOfferHookBypass ? async () =>
                 {
-                    bool StillCurrent() => !disposed && CanOperate && Root == executionRoot && RepositoryPath == executionRoot && CommitMessage == operation.Message && Amend == operation.Amend && SignCommit == operation.Sign;
+                    bool StillCurrent() => !disposed && CanOperate && Root == executionRoot && RepositoryPath == executionRoot && CommitMessage == operation.Message && Amend == operation.Amend && (CommitSigningChoice == 1) == operation.Sign && (CommitSigningChoice == 2) == operation.DisableSigning;
                     if (!StillCurrent() || ConfirmSkipHooks is not { } confirm || !await confirm() || !StillCurrent()) return;
                     SkipHooks = true; await RunAsync(operation with { SkipHooks = true, Force = false });
                 } : null);
@@ -472,7 +504,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 else { undoId = snapshot.Id; redoId = null; }
                 CanUndo = undoId is not null; CanRedo = redoId is not null;
             }
-            if (outcome.Success && operation.Action == GitAction.Commit && CommitMessage == operation.Message) { CommitMessage = ""; Amend = false; }
+            if (outcome.Success && operation.Action == GitAction.Commit && CommitMessage == operation.Message) { CommitMessage = ""; Amend = false; CommitSigningChoice = 0; }
             if (!outcome.Cancelled)
             {
                 try { await RefreshStateAsync(); }
@@ -634,7 +666,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private void ClearState()
     {
         applyingReadState = false; historyGeneration = null; unstaged = staged = []; selectedEncoding = CommitMessageEncoding.Utf8;
-        state = null; HasRepository = false; InProgress = false; IsUntrusted = false; Branch = "—"; Tracking = "";
+        state = null; OnPropertyChanged(nameof(CommitSigningDefaultText)); HasRepository = false; InProgress = false; IsUntrusted = false; Branch = "—"; Tracking = "";
         SelectedChange = null; SelectedCommit = null; SelectedCommitFile = null; SelectedSnapshot = null;
         Changes.Clear(); Commits.Clear(); Refs.Clear(); Remotes.Clear(); CommitFiles.Clear(); Snapshots.Clear(); SelectedFiles.Clear();
         OnPropertyChanged(nameof(UnstagedChanges)); OnPropertyChanged(nameof(StagedChanges));
@@ -645,6 +677,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         if (disposed) return;
         disposed = true; ConfirmSkipHooks = null; workspace.CommandExecuted -= CommandExecuted;
         Feedback.Dispose(); CancelRead(ref selectionRequest); CancelRead(ref commitRequest); CancelRead(ref conflictRequest);
+        CancelRead(ref conflictSectionsRequest);
         _ = CancelAndDisposeAsync(lifetime); operationRequest?.Cancel();
     }
 }

@@ -156,6 +156,7 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
                     if (op.Amend) commitArgs.Add("--amend");
                     if (op.SkipHooks) commitArgs.Add("--no-verify");
                     if (op.Sign) commitArgs.Add("-S");
+                    else if (op.DisableSigning) commitArgs.Add("--no-gpg-sign");
                     await Run(commitArgs.ToArray(), messageBytes.Commit); break;
                 case GitAction.CreateBranch:
                     await Run(["branch", "--", op.Name!]); break;
@@ -305,6 +306,7 @@ public sealed partial class WorkspaceService : IProgressiveWorkspaceService, IAd
             throw new InvalidOperationException("Resolve conflicts with ours/theirs or abort the merge.");
         if (op.Action == GitAction.Commit)
         {
+            if (op.Sign && op.DisableSigning) throw new ArgumentException("Choose one commit signing policy.");
             if (string.IsNullOrWhiteSpace(op.Message)) throw new ArgumentException("Enter a commit message.");
             if (state.InProgress.HasConflicts) throw new InvalidOperationException("Resolve and stage every conflict before committing.");
         }

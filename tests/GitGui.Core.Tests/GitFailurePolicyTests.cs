@@ -10,6 +10,8 @@ public class GitFailurePolicyTests
     [InlineData("fatal: Unable to create '.git/index.lock': File exists", GitErrorKind.LockExists)]
     [InlineData("fatal: Could not resolve host: example.invalid", GitErrorKind.Network)]
     [InlineData("pre-commit hook rejected", GitErrorKind.HookRejected)]
+    [InlineData("error: gpg failed to sign the data: gpg: No secret key", GitErrorKind.SigningFailed)]
+    [InlineData("error: failed to sign the commit", GitErrorKind.SigningFailed)]
     [InlineData("error: unknown operation failure", GitErrorKind.Conflict)]
     public void Explicit_command_failure_precedes_existing_unmerged_index(string stderr, GitErrorKind expected)
         => Assert.Equal(expected, GitFailurePolicy.Classify(1, stderr, hasUnmergedEntries: true));

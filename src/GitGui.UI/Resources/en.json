@@ -411,5 +411,15 @@
   "RetryWithoutHooks": "Retry commit without hooks once",
   "RetryWithoutHooksDetails": "The commit hook rejected this commit. Retry the same reviewed commit once with --no-verify? This skips Git pre-commit and commit-msg hooks. Review their output first; signing, fresh validation and a recovery snapshot still apply.",
   "OpenRepositoryHint": "Open a repository to begin.",
-  "AdvancedFilters": "Advanced filters"
+  "AdvancedFilters": "Advanced filters",
+  "CommitSigning": "Commit signing",
+  "SigningInherit": "Signing: inherit Git configuration",
+  "SigningEnabled": "Signing: enabled for this commit",
+  "SigningDisabled": "Signing: disabled for this commit",
+  "CommitSigningDefault": "Git default: commit.gpgsign = {0}",
+  "SigningChoiceRequired": "Choose a commit signing policy.",
+  "ConflictSectionsUpdating": "Updating conflict sections…",
+  "ErrorSigningFailed": "Commit signing failed",
+  "RemedySigningHelp": "Signing help",
+  "HelpSigningHelp": "Git could not sign this commit. The commit message and staged files are preserved. Check the configured GPG/SSH signer, user.signingkey and available private key. The signing selector can inherit Git settings, require signing, or explicitly disable signing for this commit. Disable signing only if your project permits unsigned commits, then click Commit again. GITGUI never changes commit.gpgsign or disables signing automatically."
 }

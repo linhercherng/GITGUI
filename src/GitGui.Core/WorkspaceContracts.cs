@@ -26,6 +26,7 @@ public sealed record GitOperation(GitAction Action)
     public bool Force { get; init; }
     public bool SkipHooks { get; init; }
     public bool Sign { get; init; }
+    public bool DisableSigning { get; init; }
     public string? Revision { get; init; }
     public string? StashOid { get; init; }
     public bool IncludeUntracked { get; init; }
@@ -66,7 +67,7 @@ public sealed record SnapshotInfo(string Id, string Repository, string Title, Da
     public string Label => $"{CreatedAt:MM-dd HH:mm:ss}  {Title}";
 }
 public enum GitErrorKind { None, NonFastForward, StaleLease, Conflict, AuthFailed, LockExists,
-    HookRejected, Network, DirtyWorktree, Unknown, WorktreeCleanupIncomplete }
+    HookRejected, Network, DirtyWorktree, Unknown, WorktreeCleanupIncomplete, SigningFailed }
 public sealed record OperationProgress(string Phase, int? Percent = null, bool CanCancel = false);
 public sealed record CommandEntry(DateTimeOffset Time, string Command, string Output, int ExitCode,
     TimeSpan Duration)

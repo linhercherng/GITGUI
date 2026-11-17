@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace GitGui.Core;
 
-public enum GitSuggestedAction { None, Fetch, Pull, ResolveConflicts, CredentialsHelp, LockHelp, ShowOutput, Retry, Stash, Prune }
+public enum GitSuggestedAction { None, Fetch, Pull, ResolveConflicts, CredentialsHelp, LockHelp, ShowOutput, Retry, Stash, Prune, SigningHelp }
 
 public static class GitFailurePolicy
 {
@@ -12,6 +12,7 @@ public static class GitFailurePolicy
         GitErrorKind.StaleLease => GitSuggestedAction.Fetch,
         GitErrorKind.NonFastForward => GitSuggestedAction.Pull,
         GitErrorKind.Conflict => GitSuggestedAction.ResolveConflicts,
+        GitErrorKind.SigningFailed => GitSuggestedAction.SigningHelp,
         GitErrorKind.AuthFailed => GitSuggestedAction.CredentialsHelp,
         GitErrorKind.LockExists => GitSuggestedAction.LockHelp,
         GitErrorKind.Network => GitSuggestedAction.Retry,
@@ -29,6 +30,7 @@ public static class GitFailurePolicy
             try { return Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)); }
             catch (RegexMatchTimeoutException) { return false; }
         }
+        if (Has(@"gpg failed to sign|gpg: signing failed|failed to sign the (?:data|commit)|signing failed:|unable to sign the (?:data|commit)")) return GitErrorKind.SigningFailed;
         if (Has("stale info")) return GitErrorKind.StaleLease;
         if (Has(@"Authentication failed|Permission denied \(publickey\)|could not read Username")) return GitErrorKind.AuthFailed;
         if (Has(@"index\.lock exists; wait|Unable to create [^\r\n]*\.lock[^\r\n]*File exists|another git process seems to be running|cannot lock ref[^\r\n]*\.lock")) return GitErrorKind.LockExists;

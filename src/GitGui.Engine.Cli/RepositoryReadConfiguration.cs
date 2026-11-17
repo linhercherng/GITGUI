@@ -83,7 +83,8 @@ internal sealed class RepositoryReadConfiguration
 
     public string? Get(string key) => values.GetValueOrDefault(key);
     public RepoFormat Format => new(Get("extensions.objectformat") ?? "sha1", Get("extensions.refstorage") ?? "files");
-    public RepositoryTextSettings Text => new(Get("core.autocrlf") ?? "unset", Get("core.safecrlf") ?? "unset", Get("core.eol") ?? "unset", Get("i18n.commitencoding") ?? "UTF-8");
+    public RepositoryTextSettings Text => new(Get("core.autocrlf") ?? "unset", Get("core.safecrlf") ?? "unset", Get("core.eol") ?? "unset", Get("i18n.commitencoding") ?? "UTF-8",
+        Get("commit.gpgsign") is { } signing ? signing.Length == 0 ? "true" : signing : "false");
     public IReadOnlyList<string> Risky => Entries.Where(pair => RiskKey.IsMatch(pair.Key))
         .Select(pair => GitProcessRunner.Redact((pair.Key + "=" + pair.Value).Replace('\n', '='))).ToArray();
     public IReadOnlyList<RemoteInfo> Remotes => Entries.Where(pair => pair.Key.StartsWith("remote.", StringComparison.OrdinalIgnoreCase) && pair.Key.EndsWith(".url", StringComparison.OrdinalIgnoreCase))

@@ -15,16 +15,16 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 </style>
 <main><div class="brand">GITGUI · WINDOWS PORTABLE · M1–M4</div>
 <h1 id="gitgui">GITGUI 操作手冊</h1>
-<p>適用版本：0.8.0。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.8.0">Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#guide-chapter-1">1. 解壓縮與啟動</a></li><li><a href="#guide-chapter-2">2. 畫面與外觀</a></li><li><a href="#guide-chapter-3">3. 開啟、建立或複製倉庫</a></li><li><a href="#guide-chapter-4">4. 修改、暫存與提交</a></li><li><a href="#guide-chapter-5">5. 分支、同步與衝突</a></li><li><a href="#guide-chapter-6">6. 快照復原與重做</a></li><li><a href="#guide-chapter-7">7. 進階歷史操作</a></li><li><a href="#guide-chapter-8">8. 內建終端機</a></li><li><a href="#guide-chapter-9">9. 子模組（Submodules）</a></li><li><a href="#guide-chapter-10">10. 工作樹（Worktrees）</a></li><li><a href="#guide-chapter-11">11. Git LFS</a></li><li><a href="#guide-chapter-12">12. 二分定位（Bisect）</a></li><li><a href="#guide-chapter-13">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#guide-chapter-14">14. 簽章提交與標籤</a></li><li><a href="#guide-chapter-15">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#guide-chapter-16">16. 中文訊息、路徑與換行設定</a></li><li><a href="#guide-chapter-17">17. 狀態刷新與提交分頁</a></li><li><a href="#guide-chapter-18">18. 錯誤建議與本機日誌</a></li><li><a href="#guide-chapter-19">19. 常見問題與驗證範圍</a></li><li><a href="#guide-chapter-20">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#guide-chapter-21">21. 完整範例：專案修改後再次更新上傳</a></li><li><a href="#guide-chapter-22">22. 完整範例：只在本機保存版本與再次提交</a></li><li><a href="#guide-chapter-23">23. 完整範例：單檔還原、撤銷提交與整個專案還原</a></li><li><a href="#guide-chapter-24">24. 完整範例：建立分支並合併回主分支</a></li></ol></nav>
-<p>v0.8.0 新增未儲存衝突草稿的離開確認、同一使用者的單一實例保護及快照索引重建；更新 CI 下載重試與版本化發布流程。本版重新建置程式，<code>build-info.json</code> 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖。</p>
-<p>本版完整測試、CI 與免安裝 ZIP 的驗證結果隨 Release 提供。既有 <a href="M4-PERFORMANCE.md">M4 正式效能數據</a> 仍僅對應報告中記錄的 v0.7.0 受測版本，門檻未調整。</p>
+<p>適用版本：0.9.0。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/tag/v0.9.0">Release</a>。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#guide-chapter-1">1. 解壓縮與啟動</a></li><li><a href="#guide-chapter-2">2. 畫面與外觀</a></li><li><a href="#guide-chapter-3">3. 開啟、建立或複製倉庫</a></li><li><a href="#guide-chapter-4">4. 修改、暫存與提交</a></li><li><a href="#guide-chapter-5">5. 分支、同步與衝突</a></li><li><a href="#guide-chapter-6">6. 快照復原與重做</a></li><li><a href="#guide-chapter-7">7. 進階歷史操作</a></li><li><a href="#guide-chapter-8">8. 內建終端機</a></li><li><a href="#guide-chapter-9">9. 子模組（Submodules）</a></li><li><a href="#guide-chapter-10">10. 工作樹（Worktrees）</a></li><li><a href="#guide-chapter-11">11. Git LFS</a></li><li><a href="#guide-chapter-12">12. 二分定位（Bisect）</a></li><li><a href="#guide-chapter-13">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#guide-chapter-14">14. 簽章提交與標籤</a></li><li><a href="#guide-chapter-15">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#guide-chapter-16">16. 中文訊息、路徑與換行設定</a></li><li><a href="#guide-chapter-17">17. 狀態刷新與提交分頁</a></li><li><a href="#guide-chapter-18">18. 錯誤建議與本機日誌</a></li><li><a href="#guide-chapter-19">19. 常見問題與驗證範圍</a></li><li><a href="#guide-chapter-20">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#guide-chapter-21">21. 完整範例：專案修改後再次更新上傳</a></li><li><a href="#guide-chapter-22">22. 完整範例：只在本機保存版本與再次提交</a></li><li><a href="#guide-chapter-23">23. 完整範例：單檔還原、撤銷提交與整個專案還原</a></li><li><a href="#guide-chapter-24">24. 完整範例：建立分支並合併回主分支</a></li></ol></nav>
+<p>v0.9.0 改善大型衝突編輯的輸入回應，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。本版重新建置程式，<code>build-info.json</code> 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。</p>
+<p>本版完整測試、CI 與免安裝 ZIP 的驗證結果隨 Release 提供；固定案例的改善量測與限制見 <a href="V0.9-PERFORMANCE.md">v0.9.0 改善驗證</a>。既有 <a href="M4-PERFORMANCE.md">M4 正式效能數據</a> 仍僅對應報告中記錄的 v0.7.0 受測版本，門檻未調整。</p>
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
 <p>第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。</p>
 <p>只在本機管理版本，請看第 22 章；單檔／整個專案還原，請看第 23 章；建立分支、合併回主分支與處理衝突，請看第 24 章。這些操作都不需要先設定 Server 或 GitHub。</p>
 <p>第 23.4 節提供 10 張實際操作截圖與點擊標示，示範從第 5 版還原到第 2 版，以及如何從備用分支取回第 5 版。點擊圖片可開啟原尺寸查看。</p>
 <h2 id="guide-chapter-1">1. 解壓縮與啟動</h2>
 <ol>
-<li>從本專案 v0.8.0 Release 下載 <code>GITGUI-0.8.0-win-x64-portable.zip</code>。</li>
+<li>從本專案 v0.9.0 Release 下載 <code>GITGUI-0.9.0-win-x64-portable.zip</code>。</li>
 <li>在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。</li>
 <li>開啟解壓縮資料夾，執行 <strong><code>GITGUI.vbs</code></strong>。請勿直接從 ZIP 內執行。</li>
 <li>第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 <code>PortableGit\cmd\git.exe</code>。</li>
@@ -33,7 +33,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <p>不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。</p>
 <p>預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 <code>GitGui.App.exe</code>；v0.7.0 的 1.5 秒冷啟動驗收使用 <code>GITGUI.vbs</code>，備用方式的啟動時間可能不同。請保留 <code>GitGui.Host.dll</code>、<code>GitGui.App.r2r.dll</code>、<code>PortableGit</code> 與其他隨附檔案。</p>
 <p>若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 <code>SHA256SUMS.txt</code>；此版本未提供程式碼簽章。</p>
-<pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.7.4-win-x64-portable.zip' -Algorithm SHA256
+<pre><code class="language-powershell">Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.9.0-win-x64-portable.zip' -Algorithm SHA256
 </code></pre>
 <p>上方 <code>C:\下載</code> 是範例，請換成實際下載位置。</p>
 <h2 id="guide-chapter-2">2. 畫面與外觀</h2>
@@ -60,6 +60,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>輸入提交訊息，按「提交」。只有已暫存的內容進入提交。</li>
 </ol>
 <p>「修改上一筆」會重寫最新提交。使用前先確認這筆提交是否已分享給其他人。「略過 hooks」只對本次操作生效；預設不勾選。</p>
+<p>「提交簽章」選單預設為「簽章：沿用 Git 設定」，下方顯示目前 Git 合併設定中的 <code>commit.gpgsign</code> 值（未設定時為 <code>false</code>）。需要強制簽章時選「簽章：本次提交啟用」；只有專案允許未簽章提交時，才選「簽章：本次提交停用」。選擇只影響這一次提交命令，不改全域或倉庫設定；成功提交後回到沿用設定。失敗時保留訊息與選擇，可檢查指令輸出後重試；GPG 找不到私鑰的完整步驟見第 22.4 節。外部修改設定後請重新整理。</p>
 <p>「捨棄變更」會替換選取的工作檔案，執行前有確認與快照。請先看清楚檔案清單。</p>
 <h2 id="guide-chapter-5">5. 分支、同步與衝突</h2>
 <ul>
@@ -70,6 +71,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>Push：將目前分支推送到選定遠端。強制推送使用 <code>--force-with-lease --force-if-includes</code>；受保護分支需要輸入分支名稱確認。</li>
 </ul>
 <p>遇到衝突，選擇衝突檔案，使用三方編輯、整檔 ours／theirs 或外部 mergetool。檢查結果後「標記已解決」，再完成提交或到「進階」繼續操作。二進位與符號連結衝突使用整檔選擇。</p>
+<p>大型衝突內容（超過 65,536 個字元）停止輸入約 150 ms 後，會在背景更新區段清單，期間顯示「正在更新衝突區段…」。等待目前區段出現，再選取並採用 ours／theirs／兩者；過期的解析結果不會覆蓋最新內容。輸入的草稿立即保留在本次程式工作階段中；「寫入結果」才會存到磁碟，接著仍須標記已解決／暫存及提交。這個等待時間是排程延遲，不代表整個編輯或繪製的耗時上限。</p>
 <p>離開程式前，若還有未儲存的衝突編輯（即使已切換到其他檔案或專案），會出現「放棄未儲存的衝突草稿並離開？」確認。要保留內容，請按「取消」，回到每個衝突檔案按「寫入結果」；之後仍需「標記已解決」及提交。確認離開會永久放棄尚未寫入的草稿。已寫入磁碟的檔案會保留。此確認無法防止斷電、當機或強制結束程式。</p>
 <h2 id="guide-chapter-6">6. 快照復原與重做</h2>
 <p>會修改歷史或替換內容的操作，依功能自動建立快照。主畫面快照清單、操作後的「復原」，或工具視窗的「還原最近快照」可還原本地狀態。</p>
@@ -87,6 +89,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>選取快照，按「還原」並確認。還原前仍會建立目前狀態的安全快照。</li>
 </ol>
 <p>重建會補回目前工作樹的遺失索引，保留既有索引與其他設定；重複執行不會重複新增。其他 worktree 的快照不會匯入。若快照中繼資料損壞，會拒絕整批匯入，請保留倉庫與錯誤輸出供排查。若整個應用程式 SQLite 已損壞而無法開啟，請先關閉程式並備份 <code>%LOCALAPPDATA%\GitGui</code>，不要直接刪除資料庫；索引重建不會修復損壞的 SQLite。倉庫被移動到不同路徑時也不會自動將舊路徑快照轉到新工作樹。</p>
+<p>v0.9.0 保留既有一般檔案的批次處理，另將 Git 合併／rebase 狀態檔與符號連結改為批次擷取、讀回，並重用同次快照的空樹；不改變快照格式或復原範圍。大型一般檔案復原仍使用串流，請等待操作完成。</p>
 <p>快照保存在倉庫的 Git 物件與內部 refs，清單索引保存在應用程式 SQLite。它是操作復原工具，請另做獨立備份；刪除整個倉庫也會失去這些快照。遠端已推送內容不會因本地還原而撤回。</p>
 <p>復原會重建index快取。若曾改動LFS追蹤規則或<code>.gitattributes</code>，Git重新計算後的變更標記可能與先前快取不同；請檢視工作檔與暫存內容後再決定下一步。</p>
 <p>子模組快照僅處理父倉庫，詳細邊界見第 9 節；工作樹、LFS 與 bisect 依各自方式處理。快照還原若遇到 index/ref 鎖或可能覆蓋未保存資料，會拒絕執行，請先處理原始原因。</p>
@@ -162,8 +165,8 @@ git config --local user.email &quot;you@example.com&quot;
 </ol>
 <p>快照還原保存選定工作樹的 sparse 設定、pattern、index skip flags 與實際存在的檔案。Git 啟用的 <code>extensions.worktreeConfig</code> 儲存格式升級會保留，以免破壞其他工作樹。資料夾／忽略檔案衝突會先拒絕處理。</p>
 <h2 id="guide-chapter-14">14. 簽章提交與標籤</h2>
-<p>先依自己的環境設定 GPG 或 SSH 簽章；程式不產生、不儲存你的私鑰。提交時勾選「簽署提交」，建立標籤時勾選簽章選項並填寫訊息，即交給 Git 執行 <code>commit -S</code> 或 <code>tag -s</code>。</p>
-<p>一般本機版本管理不需要簽章。v0.7.1 未勾選「簽署提交」時，仍會沿用 Git 的 <code>commit.gpgsign</code> 設定。若出現 <code>gpg: signing failed: No secret key</code>，請依第 22.4 節處理。</p>
+<p>先依自己的環境設定 GPG 或 SSH 簽章；程式不產生、不儲存你的私鑰。提交時選「簽章：本次提交啟用」，建立標籤時勾選簽章選項並填寫訊息，即交給 Git 執行 <code>commit -S</code> 或 <code>tag -s</code>。</p>
+<p>提交簽章預設沿用 Git 的 <code>commit.gpgsign</code> 設定；是否需要簽章請依專案規則決定。允許未簽章提交時，可明確選擇本次停用，僅以 <code>--no-gpg-sign</code> 覆蓋該次命令。若出現 <code>gpg: signing failed: No secret key</code>，請依第 22.4 節處理。</p>
 <p>SSH 設定範例（請換成已有的私鑰實際路徑）：</p>
 <pre><code class="language-text">git config --local gpg.format ssh
 git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&quot;
@@ -277,7 +280,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 </tr>
 <tr>
 <td>Hook／簽章失敗</td>
-<td>展開指令輸出，依 Git 回報修正工具或倉庫設定。</td>
+<td>展開指令輸出。簽章失敗可按「簽章設定說明」，依第 22.4 節處理；不會自動停用簽章或略過 hooks。</td>
 </tr>
 <tr>
 <td>LFS 指令不可用</td>
@@ -889,7 +892,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>依第 20.2 節填寫提交者姓名、電子郵件，按「初始化倉庫」。若資料夾已是 Git 倉庫，直接開啟即可，不必再初始化。</li>
 <li>回到「工作區」→「未暫存」，逐一檢查檔案；先將密碼、Token、不想追蹤的資料排除於 <code>.gitignore</code>。</li>
 <li>按「暫存選取」，或在全部檢查後按「全部暫存」。切到「已暫存」，確認要保存的檔案。</li>
-<li>提交訊息輸入 <code>初始版本備份</code>，保持「修改上一筆提交」未勾選。未設定簽章金鑰時，也不要勾選「簽署提交」。</li>
+<li>提交訊息輸入 <code>初始版本備份</code>，保持「修改上一筆提交」未勾選。簽章選單先保持「沿用 Git 設定」；若 Git 預設啟用簽章但沒有可用私鑰，請依第 22.4 節處理。</li>
 <li>按「提交」，等待成功，再到「提交歷史」確認出現 <code>初始版本備份</code>。若簽章失敗，依第 22.4 節處理後重試。</li>
 </ol>
 <p>提交只會保存納入 Git 追蹤的內容；被忽略、尚未暫存的檔案不會因此自動進入版本。</p>
@@ -907,17 +910,14 @@ git config --local user.email &quot;you@example.com&quot;
 <h3 id="gpg">22.4 提交失敗：GPG 找不到私鑰</h3>
 <p>若看到 <code>gpg: skipped ... No secret key</code> 與 <code>fatal: failed to write commit object</code>，代表要求簽章但找不到私鑰。姓名、電子郵件只用於提交者身分，不會自動產生 GPG 私鑰。</p>
 <ol>
-<li>先取消勾選「簽署提交」，重新按「提交」。</li>
-<li>若仍出現相同錯誤，且此專案不需要簽章，按「終端機」。確認頂端顯示的是目前專案路徑，再輸入下列指令，按 Enter 或「執行」：</li>
+<li>保留目前視窗，先展開指令輸出；畫面會顯示「提交簽章失敗」及「簽章設定說明」。失敗不會新增提交，提交訊息與已暫存的檔案仍保留。</li>
+<li>按「簽章設定說明」，閱讀原因，再關閉說明。確認專案是否要求簽章。</li>
+<li><strong>若專案允許未簽章提交</strong>：在提交訊息下方的簽章選單，選「簽章：本次提交停用」，再按「提交」。GUI 會用 <code>--no-gpg-sign</code> 覆蓋本次命令的簽章要求，不必開終端機，也不會修改 <code>commit.gpgsign</code>。</li>
+<li><strong>若專案要求簽章</strong>：保留「沿用 Git 設定」或選「本次提交啟用」，依第 14 章確認 GPG／SSH 簽章工具、<code>user.signingkey</code> 及私鑰。姓名、Email 或公鑰不能代替私鑰；修正後再按「提交」。請勿把私鑰貼到指令輸出或提交到倉庫。</li>
+<li>成功後到「提交歷史」核對新提交與檔案內容；簽章選單回到「沿用 Git 設定」。下次若仍無私鑰而沿用啟用簽章的設定，Git 會再次拒絕提交，請依專案規則選擇或完成金鑰設定。</li>
 </ol>
-<pre><code class="language-text">git config --local commit.gpgsign false
-</code></pre>
-<ol start="3">
-<li>等待指令完成，按「關閉終端機」，釋放倉庫操作鎖，再回到工作區提交；保持「簽署提交」未勾選。</li>
-<li>在「提交歷史」確認成功。<code>branch.oid (initial)</code> 表示當時還沒有第一筆提交，不代表原始檔案消失。</li>
-</ol>
-<p>這個設定只關閉目前倉庫的自動簽章。若需要簽章，請依第 14 章設定可用私鑰。</p>
-<p>Windows 版內建終端機使用 cmd，且沿用「Git 設定」所選的 Git／Portable Git。因此在內建終端機可直接輸入上述 <code>git ...</code>，不需外開 PowerShell，也不要加上 PowerShell 專用的 <code>&amp; '路徑'</code> 語法。終端機開啟期間，GUI 的寫入操作會暫停；做完請按「關閉終端機」。</p>
+<p><code>branch.oid (initial)</code> 表示當時還沒有第一筆提交，不代表原始檔案消失。程式不會因簽章失敗自動改成未簽章提交，也不會自動略過 hooks。這個選單適用主畫面的「提交／修改上一筆」；Revert、rebase 繼續等會建立提交的其他命令仍依各自的 Git 設定。</p>
+<p>Git 對本次停用簽章的行為見 <a href="https://git-scm.com/docs/git-commit">git-commit 官方文件</a>。</p>
 <h2 id="guide-chapter-23">23. 完整範例：單檔還原、撤銷提交與整個專案還原</h2>
 <p>Git 每次提交保存一個版本，但取回時可選擇整個專案或特定檔案。先確認自己要處理哪一種情況：</p>
 <table>
@@ -1321,7 +1321,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tr>
 <tr>
 <td>4</td>
-<td>本範例保持「修改上一筆提交」「此次略過 hooks」「簽署提交」未勾選；簽章設定問題依第 22.4 節處理。</td>
+<td>本範例保持「修改上一筆提交」「此次略過 hooks」未勾選；舊圖的簽章方塊在新版已改為選單，先選「沿用 Git 設定」，簽章設定問題依第 22.4 節處理。</td>
 </tr>
 <tr>
 <td>5</td>

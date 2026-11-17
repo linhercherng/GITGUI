@@ -97,6 +97,9 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         var protectedDirectories = ProtectedDirectories(root, index, paths);
         var files = new List<SavedFile>();
         var regular = new List<(string Path, string Mode)>();
+        using var captured = new SnapshotBlobBatch();
+        var links = new List<(string Path, int Slot)>();
+        var stateSlots = new Dictionary<string, int>();
         foreach (var path in paths)
         {
             if (protectedDirectories.Any(p => Within(path, p))) continue;
@@ -104,7 +107,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             var info = new FileInfo(full);
             var link = info.LinkTarget;
             if (link is not null)
-                files.Add(new(path, "120000", await Hash(root, Encoding.UTF8.GetBytes(link), ct)));
+                links.Add((path, await captured.AddAsync(Encoding.UTF8.GetBytes(link), ct)));
             else if (File.Exists(full))
             {
                 var mode = OperatingSystem.IsWindows()
@@ -134,7 +137,7 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidOperationException("Symbolic Git state files are not supported.");
             var content = await File.ReadAllBytesAsync(path, ct);
-            markers[relative] = await Hash(root, content, ct);
+            stateSlots[relative] = await captured.AddAsync(content, ct);
             stateModes[relative] = !OperatingSystem.IsWindows() &&
                 (File.GetUnixFileMode(path) & UnixFileMode.UserExecute) != 0 ? "100755" : "100644";
             foreach (Match match in Regex.Matches(Encoding.UTF8.GetString(content), @"(?<![0-9a-f])[0-9a-f]{4,64}(?![0-9a-f])"))
@@ -173,6 +176,9 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                 }
             }
         }
+        var capturedOids = await captured.WriteAsync(git, root, ct);
+        foreach (var (path, slot) in links) files.Add(new(path, "120000", capturedOids[slot]));
+        foreach (var (path, slot) in stateSlots) markers[path] = capturedOids[slot];
         var markerTargets = new List<string>();
         if (stateObjects.Count > 0)
         {
@@ -191,11 +197,19 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             remoteConfiguration, stashLog, stateDirectories, stateModes, operationRefs, symbolicRefs,
             submoduleConfiguration, protectedDirectories, sparse);
         var manifestOid = await Hash(root, JsonSerializer.SerializeToUtf8Bytes(manifest, SnapshotJsonContext.Default.SnapshotManifest), ct);
+        string? emptyTree = null;
+        async Task<string> Tree(IEnumerable<IndexEntry> source)
+        {
+            var entries = source.ToArray();
+            if (entries.Length > 0) return await BuildTree(root, entries, ct);
+            return emptyTree ??= GitAccess.Utf8.GetString(await git.Bytes(root, ct, ["mktree", "-z"],
+                new() { IsReadOnly = false, Input = [], HideOutput = true })).Trim();
+        }
         var roots = new List<string> { $"100644 blob {manifestOid}\tmanifest\0" };
-        roots.Add($"040000 tree {await BuildTree(root, files.Select(f => new IndexEntry(f.Path, f.Mode, f.Oid, 0)), ct)}\tworktree\0");
+        roots.Add($"040000 tree {await Tree(files.Select(f => new IndexEntry(f.Path, f.Mode, f.Oid, 0)))}\tworktree\0");
         for (var stage = 0; stage <= 3; stage++)
-            roots.Add($"040000 tree {await BuildTree(root, index.Where(e => e.Stage == stage), ct)}\tindex{stage}\0");
-        var markerTree = await BuildTree(root, markers.Select(kv => new IndexEntry(kv.Key, "100644", kv.Value, 0)), ct);
+            roots.Add($"040000 tree {await Tree(index.Where(e => e.Stage == stage))}\tindex{stage}\0");
+        var markerTree = await Tree(markers.Select(kv => new IndexEntry(kv.Key, "100644", kv.Value, 0)));
         roots.Add($"040000 tree {markerTree}\tstate\0");
         if (sparse.PatternOid is not null) roots.Add($"100644 blob {sparse.PatternOid}\tsparse-patterns\0");
         var tree = GitAccess.Utf8.GetString(await git.Bytes(root, ct, ["mktree", "-z"],
@@ -353,16 +367,9 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
             if (saved.Sparse is not null) await RestoreSparse(root, saved.Sparse, ct);
             foreach (var directory in (saved.StateDirectories ?? []).OrderBy(p => p.Length))
                 Directory.CreateDirectory(StatePath(directory, statePaths));
-            foreach (var (marker, oid) in saved.Markers)
-            {
-                if (OperationRefNames.Contains(marker)) continue;
-                var path = StatePath(marker, statePaths);
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                await using (var output = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
-                    await git.Bytes(root, ct, ["cat-file", "blob", oid], new() { OutputStream = output, HideOutput = true });
-                if (!OperatingSystem.IsWindows() && saved.StateModes?.GetValueOrDefault(marker) == "100755")
-                    File.SetUnixFileMode(path, File.GetUnixFileMode(path) | UnixFileMode.UserExecute);
-            }
+            await Materialize(root, saved.Markers.Where(p => !OperationRefNames.Contains(p.Key))
+                .Select(p => new SavedFile(p.Key, saved.StateModes?.GetValueOrDefault(p.Key) ?? "100644", p.Value)).ToArray(),
+                ct, name => StatePath(name, statePaths));
             if (saved.StashLog is not null) await RestoreStashLog(root, info.StateRef, saved, ct);
             foreach (var (name, target) in saved.SymbolicRefs ?? new Dictionary<string, string>())
                 await git.Write(root, ct, ["symbolic-ref", name, target]);
@@ -738,20 +745,20 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
         }
     }
 
-    private async Task Materialize(string root, IReadOnlyList<SavedFile> files, CancellationToken ct)
+    private async Task Materialize(string root, IReadOnlyList<SavedFile> files, CancellationToken ct,
+        Func<string, string>? statePath = null)
     {
-        var regular = files.Where(f => f.Mode != "120000").ToArray();
-        if (regular.Length > 0)
+        if (files.Count > 0)
         {
             // One Git process streams all raw blobs; memory stays bounded even for large binaries.
             await git.Bytes(root, ct, ["cat-file", "--batch"], new()
             {
-                Input = Encoding.ASCII.GetBytes(string.Join("\n", regular.Select(f => f.Oid)) + "\n"), HideOutput = true,
+                Input = Encoding.ASCII.GetBytes(string.Join("\n", files.Select(f => f.Oid)) + "\n"), HideOutput = true,
                 OutputConsumer = async (stream, token) =>
                 {
                     using var buffered = new BufferedStream(stream, 65536);
                     var buffer = new byte[65536];
-                    foreach (var file in regular)
+                    foreach (var file in files)
                     {
                         var header = new StringBuilder();
                         int value;
@@ -764,11 +771,22 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                         if (fields.Length != 3 || fields[0] != file.Oid || fields[1] != "blob" ||
                             !long.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out var length) || length < 0)
                             throw new IOException("Invalid Git blob stream header.");
-                        var path = GitAccess.FullPath(root, file.Path);
+                        var path = statePath is null ? GitAccess.FullPath(root, file.Path) : statePath(file.Path);
                         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                         var temporary = path + ".gitgui-" + Guid.NewGuid().ToString("N");
                         try
                         {
+                            if (file.Mode == "120000")
+                            {
+                                if (length > 32 * 1024 * 1024) throw new IOException("Invalid symbolic link size.");
+                                var target = new byte[(int)length];
+                                await buffered.ReadExactlyAsync(target, token);
+                                if (buffered.ReadByte() != '\n') throw new IOException("Invalid Git blob separator.");
+                                // Create first: privilege errors must leave the existing path intact.
+                                File.CreateSymbolicLink(temporary, GitAccess.Utf8.GetString(target));
+                                File.Move(temporary, path, true);
+                                continue;
+                            }
                             await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                             {
                                 while (length > 0)
@@ -781,7 +799,9 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                             }
                             if (buffered.ReadByte() != '\n') throw new IOException("Invalid Git blob separator.");
                             File.Move(temporary, path, true);
-                            if (!OperatingSystem.IsWindows())
+                            if (!OperatingSystem.IsWindows() && statePath is not null && file.Mode == "100755")
+                                File.SetUnixFileMode(path, File.GetUnixFileMode(path) | UnixFileMode.UserExecute);
+                            else if (!OperatingSystem.IsWindows() && statePath is null)
                                 File.SetUnixFileMode(path, file.Mode == "100755"
                                     ? UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute
                                     : UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
@@ -790,16 +810,6 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
                     }
                 }
             });
-        }
-        foreach (var file in files.Where(f => f.Mode == "120000"))
-        {
-            var path = GitAccess.FullPath(root, file.Path);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var link = GitAccess.Utf8.GetString(await git.Bytes(root, ct, ["cat-file", "blob", file.Oid], new() { HideOutput = true }));
-            // Create the new link first, so privilege errors cannot remove an existing file.
-            var temporary = path + ".gitgui-" + Guid.NewGuid().ToString("N");
-            try { File.CreateSymbolicLink(temporary, link); File.Move(temporary, path, true); }
-            finally { File.Delete(temporary); }
         }
     }
 }
