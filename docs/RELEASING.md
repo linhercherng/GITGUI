@@ -47,7 +47,7 @@ $archive = "$PWD/artifacts/release-build/GITGUI-$version-win-x64-portable.zip"
     -Archive $archive -OutputDirectory artifacts/release-evidence/desktop
 ```
 
-桌面驗證需要可互動 Windows 工作階段，分別測試 apphost 與一般 `wscript.exe`／`GITGUI.vbs`，核對套件位元組與內附 Git；另以兩個真實程序驗證單一實例及終止後重新啟動。只會終止測試建立的程序，使用隔離資料目錄。這些是功能／啟動檢查，正式效能量測另依 `M4-ACCEPTANCE.md`、`Measure-DesktopPerformance.ps1` 與 `Assert-DesktopPerformance.ps1` 執行，不能以啟動探針代替。
+桌面驗證需要可互動 Windows 工作階段與 PowerShell 7.6（.NET 10），分別測試 apphost 與一般 `wscript.exe`／`GITGUI.vbs`，核對套件位元組與內附 Git。另在獨立 PowerShell 程序載入正式 `SingleInstance` 程式持鎖，驗證 WScript 拒絕建立第二個工作區，再終止持鎖程序並由 apphost 重新啟動。只會終止測試建立的程序，使用隔離資料目錄。這些是功能／啟動檢查，正式效能量測另依 `M4-ACCEPTANCE.md`、`Measure-DesktopPerformance.ps1` 與 `Assert-DesktopPerformance.ps1` 執行，不能以啟動探針代替。
 
 ## 4. 組裝附件與發布
 

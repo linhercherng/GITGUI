@@ -45,7 +45,7 @@ internal static class Program
         Performance?.StartupCheckpoint("Main parsed probe arguments");
         using var instance = SingleInstance.TryAcquire(DataDirectory);
         AlreadyRunning = instance is null;
-        try { BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }
+        try { Environment.ExitCode = BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }
         finally { renderClock?.Dispose(); }
     }
     public static AppBuilder BuildAvaloniaApp()

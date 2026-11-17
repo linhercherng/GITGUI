@@ -281,7 +281,13 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 await using var output = new FileStream(reportPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read, 4096, useAsync: true);
                 await JsonSerializer.SerializeAsync(output, values, Json);
             }
-            catch { exitCode = 2; }
+            catch (Exception exception)
+            {
+                exitCode = 2;
+                Console.Error.WriteLine(exception);
+                try { File.WriteAllText(Path.Combine(DataPath, "report-write-error.txt"), exception.ToString()); }
+                catch (Exception) { /* Preserve the failing probe exit code even when evidence storage is unavailable. */ }
+            }
             desktop.Shutdown(exitCode);
         }
     }

@@ -35,7 +35,6 @@ public sealed class SnapshotManager(GitProcessRunner runner, ISnapshotCatalog ca
 
     public async Task<int> RebuildCatalogAsync(string root, CancellationToken ct)
     {
-        root = await git.Root(root, ct);
         var existing = (await catalog.ListAsync(root, ct)).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
         var recovered = new List<SnapshotInfo>();
         var refs = await git.Text(root, ct, "for-each-ref", "--format=%(refname)%00%(committerdate:iso-strict)", "refs/gitgui/snapshots/");

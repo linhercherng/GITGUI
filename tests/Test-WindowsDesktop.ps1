@@ -1,5 +1,6 @@
 param([Parameter(Mandatory)][string]$AppDirectory,[Parameter(Mandatory)][string]$Archive,[Parameter(Mandatory)][string]$OutputDirectory)
 $ErrorActionPreference='Stop'
+$OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory)
 $null=New-Item -ItemType Directory -Path $OutputDirectory
 $app=(Resolve-Path -LiteralPath $AppDirectory).Path
 $archiveHash=(Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
