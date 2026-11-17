@@ -68,7 +68,7 @@ public sealed class WorkspaceStorage(string databasePath) : IRepositorySettings,
             command.Parameters.AddWithValue("$id", snapshot.Id);
             command.Parameters.AddWithValue("$root", Normalize(snapshot.Repository));
             command.Parameters.AddWithValue("$title", snapshot.Title);
-            command.Parameters.AddWithValue("$created", snapshot.CreatedAt.ToString("O"));
+            command.Parameters.AddWithValue("$created", snapshot.CreatedAt.ToUniversalTime().ToString("O"));
             command.Parameters.AddWithValue("$state", snapshot.StateRef);
             command.Parameters.AddWithValue("$head", (object?)snapshot.Head ?? DBNull.Value);
             command.Parameters.AddWithValue("$count", snapshot.FileCount);

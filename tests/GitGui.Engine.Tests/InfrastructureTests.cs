@@ -7,15 +7,20 @@ namespace GitGui.Engine.Tests;
 public class InfrastructureTests
 {
     [Fact]
-    public async Task Recovered_snapshots_with_equal_commit_timestamps_keep_newest_snapshot_first()
+    public async Task Recovered_snapshots_keep_newest_first_when_commit_times_tie_or_offsets_differ()
     {
         using var repo = new TemporaryRepository();
         var store = new WorkspaceStorage(Path.Combine(repo.Root, "settings.db"));
-        var time = DateTimeOffset.UtcNow;
+        var time = DateTimeOffset.Parse("2026-11-17T12:00:00Z");
         var first = new SnapshotInfo("20261117T1200001000000-a", repo.Root, "Recovered", time, "refs/gitgui/snapshots/20261117T1200001000000-a/state", null, 1);
         var second = first with { Id = "20261117T1200009000000-b", StateRef = "refs/gitgui/snapshots/20261117T1200009000000-b/state" };
         await store.SaveBatchAsync([first, second], default);
         Assert.Equal(new[] { second.Id, first.Id }, (await store.ListAsync(repo.Root, default)).Select(s => s.Id));
+        var earlier = first with { Id = "20261117T1100000000000-c", StateRef = "refs/gitgui/snapshots/20261117T1100000000000-c/state", CreatedAt = time.AddHours(-1).ToOffset(TimeSpan.FromHours(8)) };
+        await store.SaveAsync(earlier, default);
+        var ordered = await store.ListAsync(repo.Root, default);
+        Assert.Equal(new[] { second.Id, first.Id, earlier.Id }, ordered.Select(s => s.Id));
+        Assert.All(ordered, snapshot => Assert.Equal(TimeSpan.Zero, snapshot.CreatedAt.Offset));
     }
 
     [Fact]
