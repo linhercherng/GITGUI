@@ -11,6 +11,7 @@
 ## 2. 完整測試與六格 CI
 
 ```powershell
+./scripts/Install-CompatibilityGit.ps1 -Version 2.56.0 -Destination "$env:TEMP/gitgui-release-git-2.56.0"
 dotnet restore GitGui.sln --locked-mode
 dotnet build GitGui.sln -c Release --no-restore
 foreach ($name in @('Core','Engine','UI')) {
