@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 
 namespace GitGui.Infrastructure;
 
-public sealed class WorkspaceStorage(string databasePath) : IRepositorySettings, ISnapshotCatalog, IGitPathStore
+public sealed partial class WorkspaceStorage(string databasePath) : IRepositorySettings, ISnapshotCatalog, IGitPathStore
 {
     private async Task<SqliteConnection> Open(CancellationToken ct)
     {

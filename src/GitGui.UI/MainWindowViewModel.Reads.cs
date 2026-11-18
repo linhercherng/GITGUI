@@ -13,7 +13,8 @@ public sealed partial class MainWindowViewModel
         {
             var root = Root;
             var update = await workspace.RefreshStatusAsync(root, lifetime.Token);
-            var groups = await Task.Run(() => GroupStatus(update.Status.Files), lifetime.Token);
+            var policy = stageRules;
+            var (groups, stageCounts) = await Task.Run(() => (GroupStatus(update.Status.Files), CountStagingExclusions(update.Status.Files, policy)), lifetime.Token);
             if (Root != root || disposed) return;
             var selectedPaths = SelectedFiles.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
             var selectedPath = SelectedChange?.Path;
@@ -22,6 +23,7 @@ public sealed partial class MainWindowViewModel
             try
             {
                 Changes.ReplaceAll(update.Status.Files); (unstaged, staged) = groups;
+                UpdateStagingExclusionCounts(stageCounts);
                 RestoreFileSelection(selectedPaths, selectedPath);
             }
             finally { applyingReadState = false; }

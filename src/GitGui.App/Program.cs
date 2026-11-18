@@ -123,6 +123,7 @@ public sealed class DesktopApp : Application
             services.AddSingleton<IRecentRepositories>(new RecentRepositories(Path.Combine(directory, "gitgui.db")));
             services.AddSingleton(new WorkspaceStorage(Path.Combine(directory, "gitgui.db")));
             services.AddSingleton<IRepositorySettings>(sp => sp.GetRequiredService<WorkspaceStorage>());
+            services.AddSingleton<IStageExclusionStore>(sp => sp.GetRequiredService<WorkspaceStorage>());
             services.AddSingleton<ISnapshotCatalog>(sp => sp.GetRequiredService<WorkspaceStorage>());
             services.AddSingleton<IWorkspaceInteraction>(new DeferredInteraction(() => desktop.MainWindow as IWorkspaceInteraction));
             services.AddSingleton<SnapshotManager>();

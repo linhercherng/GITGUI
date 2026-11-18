@@ -39,7 +39,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private bool applyingReadState;
     internal bool IsApplyingReadState => applyingReadState;
     private TaskCompletionSource? readCompletion;
-    [ObservableProperty] private bool isRefreshing;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanStageSelection), nameof(CanManageStagingExclusions))] private bool isRefreshing;
     private bool openingHistoryPreview;
     private IReadOnlyList<FileChange> unstaged = [];
     private IReadOnlyList<FileChange> staged = [];
@@ -76,9 +76,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int progressPercent;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsProgressIndeterminate))] private bool hasProgressPercent;
     [ObservableProperty] private bool canCancel;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsProgressIndeterminate))] private bool isBusy;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsProgressIndeterminate), nameof(CanStageSelection), nameof(CanManageStagingExclusions))] private bool isBusy;
     public bool IsProgressIndeterminate => IsBusy && !HasProgressPercent;
-    [ObservableProperty] private bool hasRepository;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanStageSelection), nameof(CanManageStagingExclusions))] private bool hasRepository;
     [ObservableProperty] private bool showStaged;
     [ObservableProperty] private bool splitDiff;
     [ObservableProperty] private bool isLargeDiff;
@@ -103,10 +103,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int commitSigningChoice;
     [ObservableProperty] private bool forcePush;
     [ObservableProperty] private bool forceDelete;
-    [ObservableProperty] private bool isHistoryDiff;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SelectedStagingExcluded))] private bool isHistoryDiff;
     [ObservableProperty] private bool inProgress;
     [ObservableProperty] private string inProgressText = "";
-    [ObservableProperty] private bool isUntrusted;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanStageSelection))] private bool isUntrusted;
     [ObservableProperty] private string trustDetails = "";
     [ObservableProperty] private bool canUndo;
     [ObservableProperty] private bool canRedo;
@@ -132,8 +132,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public string RepositoryTextSettingsText => string.Format(L["AutoCrlfSummary"], state?.TextSettings.AutoCrlf ?? "unset", state?.TextSettings.SafeCrlf ?? "unset", state?.TextSettings.Eol ?? "unset");
     public string Root => state?.Root ?? RepositoryPath.Trim();
     public string Summary => $"{Changes.Count} {L["Changes"]}  ·  {Commits.Count} {L["Commits"]}";
-    [ObservableProperty] private bool terminalActive;
-    [ObservableProperty] private bool externalWriteActive;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanStageSelection), nameof(CanManageStagingExclusions))] private bool terminalActive;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanStageSelection), nameof(CanManageStagingExclusions))] private bool externalWriteActive;
     partial void OnExternalWriteActiveChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanStageFiles)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
     partial void OnTerminalActiveChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanStageFiles)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
     public bool CanConfigure => !IsBusy && !TerminalActive && !ExternalWriteActive;
@@ -147,10 +147,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public string DiffTitle => IsHistoryDiff ? SelectedCommitFile?.Path ?? L["CommitDetails"] : SelectedChange?.Path ?? L["SelectFile"];
     public event EventHandler? RepositoryOpened;
 
-    public MainWindowViewModel(IWorkspaceService workspace, IRecentRepositories recent)
+    public MainWindowViewModel(IWorkspaceService workspace, IRecentRepositories recent, IStageExclusionStore? stageExclusionStore = null)
     {
         this.workspace = workspace;
         this.recent = recent;
+        this.stageExclusionStore = stageExclusionStore;
         Feedback = new(L, () => CanConfigure);
         Notice = L["OpenRepositoryHint"];
         workspace.CommandExecuted += CommandExecuted;
@@ -162,6 +163,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         L.SetCulture(value ? "en" : "zh-TW"); if (initialNotice) Notice = L["OpenRepositoryHint"];
         OnPropertyChanged(nameof(Summary)); OnPropertyChanged(nameof(DiffTitle)); OnPropertyChanged(nameof(PreviewSummary));
         OnPropertyChanged("SelectedEncodingText"); OnPropertyChanged("RepositoryTextSettingsText"); OnPropertyChanged(nameof(CommitSigningDefaultText));
+        OnPropertyChanged(nameof(StagingExclusionSummary));
         if (state is not null) InProgressText = state.InProgress.IsActive ? $"{state.InProgress.Kind} · {L[state.InProgress.HasConflicts ? "ResolveConflicts" : "ReadyToContinue"]}" : "";
     }
     partial void OnIsBusyChanged(bool value) { Feedback?.Notify(); OnPropertyChanged(nameof(CanConfigure)); OnPropertyChanged(nameof(CanOperate)); OnPropertyChanged(nameof(CanStageFiles)); OnPropertyChanged(nameof(CanApplyPatch)); OnPropertyChanged(nameof(CanSaveConflict)); }
@@ -212,7 +214,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         finally { if (ReferenceEquals(request, conflictSectionsRequest)) ConflictSectionsUpdating = false; }
     }
     partial void OnSelectedRefChanged(RefInfo? value) { if (value is not null) BranchName = value.Name; }
-    partial void OnSelectedChangeChanged(FileChange? value) { if (applyingReadState) return; InvalidateCommitSelection(); IsHistoryDiff = false; _ = LoadDiffAsync(); _ = LoadConflictAsync(value); }
+    partial void OnSelectedChangeChanged(FileChange? value) { OnPropertyChanged(nameof(SelectedStagingExcluded)); if (applyingReadState) return; InvalidateCommitSelection(); IsHistoryDiff = false; _ = LoadDiffAsync(); _ = LoadConflictAsync(value); }
     partial void OnSelectedCommitFileChanged(FileChange? value) { if (value is null || applyingReadState) return; IsHistoryDiff = true; HasConflict = false; CancelRead(ref conflictRequest); ConflictLoading = false; _ = LoadDiffAsync(); }
     partial void OnShowStagedChanged(bool value)
     {
@@ -286,7 +288,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             });
         }
         if (disposed || RepositoryPath.Trim() != requestedPath) return;
-        var groups = await Task.Run(() => GroupStatus(opened.Status.Files), lifetime.Token);
+        var stagePolicy = await ReadStagingExclusionsAsync(opened.Root);
+        var (groups, stageCounts) = await Task.Run(() => (GroupStatus(opened.Status.Files), CountStagingExclusions(opened.Status.Files, stagePolicy)), lifetime.Token);
         if (disposed || RepositoryPath.Trim() != requestedPath) return;
         var selectedPaths = SelectedFiles.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
         previousSelectedPath = SelectedChange?.Path;
@@ -305,6 +308,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         applyingReadState = true;
         Replace(Changes, state.Status.Files);
         (unstaged, staged) = groups;
+        ApplyStagingExclusions(state.Root, stagePolicy, stageCounts);
         OnPropertyChanged(nameof(UnstagedChanges)); OnPropertyChanged(nameof(StagedChanges));
         RestoreFileSelection(previous == state.Root ? selectedPaths : [], selectedPath);
         if (!ReferenceEquals(preview?.Page.Commits, state.Commits) &&
@@ -344,7 +348,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             if (SelectedChange is null) ShowDiff(""); else await LoadDiffAsync();
             await LoadConflictAsync(SelectedChange);
         }
-        Notice = Summary;
+        Notice = stageRulesLoadFailed ? L["StageExclusionsReadFailed"] : Summary;
         OnPropertyChanged(nameof(Summary));
     }
     private void RestoreFileSelection(IReadOnlySet<string> paths, string? focusedPath)
@@ -449,10 +453,16 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         var paths = Paths(false, false);
         switch (action)
         {
-            case "Stage": case "StageAll": return WithPaths(GitAction.Stage, Paths(action == "StageAll", false));
+            case "Stage": case "StageAll": return WithPaths(GitAction.Stage, StagingPaths(FileSelection(action == "StageAll")
+                .Where(f => f.WorktreeStatus is not "." and not " ")));
             case "Unstage": case "UnstageAll": return WithPaths(GitAction.Unstage, Paths(action == "UnstageAll", true));
             case "Discard": return WithPaths(GitAction.Discard, paths);
             case "StagePatch": case "UnstagePatch":
+                if (action == "StagePatch")
+                {
+                    EnsureStagingExclusionsReady();
+                    if (SelectedStagingExcluded) throw new InvalidOperationException(L["StageExclusionsPathBlocked"]);
+                }
                 if (!CanApplyPatch) throw new InvalidOperationException(L["DiffLoading"]);
                 if (IsHistoryDiff || IsLargeDiff) throw new InvalidOperationException(L["SelectWorktreeDiff"]);
                 if ((action == "UnstagePatch") != ShowStaged) throw new InvalidOperationException(L["PatchModeRequired"]);
@@ -479,7 +489,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             case "ResolveTheirs": return WithPaths(GitAction.ResolveTheirs, SelectedPaths());
             case "MarkResolved":
                 if (ConflictDirty) throw new InvalidOperationException(L["SaveConflictFirst"]);
-                return WithPaths(GitAction.MarkResolved, SelectedPaths());
+                return WithPaths(GitAction.MarkResolved, StagingPaths(FileSelection(false)));
             case "ExternalMergeTool": return WithPaths(GitAction.ExternalMergeTool, SelectedPaths());
             case "WriteConflictResult":
                 if (!CanSaveConflict || SelectedChange is null) throw new InvalidOperationException(L["ConflictUnavailable"]);
@@ -701,6 +711,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         state = null; OnPropertyChanged(nameof(CommitSigningDefaultText)); HasRepository = false; InProgress = false; IsUntrusted = false; Branch = "—"; Tracking = "";
         SelectedChange = null; SelectedCommit = null; SelectedCommitFile = null; SelectedSnapshot = null;
         Changes.Clear(); Commits.Clear(); Refs.Clear(); Remotes.Clear(); CommitFiles.Clear(); Snapshots.Clear(); SelectedFiles.Clear();
+        ApplyStagingExclusions("", StageExclusionRules.Empty, (0, 0));
         OnPropertyChanged(nameof(UnstagedChanges)); OnPropertyChanged(nameof(StagedChanges));
         CommitDetails = ""; ShowDiff(""); CanUndo = CanRedo = false; undoId = redoId = null;
     }

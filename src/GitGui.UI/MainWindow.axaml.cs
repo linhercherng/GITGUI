@@ -118,7 +118,8 @@ public partial class MainWindow : Window, IWorkspaceInteraction
     private bool CanExecuteUiCommand(string action)
     {
         if (viewModel is not { } vm || closed || openDialogs > 0) return false;
-        if (action is "Stage" or "StageAll" or "Unstage" or "UnstageAll") return vm.CanStageFiles;
+        if (action is "Stage" or "StageAll") return vm.CanStageSelection;
+        if (action is "Unstage" or "UnstageAll") return vm.CanStageFiles;
         if (action == "Cancel") return vm.CanCancel;
         if (action is "StagePatch" or "UnstagePatch") return vm.CanApplyPatch;
         if (action is "WriteConflictResult" or "UseOursFile" or "UseTheirsFile" or "UseBothFile" or "SectionOurs" or "SectionTheirs" or "SectionBoth") return vm.CanSaveConflict;
@@ -128,6 +129,13 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         return vm.CanOperate;
     }
     private int focusedPane;
+    private async void StagingExclusionsClick(object? sender, RoutedEventArgs args)
+    {
+        if (viewModel is not { CanManageStagingExclusions: true } vm) return;
+        var focus = FocusManager?.GetFocusedElement(); openDialogs++;
+        try { await new StagingExclusionsWindow(vm).ShowDialog(this); }
+        finally { openDialogs--; focus?.Focus(); skipNextActivationRefresh = true; }
+    }
     private async Task ExecuteUiCommand(string action)
     {
         if (viewModel is not { } vm || !CanExecuteUiCommand(action)) return;

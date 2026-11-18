@@ -39,6 +39,7 @@ public sealed class ActionIcon : Control
     private static readonly IReadOnlyDictionary<string, Geometry> Artwork = new Dictionary<string, string>
     {
         ["Folder"] = "M3 7V5H9L11 7H21V20H3Z M3 10H21",
+        ["Exclude"] = "M3 4H21L14 12V19L10 21V12Z M3 21L21 3",
         ["Open"] = "M14 4H21V11 M21 4L11 14 M10 4H4V20H20V14",
         ["Repository"] = "M4 4H20V20H4Z M8 4V20 M12 8H17 M12 12H17",
         ["RepositoryTools"] = "M3 4H13V14H3Z M6 7H10 M6 10H10 M12 18L18 12 M16 4L20 8L17 11L13 7Z M10 20L13 17L15 19L12 22Z",
