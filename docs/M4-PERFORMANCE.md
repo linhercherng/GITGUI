@@ -30,7 +30,13 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 進一步以有容量上限的陣列建立每列線段，移除逐列暫存清單；遇到空通道時，縮短至實際線段數，保持原本 `IReadOnlyList` 契約、順序與拓撲。容量依提交數及實際不同父提交數計算；多父提交先去重，避免大量重複 parent headers 放大配置。500 筆線性提交的診斷配置再降至 94,664bytes，相較原本 318,616bytes 約減少 70%；測試另核對合併通道留空時每列線段數，並以 100,000 個重複父提交驗證配置低於 16KB。探針新增 GitProcessRunner 完成通知的 QPC、階段、第一個參數（內建命令名稱）、runner 耗時與結束碼，不記錄其餘參數、路徑、環境或輸出；僅供後續區分 status 命令與發布等待成本，沒有更改既有完成端點、樣本數或驗收器。
 
-v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-array-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
+來源 `8be6dc724f133d03159f0f092fac3b6a39fb7f00` 的正式引擎圖形配置中位數為 0.0659838ms，相對 M3 基準改善 5.0248%，四項比較通過。首次 cold 1,467.3586ms、全部 status 與 Diff 均通過，但第二組捲動保留 **70.7854ms** 內部空檔；配對 profiler 另有 **17.6489ms** 產品 render。因此整體仍失敗，原始資料保留在 `v091-m4-array-native-five` 與 `v091-m4-array-desktop-verdict.json`。空檔附近的工作執行緒計時器亦延遲，當時沒有 GC 增量；仍不足以確定 OS 排程根因，不能逕自歸因於使用者操作。
+
+另一輪零遺失 EventPipe 診斷觀察到 23.3957ms render 與 11.6161ms Gen1 GC 暫停重疊；屬定位用診斷，不能取代正式 profiler。後續將外部 profiler 的百萬筆熱紀錄陣列改存純數值及字串編號，結束後才無損還原字串。測試確認熱紀錄不含 GC 參照、Unicode／大小寫／null／並行字串身分與全部時間及巢狀欄位保留。容量、原始 QPC 位置、完整紀錄、跨階段及 inclusive 判定均不變，也不扣除 GC 成本；真正 queued／UI Send／WndProc 40ms 負向校準仍全部被拒絕。這是減少診斷儲存負擔，並非宣稱產品或正式驗收已通過。
+
+本版另新增每專案本機暫存排除清單；真實 Windows 桌面已操作加入已追蹤檔案、原生資料夾選擇器、保存、全部暫存與拒絕排除項暫存，並核對真實 Git index 僅含允許路徑、排除內容保留且未建立 `.gitignore`。功能測試不延伸為效能通過。
+
+v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、逐項 desktop verdict 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 
 以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。
 

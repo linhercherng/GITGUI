@@ -37,7 +37,8 @@ internal static class Profiler
     // while the foreground handshake is paused. Retain those setup spans too;
     // overflow still invalidates the entire run, including the product phases.
     private const int Capacity = 1048576;
-    private static readonly SpanRecord[] Records = new SpanRecord[Capacity];
+    private static readonly RawSpanRecord[] Records = new RawSpanRecord[Capacity];
+    private static readonly SpanStrings Strings = new();
     private static readonly List<object> Patches = [];
     private static readonly uint UiTid = GetCurrentThreadId();
     private static readonly long OriginQpc = Stopwatch.GetTimestamp();
@@ -90,8 +91,8 @@ internal static class Profiler
                 foreach (var tag in activity.TagObjects)
                     if (tag.Value is Avalonia.Layout.Layoutable element && state.Id > 0)
                     {
-                        Records[state.Id - 1].Callback = element.GetType().FullName +
-                            (element is Control { Name: { Length: > 0 } name } ? "#" + name : "");
+                        Records[state.Id - 1].Callback = Strings.Intern(element.GetType().FullName +
+                            (element is Control { Name: { Length: > 0 } name } ? "#" + name : ""));
                         break;
                     }
                 Leave(state, null);
@@ -115,8 +116,8 @@ internal static class Profiler
         var id = Interlocked.Increment(ref count);
         if (id > Capacity) { Interlocked.Increment(ref overflow); return default; }
         var state = new SpanState(id, parent);
-        Records[id - 1] = new() { Id = id, Parent = parent, Seam = seam, Callback = callback,
-            EnterQpc = started, NativeTid = GetCurrentThreadId(), Phase = Volatile.Read(ref phase) };
+        Records[id - 1] = new() { Id = id, Parent = parent, Seam = Strings.Intern(seam), Callback = Strings.Intern(callback),
+            EnterQpc = started, NativeTid = GetCurrentThreadId(), Phase = Strings.Intern(Volatile.Read(ref phase)) };
         parent = id;
         return state;
     }
@@ -124,8 +125,8 @@ internal static class Profiler
     {
         if (state.Id == 0) return;
         ref var record = ref Records[state.Id - 1];
-        record.ExitQpc = Stopwatch.GetTimestamp(); record.ExitPhase = Volatile.Read(ref phase);
-        record.ExceptionType = exception?.GetType().FullName; record.Completed = true;
+        record.ExitQpc = Stopwatch.GetTimestamp(); record.ExitPhase = Strings.Intern(Volatile.Read(ref phase));
+        record.ExceptionType = Strings.Intern(exception?.GetType().FullName); record.Completed = true;
         parent = state.Parent;
     }
     public static string? Callback(object operation) => (CallbackField.GetValue(operation) as Delegate)?.Method is { } method
@@ -169,7 +170,7 @@ internal static class Profiler
     private static void WriteReport(string output)
     {
         layoutListener?.Dispose();
-        var captured = Records.Take(Math.Min(Volatile.Read(ref count), Capacity)).ToArray();
+        var captured = Records.Take(Math.Min(Volatile.Read(ref count), Capacity)).Select(record => record.Project(Strings)).ToArray();
         var probeArguments = Environment.GetCommandLineArgs();
         var reportArgument = Array.IndexOf(probeArguments, "--performance-report");
         var hasPhases = false;
@@ -226,14 +227,6 @@ internal static class Profiler
 }
 
 internal readonly record struct SpanState(int Id, int Parent);
-internal struct SpanRecord
-{
-    public int Id, Parent;
-    public string? Seam, Callback, Phase, ExitPhase, ExceptionType, ProductPhaseAtEnter, ProductPhaseAtExit;
-    public long EnterQpc, ExitQpc;
-    public uint NativeTid;
-    public bool Completed;
-}
 internal static class TextFormattingPatch
 {
     public static void Prefix(MethodBase __originalMethod, out SpanState __state) =>
