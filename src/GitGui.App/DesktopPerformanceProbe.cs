@@ -101,6 +101,13 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
     {
         using var trace = new ProbeTrace(vm, nativeMetrics);
         using var renderingErrors = new RenderErrorObserver();
+        var commandTimings = new ConcurrentQueue<object>();
+        void CommandCompleted(object? sender, CommandEntry entry) => commandTimings.Enqueue(new
+        {
+            recordedQpc = Stopwatch.GetTimestamp(), phase = trace.CurrentPhase,
+            verb = entry.Arguments.FirstOrDefault(), runnerDurationMs = entry.Duration.TotalMilliseconds,
+            exitCode = entry.ExitCode
+        });
         var processOriginQpc = Stopwatch.GetTimestamp() - (long)((DateTime.UtcNow - processStarted).TotalSeconds * Stopwatch.Frequency);
         var values = new Dictionary<string, object?>
         {
@@ -132,6 +139,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         using var heartbeatCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
         var heartbeats = new List<HeartbeatSample>();
         Task heartbeat = Task.CompletedTask; var exitCode = 0;
+        runner.CommandExecuted += CommandCompleted;
         try
         {
             await FrameAsync(window, timeout.Token);
@@ -219,6 +227,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
         catch (Exception ex) { exitCode = 1; values["failure"] = ex.GetType().Name + ": " + ex.Message; }
         finally
         {
+            runner.CommandExecuted -= CommandCompleted;
             heartbeatCancellation.Cancel(); try { await heartbeat; } catch (OperationCanceledException) { }
             // Finish the actual product callback before the probe serializes its
             // diagnostic report. Keep every profiler span and the same thresholds;
@@ -229,6 +238,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             values["heartbeatSamplesInOrder"] = heartbeats.ToArray();
             values["phaseTimeline"] = trace.Phases.ToArray();
             values["uiSynchronousSpans"] = trace.Spans.ToArray();
+            values["gitCommandTimings"] = commandTimings.ToArray();
             values["startupCheckpoints"] = startupCheckpoints.ToArray();
             values["surfaceBarrierWindowFailures"] = surfaceBarrierWindowFailures.ToArray();
             var surfaceErrors = renderingErrors.Snapshot();

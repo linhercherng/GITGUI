@@ -26,7 +26,11 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 後續圖形配置修正以索引逐一讀取父提交，只在多父提交時建立去重集合，保留原本邊線順序與 ordinal 去重語意。500 筆線性提交的診斷配置由 318,616bytes 降至 142,616bytes，約減少 55%；回歸測試先在舊程式確認超過新增的 200KB 配置預算，再驗證新程式及重複合併父提交的線條。這項額外回歸預算沒有取代或放寬任何 M4 關卡。工作樹診斷的原 protocol 2 比較通過，但不能代替最終提交的正式量測；新包仍須完整重驗十份 native 報告及獨立 profiler。
 
-v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-optimized-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
+來源 `60c96d3aa19b58e5ada5cc2c567ad9b2c711a947` 的正式引擎圖形配置為 0.0771007ms，相對基準退步 **10.9765%**，仍超過 10%。該包尚未啟動，因引擎關卡失敗而未進入原生驗收；原始結果保留在 `v091-m4-optimized-engine-protocol2.json` 與比較報告，沒有四捨五入或放寬門檻。
+
+進一步以有容量上限的陣列建立每列線段，移除逐列暫存清單；遇到空通道時，縮短至實際線段數，保持原本 `IReadOnlyList` 契約、順序與拓撲。容量依提交數及實際不同父提交數計算；多父提交先去重，避免大量重複 parent headers 放大配置。500 筆線性提交的診斷配置再降至 94,664bytes，相較原本 318,616bytes 約減少 70%；測試另核對合併通道留空時每列線段數，並以 100,000 個重複父提交驗證配置低於 16KB。探針新增 GitProcessRunner 完成通知的 QPC、階段、第一個參數（內建命令名稱）、runner 耗時與結束碼，不記錄其餘參數、路徑、環境或輸出；僅供後續區分 status 命令與發布等待成本，沒有更改既有完成端點、樣本數或驗收器。
+
+v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-array-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 
 以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。
 

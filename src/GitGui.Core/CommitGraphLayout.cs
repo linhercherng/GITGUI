@@ -10,23 +10,31 @@ public static class CommitGraphLayout
     {
         var lanes = new List<string?>();
         var rows = new List<GraphRow>(commits.Count);
-        var incoming = new HashSet<string>(StringComparer.Ordinal);
+        var incoming = new HashSet<string>(commits.Count, StringComparer.Ordinal);
         foreach (var commit in commits)
         {
             var lane = lanes.IndexOf(commit.Hash);
             if (lane < 0) lane = Allocate(lanes, commit.Hash);
-            var segments = new List<GraphSegment>();
+            var hasIncoming = incoming.Contains(commit.Hash);
+            HashSet<string>? parentsRemaining = null;
+            if (commit.Parents.Count > 1)
+            {
+                parentsRemaining = new(StringComparer.Ordinal);
+                for (var i = 0; i < commit.Parents.Count; i++) parentsRemaining.Add(commit.Parents[i]);
+            }
+            var capacity = lanes.Count - 1 + (hasIncoming ? 1 : 0) + (parentsRemaining?.Count ?? commit.Parents.Count);
+            var segments = capacity == 0 ? Array.Empty<GraphSegment>() : new GraphSegment[capacity];
+            var segmentCount = 0;
             for (var i = 0; i < lanes.Count; i++)
-                if (lanes[i] is not null && i != lane) segments.Add(new(i, i, 0, 1));
+                if (lanes[i] is not null && i != lane) segments[segmentCount++] = new(i, i, 0, 1);
             // A new branch tip has no incoming edge.
-            if (incoming.Contains(commit.Hash)) segments.Add(new(lane, lane, 0, .5));
+            if (hasIncoming) segments[segmentCount++] = new(lane, lane, 0, .5);
             lanes[lane] = null;
             var first = true;
-            HashSet<string>? parentsSeen = commit.Parents.Count > 1 ? new(StringComparer.Ordinal) : null;
             for (var parentIndex = 0; parentIndex < commit.Parents.Count; parentIndex++)
             {
                 var parent = commit.Parents[parentIndex];
-                if (parentsSeen is not null && !parentsSeen.Add(parent)) continue;
+                if (parentsRemaining is not null && !parentsRemaining.Remove(parent)) continue;
                 incoming.Add(parent);
                 var target = lanes.IndexOf(parent);
                 if (target < 0)
@@ -34,9 +42,10 @@ public static class CommitGraphLayout
                     if (first && lanes[lane] is null) { target = lane; lanes[lane] = parent; }
                     else target = Allocate(lanes, parent);
                 }
-                segments.Add(new(lane, target, .5, 1));
+                segments[segmentCount++] = new(lane, target, .5, 1);
                 first = false;
             }
+            if (segmentCount != segments.Length) Array.Resize(ref segments, segmentCount);
             rows.Add(new(commit, lane, segments));
             while (lanes.Count > 0 && lanes[^1] is null) lanes.RemoveAt(lanes.Count - 1);
         }

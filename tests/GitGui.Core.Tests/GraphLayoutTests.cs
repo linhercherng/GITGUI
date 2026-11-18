@@ -7,6 +7,18 @@ public sealed class GraphLayoutTests
 {
     private static CommitInfo C(string hash, params string[] parents) => new(hash, hash, "Author", DateTimeOffset.UnixEpoch, parents);
     [Fact]
+    public void Duplicate_parent_headers_do_not_preallocate_the_raw_header_count()
+    {
+        CommitInfo[] commits = [C("merge", Enumerable.Repeat("a", 100_000).ToArray()), C("a")];
+        _ = CommitGraphLayout.Build(commits);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var rows = CommitGraphLayout.Build(commits);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.Single(rows[0].Segments);
+        Assert.InRange(allocated, 0, 16_384);
+    }
+
+    [Fact]
     public void Visible_linear_page_stays_within_200KB_allocation_budget()
     {
         var commits = Enumerable.Range(0, 500).Select(i => C(i.ToString("x40"), (i + 1).ToString("x40"))).ToArray();
@@ -42,6 +54,8 @@ public sealed class GraphLayoutTests
         var rows = CommitGraphLayout.Build([C("merge", "a", "b", "c"), C("a", "root"), C("b", "root"), C("c", "root"), C("root")]);
         Assert.Equal(3, rows[0].Segments.Count(edge => edge.FromY == .5));
         Assert.Equal(new[] { 0, 0, 1, 2, 0 }, rows.Select(row => row.Lane));
+        Assert.Equal(new[] { 3, 4, 4, 3, 1 }, rows.Select(row => row.Segments.Count));
+        Assert.All(rows.SelectMany(row => row.Segments), Assert.NotNull);
         Assert.Contains(rows[2].Segments, edge => edge.FromLane == 1 && edge.ToLane == 0);
         Assert.Contains(rows[3].Segments, edge => edge.FromLane == 2 && edge.ToLane == 0);
         Assert.Single(rows, row => row.Commit.Hash == "root");
