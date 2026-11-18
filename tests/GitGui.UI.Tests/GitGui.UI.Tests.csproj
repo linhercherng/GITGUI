@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../GitGui.DispatcherProfiler/CallbackNames.cs" Link="Profiler/CallbackNames.cs" />
     <Compile Include="../../src/GitGui.App/SingleInstance.cs" Link="SingleInstance.cs" />
     <Compile Include="../../src/GitGui.App/WindowsNativeHost.cs" Link="WindowsNativeHost.cs" />
     <Compile Include="../../src/GitGui.App/ScrollFramePacing.cs" Link="ScrollFramePacing.cs" />

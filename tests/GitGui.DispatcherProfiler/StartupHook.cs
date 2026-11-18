@@ -129,7 +129,7 @@ internal static class Profiler
         parent = state.Parent;
     }
     public static string? Callback(object operation) => (CallbackField.GetValue(operation) as Delegate)?.Method is { } method
-        ? method.DeclaringType?.FullName + "." + method.Name : null;
+        ? CallbackNames.For(method) : null;
     public static void MaybeStartCanary(uint message)
     {
         if (message != 0x000F || Environment.GetEnvironmentVariable("GITGUI_DISPATCHER_CANARY") != "1" ||
@@ -237,7 +237,7 @@ internal struct SpanRecord
 internal static class TextFormattingPatch
 {
     public static void Prefix(MethodBase __originalMethod, out SpanState __state) =>
-        __state = Profiler.Enter(Stopwatch.GetTimestamp(), "diagnostic-text-formatting", __originalMethod.DeclaringType!.FullName + "." + __originalMethod.Name);
+        __state = Profiler.Enter(Stopwatch.GetTimestamp(), "diagnostic-text-formatting", CallbackNames.For(__originalMethod));
     public static void Finalizer(SpanState __state, Exception? __exception) => Profiler.Leave(__state, __exception);
 }
 internal static class ExecutePatch
@@ -252,7 +252,7 @@ internal static class SendPatch
     {
         var started = Stopwatch.GetTimestamp();
         __state = !cancellationToken.IsCancellationRequested && priority == DispatcherPriority.Send && __instance.CheckAccess()
-            ? Profiler.Enter(started, "Dispatcher.Invoke UI Send", callback.Method.DeclaringType?.FullName + "." + callback.Method.Name) : default;
+            ? Profiler.Enter(started, "Dispatcher.Invoke UI Send", CallbackNames.For(callback.Method)) : default;
     }
     public static void Finalizer(SpanState __state, Exception? __exception) => Profiler.Leave(__state, __exception);
 }

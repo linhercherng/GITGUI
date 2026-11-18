@@ -18,7 +18,11 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 後續來源 `a0fcf2f4381f2340dd6a9b26bdc2d9181d8ab945` 的首次啟動為 1,245.3171ms，但第二組保留 25.7881ms 內部空檔，超過 25.025ms；第 4 組外部協調逾時，整輪保留為失敗／未完成，沒有產生通過的 summary。原始資料在 `v091-m4-final-native-five`。進一步保留文字檢視原本的非互動 Raw automation 分類，仍保有互動子控制項、完整文件 Value 及標準捲動；避免把裝飾檢視新增為互動／內容節點。相應分類測試先失敗再通過。後續五組使用既有自動驅動，仍逐筆檢查原始前景事件、空檔與所有其他門檻，先前失敗不刪除。
 
-v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-release-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
+來源 `eef9da281550039bc0e7c52d5ca60463405e3dab` 的真正首次啟動為 1,177.9812ms，十份 native 報告及五組捲動通過；但獨立 profiler 的 363,750 筆紀錄中仍有一筆產品 render **16.3983ms**，因此整體失敗。原始紀錄及失敗判定保留在 `v091-m4-release-native-five` 與 `v091-m4-release-desktop-verdict.json`，不以四捨五入視為通過。
+
+後續額外文字繪製／GC 診斷觀察到繪製期間的 Gen1 GC；這些重型診斷只用來定位，不作正式數值。外部 profiler 原先對每筆回呼重建相同方法名稱字串，再保留於 span 陣列；回歸測試重複同一回呼 100,000 次配置 5,600,000bytes。改用弱鍵方法名稱快取後，同一測試配置低於 4,096bytes，並核對閉包、泛型、動態方法及並行名稱完全相同。這是降低診斷工具自身開銷，不宣稱為產品程式加速。仍保留所有 span、原名稱、原始 QPC 進出位置、巢狀 inclusive 與跨階段計算；沒有扣除 GC 或推估的 profiler 成本，沒有更動驗收器或門檻。真正的 queued／UI Send／WndProc 40ms 負向校準均仍被拒絕，完整紀錄與 hook 身分隨證據提供。
+
+v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-certified-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 
 以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。
 
