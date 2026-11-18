@@ -22,7 +22,11 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 後續額外文字繪製／GC 診斷觀察到繪製期間的 Gen1 GC；這些重型診斷只用來定位，不作正式數值。外部 profiler 原先對每筆回呼重建相同方法名稱字串，再保留於 span 陣列；回歸測試重複同一回呼 100,000 次配置 5,600,000bytes。改用弱鍵方法名稱快取後，同一測試配置低於 4,096bytes，並核對閉包、泛型、動態方法及並行名稱完全相同。這是降低診斷工具自身開銷，不宣稱為產品程式加速。仍保留所有 span、原名稱、原始 QPC 進出位置、巢狀 inclusive 與跨階段計算；沒有扣除 GC 或推估的 profiler 成本，沒有更動驗收器或門檻。真正的 queued／UI Send／WndProc 40ms 負向校準均仍被拒絕，完整紀錄與 hook 身分隨證據提供。
 
-v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-certified-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
+來源 `bb00f6a47da8fd1fcd9d9b79e4d6e2b88f374681` 的真正首次啟動為 776.8626ms，五組捲動及三入口 profiler 通過，最大產品重疊工作 11.9932ms；但第 3 組的一次 status surface 為 **386.7671ms**，超過 300ms，整體仍失敗。引擎比較另保留圖形配置中位數 0.2583468ms，相對同 fixture 的 M3 基準 0.0694748ms 退步超過 10%。原始紀錄在 `v091-m4-certified-native-five`、`v091-m4-certified-desktop-verdict.json` 及 `v091-m4-certified-engine-comparison.json`。額外流程診斷中的 status 子程序約 148–157ms、runner 約 153–168ms，未重現該次超標；不能據此刪除或忽略失敗，也不推測為使用者操作造成。
+
+後續圖形配置修正以索引逐一讀取父提交，只在多父提交時建立去重集合，保留原本邊線順序與 ordinal 去重語意。500 筆線性提交的診斷配置由 318,616bytes 降至 142,616bytes，約減少 55%；回歸測試先在舊程式確認超過新增的 200KB 配置預算，再驗證新程式及重複合併父提交的線條。這項額外回歸預算沒有取代或放寬任何 M4 關卡。工作樹診斷的原 protocol 2 比較通過，但不能代替最終提交的正式量測；新包仍須完整重驗十份 native 報告及獨立 profiler。
+
+v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-optimized-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 
 以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。
 

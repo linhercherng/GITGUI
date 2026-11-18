@@ -22,8 +22,11 @@ public static class CommitGraphLayout
             if (incoming.Contains(commit.Hash)) segments.Add(new(lane, lane, 0, .5));
             lanes[lane] = null;
             var first = true;
-            foreach (var parent in commit.Parents.Distinct(StringComparer.Ordinal))
+            HashSet<string>? parentsSeen = commit.Parents.Count > 1 ? new(StringComparer.Ordinal) : null;
+            for (var parentIndex = 0; parentIndex < commit.Parents.Count; parentIndex++)
             {
+                var parent = commit.Parents[parentIndex];
+                if (parentsSeen is not null && !parentsSeen.Add(parent)) continue;
                 incoming.Add(parent);
                 var target = lanes.IndexOf(parent);
                 if (target < 0)

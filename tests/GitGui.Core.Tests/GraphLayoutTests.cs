@@ -7,6 +7,27 @@ public sealed class GraphLayoutTests
 {
     private static CommitInfo C(string hash, params string[] parents) => new(hash, hash, "Author", DateTimeOffset.UnixEpoch, parents);
     [Fact]
+    public void Visible_linear_page_stays_within_200KB_allocation_budget()
+    {
+        var commits = Enumerable.Range(0, 500).Select(i => C(i.ToString("x40"), (i + 1).ToString("x40"))).ToArray();
+        for (var i = 0; i < 10; i++) _ = CommitGraphLayout.Build(commits);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var rows = CommitGraphLayout.Build(commits);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        GC.KeepAlive(rows);
+        Assert.InRange(allocated, 0, 200_000);
+    }
+
+    [Fact]
+    public void Repeated_merge_parents_produce_one_edge_per_distinct_parent()
+    {
+        var rows = CommitGraphLayout.Build([C("merge", "a", "a", "b", "a"), C("a", "root"), C("b", "root", "root"), C("root")]);
+        Assert.Equal(2, rows[0].Segments.Count(edge => edge.FromY == .5));
+        Assert.Single(rows[2].Segments, edge => edge.FromY == .5);
+        Assert.Equal(new[] { 0, 0, 1, 0 }, rows.Select(row => row.Lane));
+    }
+
+    [Fact]
     public void Linear_history_stays_in_one_lane_and_connects_parent()
     {
         var rows = CommitGraphLayout.Build([C("a", "b"), C("b", "c"), C("c")]);
