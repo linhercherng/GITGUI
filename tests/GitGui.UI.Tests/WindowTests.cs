@@ -28,6 +28,25 @@ public class TestApplication : Application
 public sealed class WindowTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [AvaloniaFact]
+    public void Branch_form_starts_collapsed_without_a_repository_and_expands_when_one_opens()
+    {
+        using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());
+        var window = new MainWindow(vm); window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var branch = window.GetVisualDescendants().OfType<Expander>().Single(item => Equals(item.Header, vm.L["BranchActions"]));
+            Assert.False(branch.IsExpanded);
+            vm.HasRepository = true; window.UpdateLayout(); Assert.True(branch.IsExpanded);
+            branch.SetCurrentValue(Expander.IsExpandedProperty, false);
+            Assert.True(vm.HasRepository);
+            vm.HasRepository = false; vm.HasRepository = true; window.UpdateLayout();
+            Assert.True(branch.IsExpanded);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Idle_or_determinate_progress_stops_the_indeterminate_animation()
     {
         using var vm = new MainWindowViewModel(new SampleWorkspace(), new MemoryRecent());

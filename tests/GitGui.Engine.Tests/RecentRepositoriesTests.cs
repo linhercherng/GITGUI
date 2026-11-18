@@ -5,6 +5,31 @@ namespace GitGui.Engine.Tests;
 
 public class RecentRepositoriesTests
 {
+    [Fact]
+    public async Task Empty_recent_list_does_not_create_storage_and_first_write_still_persists()
+    {
+        using var temporary = new TemporaryRepository();
+        var directory = Path.Combine(temporary.Root, "settings");
+        var database = Path.Combine(directory, "recent.db");
+        var recent = new RecentRepositories(database);
+        Assert.Empty(await recent.ListAsync(default));
+        Assert.False(Directory.Exists(directory));
+        await recent.RememberAsync(temporary.Root, default);
+        Assert.True(File.Exists(database));
+        Assert.Equal(temporary.Root, Assert.Single(await new RecentRepositories(database).ListAsync(default)));
+    }
+
+    [Fact]
+    public async Task Existing_invalid_database_is_not_silently_treated_as_an_empty_list()
+    {
+        using var temporary = new TemporaryRepository();
+        var database = Path.Combine(temporary.Root, "recent.db");
+        await File.WriteAllTextAsync(database, "not a SQLite database");
+        await Assert.ThrowsAsync<Microsoft.Data.Sqlite.SqliteException>(() => new RecentRepositories(database).ListAsync(default));
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        Assert.Equal("not a SQLite database", await File.ReadAllTextAsync(database));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

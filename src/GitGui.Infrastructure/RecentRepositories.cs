@@ -9,17 +9,25 @@ public sealed class RecentRepositories(string databasePath) : IRecentRepositorie
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(databasePath))!);
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = databasePath }.ToString());
-        await connection.OpenAsync(ct);
-        using var command = connection.CreateCommand();
-        command.CommandText = "CREATE TABLE IF NOT EXISTS repositories(path TEXT PRIMARY KEY, opened TEXT NOT NULL)";
-        await command.ExecuteNonQueryAsync(ct);
-        return connection;
+        try
+        {
+            await connection.OpenAsync(ct);
+            using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TABLE IF NOT EXISTS repositories(path TEXT PRIMARY KEY, opened TEXT NOT NULL)";
+            await command.ExecuteNonQueryAsync(ct);
+            return connection;
+        }
+        catch { await connection.DisposeAsync(); throw; }
     }
 
     // Microsoft.Data.Sqlite's async ADO.NET calls execute synchronously. Schedule
     // the complete connection/query lifetime on a worker, including busy waits.
     public Task<IReadOnlyList<string>> ListAsync(CancellationToken ct) => Task.Run(async () =>
     {
+        // A fresh installation has no recent rows and need not initialize SQLite yet.
+        try { _ = File.GetAttributes(databasePath); }
+        catch (FileNotFoundException) { return (IReadOnlyList<string>)Array.Empty<string>(); }
+        catch (DirectoryNotFoundException) { return (IReadOnlyList<string>)Array.Empty<string>(); }
         await using var connection = await Open(ct);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT path FROM repositories ORDER BY opened DESC LIMIT 20";
