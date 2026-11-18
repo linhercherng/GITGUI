@@ -1,10 +1,10 @@
 # GITGUI 操作手冊
 
-適用版本：0.9.0。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 [Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.9.0)。
+適用版本：0.9.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 [Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.9.1)。
 
-v0.9.0 改善大型衝突編輯的輸入回應，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。另修正工作區多選及重新整理時批次暫存點擊被忽略的問題。本版重新建置程式，`build-info.json` 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。
+v0.9.1 縮小 Diff 編輯器每影格附加的文字列批次，保留完整文件、複製、唯讀與並排功能，並以完整可見區域建立及實際 surface 提交作為完成條件。沿用 v0.9.0 的大型衝突編輯輸入回應改善，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。另修正工作區多選及重新整理時批次暫存點擊被忽略的問題。本版重新建置程式，`build-info.json` 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。
 
-本版完整測試、CI 與免安裝 ZIP 的驗證結果隨 Release 提供；固定案例的改善量測與限制見 [v0.9.0 改善驗證](V0.9-PERFORMANCE.md)。既有 [M4 正式效能數據](M4-PERFORMANCE.md) 仍僅對應報告中記錄的 v0.7.0 受測版本，門檻未調整。
+本版完整測試、CI 與免安裝 ZIP 的驗證結果隨 Release 提供；固定案例的改善量測與限制見 [v0.9.0 改善驗證](V0.9-PERFORMANCE.md)。[M4 正式效能紀錄](M4-PERFORMANCE.md) 分開保留 v0.7.0 歷史驗收及本次 v0.9.0 失敗紀錄。本版正式結果以 Release 驗證附件的原始報告、逐樣本判定及受測程式雜湊為準；冷啟動 1,500ms、捲動逐幀空檔、UI 工作 16ms 等原門檻不變。不同版本與備用啟動方式不能沿用其成績。
 
 第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。
 
@@ -16,7 +16,7 @@ v0.9.0 改善大型衝突編輯的輸入回應，減少快照狀態檔與符號�
 
 ## 1. 解壓縮與啟動
 
-1. 從本專案 v0.9.0 Release 下載 `GITGUI-0.9.0-win-x64-portable.zip`。
+1. 從本專案 v0.9.1 Release 下載 `GITGUI-0.9.1-win-x64-portable.zip`。
 2. 在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。
 3. 開啟解壓縮資料夾，執行 **`GITGUI.vbs`**。請勿直接從 ZIP 內執行。
 4. 第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 `PortableGit\cmd\git.exe`。
@@ -25,12 +25,12 @@ v0.9.0 改善大型衝突編輯的輸入回應，減少快照狀態檔與符號�
 
 不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。
 
-預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 `GitGui.App.exe`；v0.7.0 的 1.5 秒冷啟動驗收使用 `GITGUI.vbs`，備用方式的啟動時間可能不同。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`、`PortableGit` 與其他隨附檔案。
+預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 `GitGui.App.exe`；正式冷啟動驗收使用 `GITGUI.vbs`，備用方式的啟動時間另計。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`、`PortableGit` 與其他隨附檔案。
 
 若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 `SHA256SUMS.txt`；此版本未提供程式碼簽章。
 
 ```powershell
-Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.9.0-win-x64-portable.zip' -Algorithm SHA256
+Get-FileHash -LiteralPath 'C:\下載\GITGUI-0.9.1-win-x64-portable.zip' -Algorithm SHA256
 ```
 
 上方 `C:\下載` 是範例，請換成實際下載位置。

@@ -34,12 +34,12 @@ public sealed class IncrementalTextViewTests
         {
             window.UpdateLayout(); var ready = view.DisplayReady;
             Assert.False(ready.IsCompleted);
-            Assert.InRange(view.VisualLines.Count, 1, 8);
+            Assert.InRange(view.VisualLines.Count, 1, 4);
             var previous = view.VisualLines.Count; var turns = 0;
             while (!ready.IsCompleted && turns++ < 20)
             {
                 Assert.Single(frames); frames.Dequeue()(); window.UpdateLayout();
-                Assert.InRange(view.VisualLines.Count - previous, 0, 8);
+                Assert.InRange(view.VisualLines.Count - previous, 0, 4);
                 previous = view.VisualLines.Count;
             }
             Assert.True(ready.IsCompletedSuccessfully);

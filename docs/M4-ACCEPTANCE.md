@@ -1,5 +1,11 @@
 # M4 正式版驗收
 
+## v0.9.1 驗收來源
+
+v0.9.0 本次重新量測保留冷啟動 1,694.6485ms 與產品 UI render 26.2507ms 的失敗，沒有以後續較快樣本抵銷。v0.9.1 針對已定位的文字列附加熱點縮小每影格批次；原規格與所有門檻不變。正式結果須以該 Release 證據附件的完整十份原生報告、配對外部 profiler、逐樣本判定與程式身分核對為準，詳見 [本次效能紀錄](M4-PERFORMANCE.md)。只有全部通過才發布，不能把歷史 v0.7.0 的結果延伸為新版本通過。
+
+## v0.7.0 歷史正式驗收
+
 M4 沿用 [ROADMAP](ROADMAP.md) 與原始 [規格](specification.md) 第11–13節。v0.7.0正式效能驗收已通過，原始規格及所有門檻保持不變。實際二進位來源為 `f923f11e18286b78b5b7358212bce5736032d5be`；後續驗收器及CI調整沒有修改產品程式碼。
 
 Windows／macOS／Linux × Git2.40／2.56的 [六格CI](https://github.com/linhercherng/GITGUI/actions/runs/40081899175) 全部通過，包含Core33、Engine288、UI170項測試及Windows ZIP驗證。實際ZIP另完成2,224次Git操作、24筆原版M3快照Undo/Redo與原狀復原、AskPass及桌面啟閉。

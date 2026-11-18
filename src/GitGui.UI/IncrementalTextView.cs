@@ -8,7 +8,8 @@ namespace GitGui.UI;
 internal sealed class IncrementalTextView(Action<Action>? scheduleFrame = null) : TextView
 {
     protected override Type StyleKeyOverride => typeof(TextView);
-    private const int RowsPerFrame = 8;
+    // Native profiling found eight visual-line attachments can exceed the 16ms UI budget.
+    private const int RowsPerFrame = 4;
     private TaskCompletionSource? ready;
     private int rows, version;
     private bool pending, scheduled, resumeOnAttach;

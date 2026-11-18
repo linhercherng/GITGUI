@@ -1,5 +1,19 @@
 # M4 效能與重現
 
+## 2026-11-18 v0.9.0 重新驗收與 v0.9.1 修正
+
+v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae9941f9b69a88f03e33`，二進位來源 `0a04fc6f7310699b1b1f21e0274d826af147d17d`。新的中文空白路徑解壓後，第一次呼叫正常 `GITGUI.vbs` 的 cold surface 時間為 **1,694.6485ms**，超過 1,500ms。該版本先前已在本機執行過，不能把這次新解壓誤稱為該二進位在本機的歷史首次執行。後續較快的重跑不能抵銷這筆失敗。
+
+初輪 large 等候外部前景協調逾時，保留為未完成；沒有當成有效捲動成績。舊 fixture 缺少產生器身分清單，因此重新以原產生器建立 100,000 commits／50,000 files、10,000 行文字檔／100 處修改的實體 fixture，HEAD `b1cee5b2154b6b283da52f8eb9c138c53d6c7e97`、fingerprint `2804e73f3d1744f6bedaf7fc97a9f5eb`。沒有重建或偽造舊清單。
+
+新 fixture 的五組捲動全部通過原本逐幀及端點關卡，surface 提交約 129.10–136.78fps；其餘絕對 native 畫面關卡亦通過。但配對的三入口獨立 profiler 記錄到產品 render **26.2507ms**，另有一筆 **16.1603ms**，故 v0.9.0 整體仍未達標。完整失敗紀錄分別在 `v090-m4-baseline-five`、`v090-m4-newfixture-five` 及 `v090-m4-newfixture-verdict.json`；不可只引用通過的捲動數值。
+
+額外 layout／文字格式診斷將熱點定位至 `IncrementalTextView` 的 `TextLayer.SetVisualLines` 附加可見文字列；該重型診斷不作正式時間基準。v0.9.1 將每影格最多新增列數由八列降為四列。回歸測試先在八列版本確認失敗，再驗證完整可見區域、原文件文字、取消、換檔與過期影格處理。正式探針仍等待完整可見文字區域與實際 surface 提交，沒有用部分畫面縮短 Diff 完成時間。
+
+v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
+
+以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。
+
 原規格第11.1節及10%退步門檻保持不變。v0.7.0已完成正式效能驗收；先列最終結果，後保留歷史候選版及失敗紀錄。
 
 ## 2026-10-24 最終正式驗收
