@@ -18,7 +18,7 @@ internal sealed class IncrementalTextView(Action<Action>? scheduleFrame = null) 
     internal Task DisplayReady => ready?.Task ?? Task.CompletedTask;
 
     protected override AutomationPeer OnCreateAutomationPeer() => new TextViewPeer(this);
-    private sealed class TextViewPeer(IncrementalTextView view) : ControlAutomationPeer(view)
+    private sealed class TextViewPeer(IncrementalTextView view) : NoneAutomationPeer(view)
     {
         // The editor exposes the complete document through Value; drawing layers are decorative.
         protected override IReadOnlyList<AutomationPeer> GetChildrenCore() => view.GetVisualChildren()

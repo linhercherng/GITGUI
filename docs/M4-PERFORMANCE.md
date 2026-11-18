@@ -16,7 +16,9 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 後續修正在文字檢視的 automation peer 中省略不可互動的裝飾繪圖層，避免每列建立不具文字語意的 None peer；保留可互動圖層及 inline 控制項。文件仍由編輯器 Value provider 提供完整 Unicode 文字，標準 ScrollViewer 的捲動 provider、唯讀與可編輯結果語意不變。新增測試確認裝飾節點不外露、互動圖層仍可存取、完整 1,000 行 Unicode 值與標準垂直捲動 provider 保留；不宣稱實體 Narrator 朗讀已驗證。
 
-v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-final-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
+後續來源 `a0fcf2f4381f2340dd6a9b26bdc2d9181d8ab945` 的首次啟動為 1,245.3171ms，但第二組保留 25.7881ms 內部空檔，超過 25.025ms；第 4 組外部協調逾時，整輪保留為失敗／未完成，沒有產生通過的 summary。原始資料在 `v091-m4-final-native-five`。進一步保留文字檢視原本的非互動 Raw automation 分類，仍保有互動子控制項、完整文件 Value 及標準捲動；避免把裝飾檢視新增為互動／內容節點。相應分類測試先失敗再通過。後續五組使用既有自動驅動，仍逐筆檢查原始前景事件、空檔與所有其他門檻，先前失敗不刪除。
+
+v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-release-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 
 以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。
 

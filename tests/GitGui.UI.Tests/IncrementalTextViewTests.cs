@@ -20,7 +20,9 @@ public sealed class IncrementalTextViewTests
         try
         {
             window.UpdateLayout();
-            Assert.Empty(ControlAutomationPeer.CreatePeerForElement(view)!.GetChildren());
+            var documentPeer = ControlAutomationPeer.CreatePeerForElement(view)!;
+            Assert.False(documentPeer.IsControlElement()); Assert.False(documentPeer.IsContentElement());
+            Assert.Empty(documentPeer.GetChildren());
             Assert.Equal(text, view.Document.Text);
             var action = new Button { Content = "Inspect document" };
             view.Layers.Add(action); window.UpdateLayout();
