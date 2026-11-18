@@ -10,7 +10,13 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 額外 layout／文字格式診斷將熱點定位至 `IncrementalTextView` 的 `TextLayer.SetVisualLines` 附加可見文字列；該重型診斷不作正式時間基準。v0.9.1 將每影格最多新增列數由八列降為四列。回歸測試先在八列版本確認失敗，再驗證完整可見區域、原文件文字、取消、換檔與過期影格處理。正式探針仍等待完整可見文字區域與實際 surface 提交，沒有用部分畫面縮短 Diff 完成時間。
 
-v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
+第一個四列候選來源 `f5d5e66dda0c434ea9b3afcdb76ed4f8b6cdb2c3` 的真正首次啟動為 1,117.2516ms，十份 native 報告及五組捲動全部符合其絕對關卡；但配對 profiler 仍有 22.0386ms 與 17.6638ms 的產品 render，因此整體仍失敗。完整原始紀錄保留在 `v091-m4-native-five`、`v091-m4-desktop-verdict.json`，不能視為本版最終通過。
+
+額外 EventPipe 追蹤在零遺失事件下，觀察到超標工作內的 `UiaRaiseStructureChangedEvent` 同步 COM 呼叫，來自文字繪圖層的子節點增刪；另有 Bounds 通知與字形繪製。診斷只用來定位，不扣除這些成本。先前遺失事件的重型追蹤亦保留，未作完整證明。參考對應 NuGet 來源的 [TextLayer](https://github.com/AvaloniaUI/AvaloniaEdit/blob/583f2f8279cf50830eb7fd79c73dec554a232abf/src/AvaloniaEdit/Rendering/TextLayer.cs) 與 [TextView](https://github.com/AvaloniaUI/AvaloniaEdit/blob/583f2f8279cf50830eb7fd79c73dec554a232abf/src/AvaloniaEdit/Rendering/TextView.cs)。
+
+後續修正在文字檢視的 automation peer 中省略不可互動的裝飾繪圖層，避免每列建立不具文字語意的 None peer；保留可互動圖層及 inline 控制項。文件仍由編輯器 Value provider 提供完整 Unicode 文字，標準 ScrollViewer 的捲動 provider、唯讀與可編輯結果語意不變。新增測試確認裝飾節點不外露、互動圖層仍可存取、完整 1,000 行 Unicode 值與標準垂直捲動 provider 保留；不宣稱實體 Narrator 朗讀已驗證。
+
+v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、`v091-m4-final-desktop-verdict.json` 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 
 以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。
 

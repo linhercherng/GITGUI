@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitGui.Controls;
@@ -105,6 +106,29 @@ public sealed class AccessibilityTests
         Assert.NotNull(peer.GetProvider<IScrollProvider>());
         window.KeyPressQwerty(PhysicalKey.Home, RawInputModifiers.None); Assert.Equal(commits[0], graph.SelectedCommit);
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Incremental_diff_retains_full_unicode_value_and_standard_scroll_provider()
+    {
+        var text = string.Join('\n', Enumerable.Range(0, 1000).Select(i => "中文 🙂 line " + i));
+        var style = new StyleInclude(new Uri("avares://AvaloniaEdit/"))
+            { Source = new Uri("avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml") };
+        Application.Current!.Styles.Add(style);
+        var editor = new CodeEditor(true) { AccessibleName = "完整差異", CodeText = text };
+        var window = new Window { Content = editor, Width = 440, Height = 420 };
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var peer = ControlAutomationPeer.CreatePeerForElement(editor)!;
+            var value = Assert.IsAssignableFrom<IValueProvider>(peer.GetProvider<IValueProvider>());
+            Assert.Equal("完整差異", peer.GetName()); Assert.Equal(text, value.Value); Assert.True(value.IsReadOnly);
+            var scroll = Assert.Single(editor.GetVisualDescendants().OfType<ScrollViewer>());
+            var provider = ControlAutomationPeer.CreatePeerForElement(scroll)!.GetProvider<IScrollProvider>();
+            Assert.NotNull(provider); Assert.True(provider.VerticallyScrollable);
+        }
+        finally { window.Close(); Application.Current!.Styles.Remove(style); }
     }
 
     [AvaloniaFact]

@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Automation.Peers;
+using Avalonia.VisualTree;
 using AvaloniaEdit.Rendering;
 
 namespace GitGui.UI;
@@ -14,6 +16,15 @@ internal sealed class IncrementalTextView(Action<Action>? scheduleFrame = null) 
     private int rows, version;
     private bool pending, scheduled, resumeOnAttach;
     internal Task DisplayReady => ready?.Task ?? Task.CompletedTask;
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new TextViewPeer(this);
+    private sealed class TextViewPeer(IncrementalTextView view) : ControlAutomationPeer(view)
+    {
+        // The editor exposes the complete document through Value; drawing layers are decorative.
+        protected override IReadOnlyList<AutomationPeer> GetChildrenCore() => view.GetVisualChildren()
+            .OfType<Control>().Where(control => !view.Layers.Contains(control) || control.IsHitTestVisible)
+            .Select(CreatePeerForElement).OfType<AutomationPeer>().ToArray();
+    }
 
     internal void BeginUpdate()
     {

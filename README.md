@@ -12,7 +12,7 @@
 
 從 [v0.9.1 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.9.1) 下載 `GITGUI-0.9.1-win-x64-portable.zip`，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
 
-v0.9.1 將 Diff 可見文字列的附加批次縮小為每影格最多四列，保留完整文件與完成條件。沿用 v0.9.0 的大型衝突編輯與快照狀態檔／符號連結批次處理改善；提交簽章提供「沿用 Git 設定／本次啟用／本次停用」，失敗時保留訊息並提供說明。工作區支援 Ctrl／Shift 多選、Ctrl+A 全選，背景重新整理期間的批次暫存會等待讀取完成後執行。手冊保留 24 章、44 張實際標示截圖與本機版本管理範例，並更新第 4、5、6、22.4 節。完整測試、六格 CI 與本版 ZIP 的驗證證據隨 Release 提供；發布步驟見 [RELEASING.md](docs/RELEASING.md)，改善量測見 [v0.9.0 驗證](docs/V0.9-PERFORMANCE.md)。[M4 正式驗收](docs/M4-ACCEPTANCE.md) 保留不同版本的獨立紀錄；本版以 Release 隨附的原始 native 報告、外部 profiler、逐樣本判定及程式雜湊為準，所有原門檻不變。本版執行檔未簽章。
+v0.9.1 將 Diff 可見文字列的附加批次縮小為每影格最多四列，同時避免文字裝飾圖層的逐列無障礙通知；保留完整文件、文字讀取、標準捲動與完成條件。沿用 v0.9.0 的大型衝突編輯與快照狀態檔／符號連結批次處理改善；提交簽章提供「沿用 Git 設定／本次啟用／本次停用」，失敗時保留訊息並提供說明。工作區支援 Ctrl／Shift 多選、Ctrl+A 全選，背景重新整理期間的批次暫存會等待讀取完成後執行。手冊保留 24 章、44 張實際標示截圖與本機版本管理範例，並更新第 4、5、6、22.4 節。完整測試、六格 CI 與本版 ZIP 的驗證證據隨 Release 提供；發布步驟見 [RELEASING.md](docs/RELEASING.md)，改善量測見 [v0.9.0 驗證](docs/V0.9-PERFORMANCE.md)。[M4 正式驗收](docs/M4-ACCEPTANCE.md) 保留不同版本的獨立紀錄；本版以 Release 隨附的原始 native 報告、外部 profiler、逐樣本判定及程式雜湊為準，所有原門檻不變。本版執行檔未簽章。
 
 預設啟動使用 Windows Script Host；環境不允許 VBS 時，可改用 `GitGui.App.exe`，但備用方式不沿用 1.5 秒啟動驗收結果。
 

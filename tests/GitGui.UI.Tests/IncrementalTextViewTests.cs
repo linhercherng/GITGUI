@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Automation.Peers;
 using Avalonia.Headless.XUnit;
 using AvaloniaEdit.Document;
 using GitGui.UI;
@@ -8,6 +9,27 @@ namespace GitGui.UI.Tests;
 
 public sealed class IncrementalTextViewTests
 {
+    [AvaloniaFact]
+    public void Decorative_drawing_layers_are_not_document_automation_children()
+    {
+        var frames = new Queue<Action>();
+        var text = string.Join('\n', Enumerable.Range(0, 1000).Select(i => "中文 🙂 line " + i));
+        var view = new IncrementalTextView(frames.Enqueue) { Document = new TextDocument(text) };
+        var window = new Window { Content = view, Width = 440, Height = 420 };
+        view.BeginUpdate(); window.Show();
+        try
+        {
+            window.UpdateLayout();
+            Assert.Empty(ControlAutomationPeer.CreatePeerForElement(view)!.GetChildren());
+            Assert.Equal(text, view.Document.Text);
+            var action = new Button { Content = "Inspect document" };
+            view.Layers.Add(action); window.UpdateLayout();
+            var peer = ControlAutomationPeer.CreatePeerForElement(view)!;
+            Assert.Contains(peer.GetChildren(), child => child.GetName() == "Inspect document");
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public void Closing_during_layout_cancels_readiness_and_queued_frame_cannot_resume_it()
     {
