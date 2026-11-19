@@ -75,7 +75,9 @@ jobs:
       - name: Windows AskPass apphost protocol
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh
-        run: ./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net10.0/GitGui.App.exe
+        run: |
+          ./tests/WindowsSmoke.ps1 -AppPath ./src/GitGui.App/bin/Release/net10.0/GitGui.App.exe
+          ./tests/Test-WindowsSmokeIdentity.ps1 -AppPath ./src/GitGui.App/bin/Release/net10.0/GitGui.App.exe
       - name: Build and verify self-contained Windows portable ZIP
         if: runner.os == 'Windows' && matrix.git == '2.56.0'
         shell: pwsh

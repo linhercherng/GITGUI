@@ -4,6 +4,15 @@ param(
     [switch]$Desktop
 )
 $ErrorActionPreference = 'Stop'
+if (-not ('GitGui.SmokePipeIdentity' -as [type])) {
+    Add-Type -TypeDefinition @"
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+namespace GitGui { public static class SmokePipeIdentity {
+ [DllImport("kernel32.dll",SetLastError=true)] public static extern bool GetNamedPipeClientProcessId(SafePipeHandle pipe,out uint pid);
+} }
+"@
+}
 $appExe = (Resolve-Path -LiteralPath $AppPath).Path
 $pipeName = 'gitgui-smoke-' + [Guid]::NewGuid().ToString('N')
 $pipe = [IO.Pipes.NamedPipeServerStream]::new($pipeName, [IO.Pipes.PipeDirection]::InOut, 1,
@@ -30,7 +39,19 @@ $child = [Diagnostics.Process]::Start($start)
 $stdout = $child.StandardOutput.ReadToEndAsync()
 $stderr = $child.StandardError.ReadToEndAsync()
 try {
-    if (-not $waiting.Wait(10000)) { throw 'AskPass pipe did not connect' }
+    $connectionWatch = [Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
+        $remaining = 10000 - [int]$connectionWatch.ElapsedMilliseconds
+        if ($remaining -le 0 -or -not $waiting.Wait($remaining)) { throw 'AskPass pipe did not connect' }
+        $peer = [uint32]0
+        if (-not [GitGui.SmokePipeIdentity]::GetNamedPipeClientProcessId($pipe.SafePipeHandle, [ref]$peer)) {
+            throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error())
+        }
+        if ($peer -eq $child.Id) { break }
+        # Only exercise the launched helper; an unrelated process can connect first.
+        $pipe.Disconnect()
+        $waiting = $pipe.WaitForConnectionAsync()
+    }
     $encoding = [Text.UTF8Encoding]::new($false)
     $reader = [IO.StreamReader]::new($pipe, $encoding, $false, 1024, $true)
     $writer = [IO.StreamWriter]::new($pipe, $encoding, 1024, $true)
