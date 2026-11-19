@@ -52,6 +52,8 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 候選修正只在 Windows 渲染工作執行緒提出 [HighQoS 排程提示](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadinformation)，API 不支援時維持原本時鐘；沒有更改系統電源計畫、全域計時解析度、CPU 親和性或執行緒優先序。新增測試先在原自動策略得到 ControlMask=0 而失敗，再確認工作執行緒的實際 OS 策略已設定、程序層級策略不變、優先序維持 Normal，並能正常停止。首次冷啟動、五組捲動與配對 profiler 仍須使用未注入此診斷 hook 的最終套件完整重驗。此提示可能改變渲染工作的效能與耗電取捨，尚未量測電池續航。
 
+首次候選 CI 的四組 Unix 測試通過，兩組 Windows Server 2022 測試因查詢 QoS 策略得到錯誤 87 而失敗，原始日誌保留。依 Microsoft 的資訊類別支援範圍，策略查詢測試限 build 22000 以上；較舊 Windows 仍執行既有時鐘啟停、重新訂閱與併發關閉測試，不宣稱已驗證其 HighQoS 策略。本機首次完整 UI 測試另有首次提交操作逾時（198／199），與並行引擎測試、建置同時發生；尚不能據此判定原因，失敗結果仍保留。
+
 v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、逐項 desktop verdict 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 
 以下內容為 v0.7.0 及更早歷史紀錄，不是本版的量測值。

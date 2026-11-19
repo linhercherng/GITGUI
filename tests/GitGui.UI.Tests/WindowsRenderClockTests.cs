@@ -7,9 +7,10 @@ namespace GitGui.UI.Tests;
 public sealed class WindowsRenderClockTests
 {
     [Fact]
-    public async Task Render_worker_requests_high_qos_without_changing_process_policy_or_thread_priority()
+    public async Task Windows_11_render_worker_requests_high_qos_without_changing_process_policy_or_thread_priority()
     {
-        if (!OperatingSystem.IsWindows()) return;
+        // The QoS query classes require build 22000; older hosts still run the clock lifecycle tests.
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return;
         using var process = System.Diagnostics.Process.GetCurrentProcess();
         var processBefore = ReadProcessPolicy(process.Handle);
         using var clock = new WindowsHighResolutionRenderClock();
