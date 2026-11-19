@@ -9,6 +9,8 @@ namespace GitGui.App;
 /// <summary>A process-owned render clock. Never changes global timer resolution or thread priority.</summary>
 internal sealed class WindowsHighResolutionRenderClock : IDisposable
 {
+    private const int ThreadPowerThrottling = 3;
+    private const uint ExecutionSpeed = 1;
     private readonly object gate = new();
     private readonly AutoResetEvent changed = new(false);
     private readonly TimerWait timer;
@@ -69,6 +71,10 @@ internal sealed class WindowsHighResolutionRenderClock : IDisposable
     {
         try
         {
+            // Rendering is latency-sensitive; keep other threads on automatic QoS.
+            // The hint is optional on older Windows and does not change priority.
+            var power = new ThreadPowerPolicy { Version = 1, ControlMask = ExecutionSpeed, StateMask = 0 };
+            _ = SetThreadInformation(GetCurrentThread(), ThreadPowerThrottling, ref power, (uint)Marshal.SizeOf<ThreadPowerPolicy>());
             WaitHandle[] waits = [changed, timer];
             // A single interactive update crosses UI commit, server update and surface
             // submission turns. Keep that pipeline within a 60 Hz frame-gap budget.
@@ -112,6 +118,13 @@ internal sealed class WindowsHighResolutionRenderClock : IDisposable
     {
         public TimerWait(SafeWaitHandle handle) => SafeWaitHandle = handle;
     }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ThreadPowerPolicy { public uint Version, ControlMask, StateMask; }
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern nint GetCurrentThread();
+    [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetThreadInformation(nint thread, int kind, ref ThreadPowerPolicy state, uint size);
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
     private static extern SafeWaitHandle CreateWaitableTimerExW(nint attributes, nint name, uint flags, uint access);
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]

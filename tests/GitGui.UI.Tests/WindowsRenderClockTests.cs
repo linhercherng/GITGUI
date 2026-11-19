@@ -1,10 +1,55 @@
 using GitGui.App;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace GitGui.UI.Tests;
 
 public sealed class WindowsRenderClockTests
 {
+    [Fact]
+    public async Task Render_worker_requests_high_qos_without_changing_process_policy_or_thread_priority()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        var processBefore = ReadProcessPolicy(process.Handle);
+        using var clock = new WindowsHighResolutionRenderClock();
+        var received = new TaskCompletionSource<(PowerPolicy Policy, ThreadPriority Priority)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        clock.Tick += _ =>
+        {
+            try { received.TrySetResult((ReadPowerPolicy(), Thread.CurrentThread.Priority)); }
+            catch (Exception error) { received.TrySetException(error); }
+        };
+        var actual = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(1u, actual.Policy.ControlMask & 1u);
+        Assert.Equal(0u, actual.Policy.StateMask & 1u);
+        Assert.Equal(ThreadPriority.Normal, actual.Priority);
+        Assert.Equal(processBefore, ReadProcessPolicy(process.Handle));
+        clock.Dispose();
+        await clock.Stopped.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PowerPolicy { public uint Version, ControlMask, StateMask; }
+    [DllImport("kernel32.dll")] private static extern nint GetCurrentThread();
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetThreadInformation(nint thread, int kind, ref PowerPolicy state, uint size);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessInformation(nint process, int kind, ref PowerPolicy state, uint size);
+    private static PowerPolicy ReadPowerPolicy()
+    {
+        var policy = new PowerPolicy { Version = 1 };
+        Assert.True(GetThreadInformation(GetCurrentThread(), 3, ref policy, 12), $"Thread QoS query failed: {Marshal.GetLastWin32Error()}");
+        return policy;
+    }
+    private static PowerPolicy ReadProcessPolicy(nint process)
+    {
+        var policy = new PowerPolicy { Version = 1 };
+        Assert.True(GetProcessInformation(process, 4, ref policy, 12), $"Process QoS query failed: {Marshal.GetLastWin32Error()}");
+        return policy;
+    }
+
     [Theory]
     [InlineData(10, 10, 19, 20)]
     [InlineData(10, 10, 20, 30)]
