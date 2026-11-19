@@ -7,7 +7,7 @@ namespace GitGui.UI.Tests;
 public sealed class WindowsRenderClockTests
 {
     [Fact]
-    public async Task Windows_11_render_worker_requests_high_qos_without_changing_process_policy_or_thread_priority()
+    public async Task Windows_11_render_worker_keeps_automatic_qos_without_changing_process_policy_or_thread_priority()
     {
         // The QoS query classes require build 22000; older hosts still run the clock lifecycle tests.
         if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return;
@@ -21,7 +21,7 @@ public sealed class WindowsRenderClockTests
             catch (Exception error) { received.TrySetException(error); }
         };
         var actual = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.Equal(1u, actual.Policy.ControlMask & 1u);
+        Assert.Equal(0u, actual.Policy.ControlMask & 1u);
         Assert.Equal(0u, actual.Policy.StateMask & 1u);
         Assert.Equal(ThreadPriority.Normal, actual.Priority);
         Assert.Equal(processBefore, ReadProcessPolicy(process.Handle));

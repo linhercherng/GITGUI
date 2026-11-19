@@ -50,9 +50,17 @@ v0.9.0 正式 ZIP SHA-256 為 `912deb7e9a60865fd272d040a2c1fe15d6ba044e19f0ae994
 
 同一既有套件再以外部 hook 做前景 A/B/A/B 暖啟動診斷。自動排程兩輪最大 surface 空檔為 25.6576ms（失敗）／19.4243ms；HighQoS 兩輪為 16.7999ms／21.2595ms。原始時間戳顯示，自動排程第一輪的 25.3406ms 渲染時鐘空檔與超標重疊，但這輪前景渲染執行緒本已幾乎都在高效能核心，不能把根因簡化成效率核心。四輪皆保留，含已失敗的一輪；外部 hook 及策略介入使其不能作正式驗收。這些小樣本僅支持製作候選，不能證明修正已通過 M4。
 
-候選修正只在 Windows 渲染工作執行緒提出 [HighQoS 排程提示](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadinformation)，API 不支援時維持原本時鐘；沒有更改系統電源計畫、全域計時解析度、CPU 親和性或執行緒優先序。新增測試先在原自動策略得到 ControlMask=0 而失敗，再確認工作執行緒的實際 OS 策略已設定、程序層級策略不變、優先序維持 Normal，並能正常停止。首次冷啟動、五組捲動與配對 profiler 仍須使用未注入此診斷 hook 的最終套件完整重驗。此提示可能改變渲染工作的效能與耗電取捨，尚未量測電池續航。
+該輪候選曾在 Windows 渲染工作執行緒提出 [HighQoS 排程提示](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadinformation)，API 不支援時維持原本時鐘；沒有更改系統電源計畫、全域計時解析度、CPU 親和性或執行緒優先序。新增測試先在原自動策略得到 ControlMask=0 而失敗，再確認工作執行緒的實際 OS 策略已設定、程序層級策略不變、優先序維持 Normal，並能正常停止。該候選後續正式結果記錄於下段；未通過者不得發布。此提示可能改變渲染工作的效能與耗電取捨，尚未量測電池續航。
 
 首次候選 CI 的四組 Unix 測試通過，兩組 Windows Server 2022 測試因查詢 QoS 策略得到錯誤 87 而失敗，原始日誌保留。依 Microsoft 的資訊類別支援範圍，策略查詢測試限 build 22000 以上；較舊 Windows 仍執行既有時鐘啟停、重新訂閱與併發關閉測試，不宣稱已驗證其 HighQoS 策略。本機首次完整 UI 測試另有首次提交操作逾時（198／199），與並行引擎測試、建置同時發生；尚不能據此判定原因，失敗結果仍保留。
+
+來源 `46e684e0bbafb114ced28fab4fb92c884aadb44d` 的完整本機測試為 Core53／Engine313／UI199，共565項，六格CI、原本四項10%比較及六組BDN／30個原始實測樣本均通過。首次新二進位正常VBS啟動為934.5024ms，十次啟動最大1,303.3129ms；首批500筆歷史最大940.8311ms、全部15次status最大272.5851ms、Diff最大158.3908ms、最大常駐216,043,520bytes。但第1組捲動有44.4472ms空檔，第5組有40.1225ms及65.7688ms空檔；配對profiler另有18.1055ms跨產品階段UI工作。因此為 **65／68、失敗**，沒有發布該候選；完整逐筆資料保留在 `v091-qos-evidence`。
+
+後續管理員WPR搭配一般權限GITGUI的暖啟動診斷重現六個空檔，介於26.9046～80.6444ms，原始事件遺失數為0。其中三個空檔與多個CPU同時執行同一核心DPC重疊；以相符的Microsoft `ntkrnlmp.pdb`（GUID `ce884f70-f5a9-025d-53db-35d8be8bff79`、Age1）解析為 `KiSwapDirectoryTableBaseTarget`。36.0909ms及51.1651ms空檔的渲染執行緒分別有27、32筆CPU取樣標記在此DPC中，不能把其running或render wall time一律視為應用程式繪圖計算。
+
+前一份輕量設定未收集呼叫堆疊，屬收集限制，不能憑單一核心名稱指定觸發者。改用已核對CSwitch／ReadyThread／SampledProfile堆疊設定的 `CPU.Verbose` 短追蹤後，觀察到910,196筆CPU取樣，其中798,498筆帶堆疊，事件遺失數為0。六份非DPC取樣的相同呼叫鏈為 `MiRebuildLargePages → MiRebuildLargePage → MiFindContiguousPagesEx → MiTradePage → MiStealPage → KeSwapDirectoryTableBase → KeGenericProcessorCallback → KiGenericCallDpcInitiatorWorker → KiInitiateGenericCallDpc → KiSwapDirectoryTableBaseTarget`，上層為System程序的 `ExpWorkerThread`。這是該輪觀察到的記憶體管理相關核心工作；該輪沒有重現超標，因此不能據此將所有舊失敗一律歸為同一原因。也沒有依據將個別出現在其他取樣中的第三方模組當作根因。
+
+恢復Windows自動QoS，移除尚未在實際產品正式驗收中證實有效的HighQoS提示。原生時鐘回歸測試先在強制策略確認ControlMask=1而失敗，再確認自動策略ControlMask=0、程序策略及正常優先序保留、啟停與併發關閉正常。這項變更不宣稱已修正Windows核心工作造成的延遲；新包仍須重新驗收。新的正常輪次及診斷輪次不抵銷先前失敗，原始核心追蹤只保留在本機。
 
 v0.9.1 的最終數值及整體判定以 Release 證據 ZIP 中的原始 cold／large 報告、summary、配對 dispatcher profiler、逐項 desktop verdict 及引擎比較報告為準，須核對相同受測 binary 的 SHA-256／MVID 與 fixture。原 cold 1,500ms、首屏 1,000ms、每次 status 300ms、Diff 200ms、300,000,000bytes、產品工作 16ms、持續捲動 60fps／25.025ms 空檔及引擎回歸 10% 全數維持。未全部通過不發布；未測試的新二進位不可沿用既有成績。
 

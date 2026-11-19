@@ -12,7 +12,7 @@
 
 已發布的 Windows 免安裝版請從 [最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載名稱結尾為 `win-x64-portable.zip` 的主程式套件，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
 
-目前原始碼版本為 **v0.9.1**，新增每個專案的本機暫存排除清單，並改善首次啟動、Diff 文字列附加、無障礙通知及提交圖配置。Windows 渲染時鐘另提出執行緒層級的效能排程提示，不更改系統電源計畫、CPU 親和性或執行緒優先序。[M4 正式驗收](docs/M4-ACCEPTANCE.md) 保留各候選的失敗紀錄；原門檻不變，只有受測套件全部通過才發布，最終數值以該 Release 的原始報告、逐項判定與程式雜湊為準。詳細數據與歷史失敗見 [M4 效能紀錄](docs/M4-PERFORMANCE.md)。
+目前原始碼版本為 **v0.9.1**，新增每個專案的本機暫存排除清單，並改善首次啟動、Diff 文字列附加、無障礙通知及提交圖配置。Windows 渲染時鐘沿用自動 QoS 與正常執行緒優先序。[M4 正式驗收](docs/M4-ACCEPTANCE.md) 保留各候選的失敗紀錄；原門檻不變，只有受測套件全部通過才發布，最終數值以該 Release 的原始報告、逐項判定與程式雜湊為準。詳細數據與歷史失敗見 [M4 效能紀錄](docs/M4-PERFORMANCE.md)。
 
 穩定版 v0.9.0 已支援工作區 Ctrl／Shift 多選、Ctrl+A 全選、背景重新整理期間等待後批次暫存，以及提交簽章選項、大型衝突編輯與快照批次處理改善。本分支操作手冊包含 v0.9.1 的開發功能；使用穩定版時，請以 Release 內附手冊為準。發布流程見 [RELEASING.md](docs/RELEASING.md)，v0.9.0 的驗證見 [效能紀錄](docs/V0.9-PERFORMANCE.md)。執行檔未簽章。
 
