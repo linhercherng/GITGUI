@@ -323,6 +323,9 @@ public sealed class CommitGraphControl : Control
                 if (change.Property == AutomationElementIdentifiers.BoundingRectangleProperty)
                     foreach (var peer in peers.Values.ToArray())
                         peer.RaisePropertyChangedEvent(change.Property, null, peer.GetBoundingRectangle());
+                else if (change.Property == AutomationElementIdentifiers.ItemStatusProperty)
+                    foreach (var peer in peers.Values.ToArray())
+                        peer.RaisePropertyChangedEvent(change.Property, change.OldValue, change.NewValue);
             };
         }
         private int Visible => Math.Max(1, (int)Math.Ceiling(graph.Bounds.Height / RowHeight));
@@ -380,6 +383,12 @@ public sealed class CommitGraphControl : Control
         protected override string? GetAccessKeyCore() => parent.GetAccessKey();
         protected override AutomationPeer? GetLabeledByCore() => parent.GetLabeledBy();
         protected override string? GetHelpTextCore() => parent.GetHelpText();
+        protected override string? GetItemStatusCore() => parent.GetItemStatus();
+        protected override string? GetItemTypeCore() => parent.GetItemType();
+        protected override AutomationLandmarkType? GetLandmarkTypeCore() => parent.GetLandmarkType();
+        protected override int GetHeadingLevelCore() => parent.GetHeadingLevel();
+        protected override AutomationLiveSetting GetLiveSettingCore() => parent.GetLiveSetting();
+        protected override AutomationControlType GetControlTypeOverrideCore() => AutomationProperties.GetControlTypeOverride(graph) ?? GetAutomationControlTypeCore();
         protected override bool IsContentElementCore() => parent.IsContentElement();
         protected override bool IsControlElementCore() => parent.IsControlElement();
         protected override bool IsEnabledCore() => graph.IsEffectivelyEnabled;

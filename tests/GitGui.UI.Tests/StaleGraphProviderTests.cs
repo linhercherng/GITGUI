@@ -57,6 +57,15 @@ public sealed class StaleGraphProviderTests
             Assert.Same(parent, row.GetParent()); Assert.Same(parent.GetVisualRoot(), row.GetVisualRoot());
             Assert.True(row.IsControlElement()); Assert.True(row.IsContentElement());
             Assert.Equal(graph.Focusable, row.IsKeyboardFocusable()); Assert.True(row.IsEnabled());
+            AutomationProperties.SetHelpText(graph, "History help"); Assert.Equal("History help", row.GetHelpText());
+            var statuses = new List<string>();
+            row.PropertyChanged += (_, change) =>
+            {
+                if (change.Property == AutomationElementIdentifiers.ItemStatusProperty && change.NewValue is string value)
+                    statuses.Add(value);
+            };
+            AutomationProperties.SetItemStatus(graph, "History updated");
+            Assert.Equal("History updated", row.GetItemStatus()); Assert.Contains("History updated", statuses);
             graph.IsEnabled = false; Assert.False(row.IsEnabled()); graph.IsEnabled = true;
             graph.Focusable = false; Assert.False(row.IsKeyboardFocusable()); graph.Focusable = true;
             var bounds = new List<Rect>();
