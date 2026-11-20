@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using GitGui.App;
 using Xunit;
 
@@ -16,6 +17,9 @@ public sealed class WindowsNativeHostTests
         Assert.Equal(process.StartTime.ToUniversalTime(), origin.StartedUtc);
         Assert.Equal(Environment.ProcessPath, origin.LauncherPath);
         Assert.Null(origin.NativeHostPath);
+        var json = JsonSerializer.SerializeToElement(origin);
+        Assert.True(json.TryGetProperty("ProcessStartedUtc", out var nativeStart), "The report must retain the actual native process creation time separately from its launcher.");
+        Assert.Equal(process.StartTime.ToUniversalTime(), nativeStart.GetDateTime());
     }
 
     [Fact]

@@ -38,6 +38,11 @@ foreach($mode in @('apphost','vbs')) {
         if($child.ExitCode -ne 0){throw "$mode desktop probe failed with exit $($child.ExitCode)"}
         $probe=Get-Content $report -Raw|ConvertFrom-Json -Depth 100
         if(-not $probe.completed -or $probe.provenanceFailure -or $probe.failure){throw "$mode desktop report failed"}
+        if(-not $probe.managedMainEntry -or $probe.managedMainEntry.recordedQpc -le 0 -or -not $probe.launchOrigin.ProcessStartedUtc){throw "$mode desktop report lacks early startup checkpoints"}
+        if($probe.managedMainEntry.recordedQpc -gt $probe.startupSurfaceSubmission.CompletedQpc){throw 'Managed Main checkpoint occurs after the first completed surface'}
+        if([DateTime]$probe.launchOrigin.ProcessStartedUtc -lt [DateTime]$probe.launchOrigin.StartedUtc -or
+           [DateTime]$probe.managedMainEntry.recordedUtc -lt [DateTime]$probe.launchOrigin.ProcessStartedUtc){throw 'Startup creation timestamps are out of order'}
+        if($mode -eq 'apphost' -and $probe.launchOrigin.ProcessStartedUtc -ne $probe.launchOrigin.StartedUtc){throw 'Apphost must use its own actual creation time'}
         if($probe.gitRuntime.executable -ine (Join-Path $app 'PortableGit/cmd/git.exe')){throw 'Desktop Git path escaped package'}
         $results+=@{mode=$mode;result='PASS';report=$report;git=$probe.gitRuntime.executable;gitVersion=$probe.gitRuntime.version}
     } finally {if(-not $child.HasExited){$child.Kill($true)};$child.Dispose()}

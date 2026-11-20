@@ -27,7 +27,7 @@ internal static class WindowsNativeHost
         using var current = Process.GetCurrentProcess();
         var childStarted = current.StartTime.ToUniversalTime();
         var host = ActivePath();
-        if (host is null) return new(childStarted, current.Id, current.Id, Environment.ProcessPath!, null);
+        if (host is null) return new(childStarted, current.Id, current.Id, Environment.ProcessPath!, null, childStarted);
         using var snapshot = CreateToolhelp32Snapshot(2, 0);
         if (snapshot.IsInvalid) throw new InvalidOperationException("Cannot inspect native launcher parent.");
         var entry = new ProcessEntry { Size = (uint)Marshal.SizeOf<ProcessEntry>() };
@@ -41,7 +41,7 @@ internal static class WindowsNativeHost
         var started = launcher.StartTime.ToUniversalTime();
         if (started > childStarted || childStarted - started > TimeSpan.FromMinutes(3))
             throw new InvalidOperationException("Invalid launcher creation time.");
-        return new(started, current.Id, launcher.Id, expected, host);
+        return new(started, current.Id, launcher.Id, expected, host, childStarted);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -68,4 +68,4 @@ internal static class WindowsNativeHost
     private static extern bool Process32NextW(SafeFileHandle snapshot, ref ProcessEntry entry);
 }
 
-internal sealed record LaunchOrigin(DateTime StartedUtc, int ProcessId, int LauncherProcessId, string LauncherPath, string? NativeHostPath);
+internal sealed record LaunchOrigin(DateTime StartedUtc, int ProcessId, int LauncherProcessId, string LauncherPath, string? NativeHostPath, DateTime ProcessStartedUtc);

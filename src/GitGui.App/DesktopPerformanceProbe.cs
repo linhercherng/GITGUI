@@ -114,6 +114,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             ["schema"] = 1, ["recordedAt"] = DateTimeOffset.UtcNow,
             ["timelineOriginUtc"] = trace.OriginUtc,
             ["timelineOriginQpc"] = trace.OriginQpc,
+            ["managedMainEntry"] = new { recordedQpc = Program.MainEntered.Qpc, recordedUtc = Program.MainEntered.Utc },
             ["renderingModeRequested"] = SoftwareRendering ? "Windows Software framebuffer (probe override)" :
                 OperatingSystem.IsWindows() && !DirectComposition ? "Windows Software framebuffer (product default)" : "Platform graphics default",
             ["compositionModeRequested"] = Composition.Requested,

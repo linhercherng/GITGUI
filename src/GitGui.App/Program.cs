@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Styling;
@@ -17,11 +18,13 @@ internal static class Program
 {
     private static IDisposable? renderClock;
     internal static DesktopPerformanceProbe? Performance { get; private set; }
+    internal static (long Qpc, DateTime Utc) MainEntered { get; private set; }
     internal static string DataDirectory => Performance?.DataPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitGui");
     internal static bool AlreadyRunning { get; private set; }
     [STAThread]
     public static void Main(string[] args)
     {
+        MainEntered = (Stopwatch.GetTimestamp(), DateTime.UtcNow);
         if (args.FirstOrDefault() == "--askpass")
         {
             var pipe = Environment.GetEnvironmentVariable("GITGUI_ASKPASS_PIPE");
