@@ -1,6 +1,6 @@
 # GITGUI 操作手冊
 
-適用程式版本：0.9.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 [最新正式 Release](https://github.com/linhercherng/GITGUI/releases/latest)。本機開發手冊的版本可能高於已發布版本；請核對 Release 標示版本與包內 `build-info.json`。GitHub 的原始碼 ZIP 不包含完整免安裝執行環境。
+適用版本：0.9.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 [最新正式 Release](https://github.com/linhercherng/GITGUI/releases/latest)。本機開發手冊的版本可能高於已發布版本；請核對 Release 標示版本與包內 `build-info.json`。GitHub 的原始碼 ZIP 不包含完整免安裝執行環境。
 
 v0.9.1 加入每個專案的本機暫存排除清單，檔案與資料夾皆可排除，詳見第 4.1 節。Diff 編輯器縮小每影格附加的文字列批次，保留完整文件、複製、唯讀、並排及無障礙文字讀取與捲動功能；文字裝飾圖層不再產生每列無語意的無障礙節點，並以完整可見區域建立及實際 surface 提交作為完成條件；提交圖也降低記憶體配置，保留分支與合併線條。沿用 v0.9.0 的大型衝突編輯輸入回應改善，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。另修正工作區多選及重新整理時批次暫存點擊被忽略的問題。本版重新建置程式，`build-info.json` 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。
 
