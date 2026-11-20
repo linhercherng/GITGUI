@@ -311,9 +311,20 @@ public sealed class CommitGraphControl : Control
     }
     protected override AutomationPeer OnCreateAutomationPeer() => new GraphPeer(this);
 
-    private sealed class GraphPeer(CommitGraphControl graph) : ControlAutomationPeer(graph), ISelectionProvider, IScrollProvider
+    private sealed class GraphPeer : ControlAutomationPeer, ISelectionProvider, IScrollProvider
     {
+        private readonly CommitGraphControl graph;
         private readonly Dictionary<string, RowPeer> peers = new(StringComparer.Ordinal);
+        public GraphPeer(CommitGraphControl graph) : base(graph)
+        {
+            this.graph = graph;
+            PropertyChanged += (_, change) =>
+            {
+                if (change.Property == AutomationElementIdentifiers.BoundingRectangleProperty)
+                    foreach (var peer in peers.Values.ToArray())
+                        peer.RaisePropertyChangedEvent(change.Property, null, peer.GetBoundingRectangle());
+            };
+        }
         private int Visible => Math.Max(1, (int)Math.Ceiling(graph.Bounds.Height / RowHeight));
         private RowPeer Row(GraphRow row) => peers.TryGetValue(row.Commit.Hash, out var peer) ? peer : peers[row.Commit.Hash] = new(graph, this, row.Commit);
         protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.List;
@@ -353,7 +364,8 @@ public sealed class CommitGraphControl : Control
             graph.offset = (int)Math.Round(verticalPercent / 100 * Math.Max(0, graph.rows.Count - Visible)); graph.InvalidateVisual(); InvalidateChildren();
         }
     }
-    private sealed class RowPeer(CommitGraphControl graph, GraphPeer parent, CommitInfo commit) : ControlAutomationPeer(graph), ISelectionItemProvider
+    // Virtual rows must not subscribe to the shared control's events and keep evicted peers alive.
+    private sealed class RowPeer(CommitGraphControl graph, GraphPeer parent, CommitInfo commit) : AutomationPeer, ISelectionItemProvider
     {
         private int Index => graph.IndexOf(commit.Hash);
         public CommitInfo Commit => Index is >= 0 and var index ? graph.rows[index].Commit : commit;
@@ -362,7 +374,18 @@ public sealed class CommitGraphControl : Control
         protected override string GetAutomationIdCore() => "commit-" + commit.Hash;
         protected override string GetClassNameCore() => "Commit";
         protected override AutomationPeer GetParentCore() => parent;
-        protected override IReadOnlyList<AutomationPeer> GetChildrenCore() => [];
+        protected override IReadOnlyList<AutomationPeer> GetOrCreateChildrenCore() => [];
+        protected override void BringIntoViewCore() => graph.BringIntoView();
+        protected override string? GetAcceleratorKeyCore() => parent.GetAcceleratorKey();
+        protected override string? GetAccessKeyCore() => parent.GetAccessKey();
+        protected override AutomationPeer? GetLabeledByCore() => parent.GetLabeledBy();
+        protected override string? GetHelpTextCore() => parent.GetHelpText();
+        protected override bool IsContentElementCore() => parent.IsContentElement();
+        protected override bool IsControlElementCore() => parent.IsControlElement();
+        protected override bool IsEnabledCore() => graph.IsEffectivelyEnabled;
+        protected override bool IsKeyboardFocusableCore() => graph.Focusable;
+        protected override bool ShowContextMenuCore() => parent.ShowContextMenu();
+        protected override bool TrySetParent(AutomationPeer? value) => true;
         protected override bool IsOffscreenCore() { var index = Index; return index < 0 || index < graph.offset || index >= graph.offset + Math.Ceiling(graph.Bounds.Height / RowHeight); }
         protected override Rect GetBoundingRectangleCore()
         {
