@@ -96,7 +96,7 @@ try {
     $inventory | ConvertTo-Json -Depth 6 | Set-Content "$licenses/nuget-inventory.json" -Encoding utf8
     [ordered]@{ product = 'GITGUI'; version = $Version; sourceCommit = $commit;
         platform = 'win-x64'; selfContained = $true; dotnetRuntime = '10.0.13';
-        readyToRunComposite = $true; launcher = 'GITGUI.vbs'; nativeHost = 'GitGui.Host.dll';
+        readyToRunComposite = $true; launcher = 'GITGUI.exe'; nativeHost = 'GITGUI.exe'; legacyNativeHost = 'GitGui.Host.dll';
         portableGit = '2.56.0.3'; portableGitArchiveSHA256 = '4fc27b779829a36df77911e3f4dea09c66c790dd6c5f7dfa3b6a5479f1fe354f';
         source = "https://github.com/linhercherng/GITGUI/tree/$commit" } |
         ConvertTo-Json | Set-Content "$app/build-info.json" -Encoding utf8

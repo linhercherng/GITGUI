@@ -68,7 +68,7 @@ try {
     if ($request -ne 'Smoke credential prompt' -or $answer -ne 'smoke-密碼' -or $child.ExitCode -ne 0) {
         throw 'AskPass helper UTF-8 protocol mismatch'
     }
-    Write-Output 'Windows apphost AskPass helper: PASS (UTF-8 request/response and stdout)'
+    Write-Output 'Windows AskPass helper: PASS (UTF-8 request/response and stdout)'
 } finally {
     if (-not $child.HasExited) { $child.Kill($true) }
     $pipe.Dispose()

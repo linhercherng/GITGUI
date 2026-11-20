@@ -19,6 +19,7 @@ foreach ($document in @('LICENSE', 'USER-GUIDE.zh-TW.md', 'USER-GUIDE.zh-TW.html
 }
 $guide = Get-Content -LiteralPath (Join-Path $app 'USER-GUIDE.zh-TW.md') -Raw
 $buildInfo = Get-Content -LiteralPath (Join-Path $app 'build-info.json') -Raw | ConvertFrom-Json
+if($buildInfo.launcher -ne 'GITGUI.exe' -or !(Test-Path -LiteralPath (Join-Path $app 'GITGUI.exe'))){throw 'Default native executable launcher is missing'}
 if (-not $guide.Contains('適用版本：' + $buildInfo.version) -or $guide -notmatch '\]\(docs/M3-COMPATIBILITY\.md\)') { throw 'Offline guide version/links are invalid' }
 if ($buildInfo.dotnetRuntime -ne '10.0.13' -or (Get-Content -LiteralPath (Join-Path $app 'LICENSE') -Raw) -notmatch 'MIT License') { throw 'Runtime/license inventory is invalid' }
 foreach ($image in @('m3-main.png', 'm3-tools.png', 'm4-main.png', 'm4-main-history.png')) {
@@ -102,6 +103,7 @@ try {
             Write-Output $result.Trim()
         } finally { $child.Dispose() }
         & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path $app 'GitGui.App.exe') -Desktop:$Desktop
+        & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path $app 'GITGUI.exe')
         if($buildInfo.readyToRunComposite) {
             & "$PSScriptRoot/WindowsSmoke.ps1" -AppPath (Join-Path ([Environment]::SystemDirectory) 'rundll32.exe') `
                 -NativeHostPath (Join-Path $app 'GitGui.Host.dll')

@@ -9,9 +9,12 @@ internal static class WindowsNativeHost
 {
     public static string? ActivePath()
     {
-        if (!OperatingSystem.IsWindows() || !string.Equals(Environment.ProcessPath,
+        if (!OperatingSystem.IsWindows()) return null;
+        var standalone = Path.Combine(AppContext.BaseDirectory, "GITGUI.exe");
+        var self = string.Equals(Environment.ProcessPath, standalone, StringComparison.OrdinalIgnoreCase);
+        if (!self && !string.Equals(Environment.ProcessPath,
             Path.Combine(Environment.SystemDirectory, "rundll32.exe"), StringComparison.OrdinalIgnoreCase)) return null;
-        var expected = Path.Combine(AppContext.BaseDirectory, "GitGui.Host.dll");
+        var expected = self ? standalone : Path.Combine(AppContext.BaseDirectory, "GitGui.Host.dll");
         var module = GetModuleHandleW(expected);
         var path = new StringBuilder(32768);
         if (module == 0 || GetModuleFileNameW(module, path, path.Capacity) == 0 ||
@@ -28,6 +31,8 @@ internal static class WindowsNativeHost
         var childStarted = current.StartTime.ToUniversalTime();
         var host = ActivePath();
         if (host is null) return new(childStarted, current.Id, current.Id, Environment.ProcessPath!, null, childStarted);
+        if (string.Equals(host, Environment.ProcessPath, StringComparison.OrdinalIgnoreCase))
+            return new(childStarted, current.Id, current.Id, host, host, childStarted);
         using var snapshot = CreateToolhelp32Snapshot(2, 0);
         if (snapshot.IsInvalid) throw new InvalidOperationException("Cannot inspect native launcher parent.");
         var entry = new ProcessEntry { Size = (uint)Marshal.SizeOf<ProcessEntry>() };

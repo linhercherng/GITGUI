@@ -6,7 +6,7 @@ $app=(Resolve-Path -LiteralPath $AppDirectory).Path
 $archiveHash=(Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
 $zip=[IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $Archive).Path)
 try {
-    foreach($relative in @('GitGui.App.exe','GitGui.App.dll','GitGui.App.r2r.dll','GitGui.Host.dll','GITGUI.vbs','build-info.json','PortableGit/cmd/git.exe')) {
+    foreach($relative in @('GITGUI.exe','GitGui.App.exe','GitGui.App.dll','GitGui.App.r2r.dll','GitGui.Host.dll','GITGUI.vbs','build-info.json','PortableGit/cmd/git.exe')) {
         $entry=@($zip.Entries|Where-Object FullName -CEQ ((Split-Path $app -Leaf)+'/'+$relative))
         if($entry.Count -ne 1){throw "ZIP lacks $relative"}
         $stream=$entry[0].Open()
@@ -15,10 +15,10 @@ try {
     }
 }finally{$zip.Dispose()}
 $results=@()
-foreach($mode in @('apphost','vbs')) {
+foreach($mode in @('native','apphost','vbs')) {
     $report=Join-Path $OutputDirectory "$mode-desktop.json"
     $data=Join-Path $OutputDirectory "$mode-data"
-    $exe=if($mode -eq 'apphost'){Join-Path $app 'GitGui.App.exe'}else{Join-Path ([Environment]::SystemDirectory) 'wscript.exe'}
+    $exe=if($mode -eq 'native'){Join-Path $app 'GITGUI.exe'}elseif($mode -eq 'apphost'){Join-Path $app 'GitGui.App.exe'}else{Join-Path ([Environment]::SystemDirectory) 'wscript.exe'}
     $start=[Diagnostics.ProcessStartInfo]::new($exe)
     $start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.WindowStyle='Hidden'
     $start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
@@ -43,10 +43,15 @@ foreach($mode in @('apphost','vbs')) {
         if([DateTime]$probe.launchOrigin.ProcessStartedUtc -lt [DateTime]$probe.launchOrigin.StartedUtc -or
            [DateTime]$probe.managedMainEntry.recordedUtc -lt [DateTime]$probe.launchOrigin.ProcessStartedUtc){throw 'Startup creation timestamps are out of order'}
         if($mode -eq 'apphost' -and $probe.launchOrigin.ProcessStartedUtc -ne $probe.launchOrigin.StartedUtc){throw 'Apphost must use its own actual creation time'}
+        if($mode -eq 'native' -and ($probe.launchOrigin.ProcessId -ne $probe.launchOrigin.LauncherProcessId -or
+            $probe.launchOrigin.ProcessStartedUtc -ne $probe.launchOrigin.StartedUtc -or
+            $probe.launchOrigin.NativeHostPath -ine $exe -or $probe.nativeHostIdentity.processPath -ine $exe -or
+            $probe.memoryProcesses.launcherProcessId -ne $probe.launchOrigin.ProcessId -or
+            $probe.memoryProcesses.launcherWorkingSetBytes -ne 0)){throw 'Native executable origin/memory is not its actual own process'}
         if($probe.gitRuntime.executable -ine (Join-Path $app 'PortableGit/cmd/git.exe')){throw 'Desktop Git path escaped package'}
         $results+=@{mode=$mode;result='PASS';report=$report;git=$probe.gitRuntime.executable;gitVersion=$probe.gitRuntime.version}
     } finally {if(-not $child.HasExited){$child.Kill($true)};$child.Dispose()}
 }
 & "$PSScriptRoot/Test-WindowsSingleInstance.ps1" -AppDirectory $app -OutputDirectory (Join-Path $OutputDirectory 'single-instance')
 @{result='PASS';archiveSHA256=$archiveHash;singleInstance='PASS';scope='Isolated desktop launch, native rendering, bundled Git, apphost/WScript exit and cross-process instance recovery; not formal performance acceptance';modes=$results}|ConvertTo-Json -Depth 8|Set-Content (Join-Path $OutputDirectory 'verification.json')
-'Apphost and GITGUI.vbs isolated desktop checks: PASS'
+'Native executable, apphost and GITGUI.vbs isolated desktop checks: PASS'

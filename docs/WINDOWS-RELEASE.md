@@ -1,8 +1,8 @@
 # Windows x64 免安裝發行
 
-從 [v0.9.0 Release](https://github.com/linhercherng/GITGUI/releases/tag/v0.9.0)
-下載 `GITGUI-0.9.0-win-x64-portable.zip`，完整解壓縮後開啟
-`GITGUI.vbs`，不需系統管理員權限。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
+從 [最新正式 Release](https://github.com/linhercherng/GITGUI/releases/latest)
+下載名稱結尾為 `win-x64-portable.zip` 的主程式套件，完整解壓縮後開啟
+`GITGUI.exe`（v0.9.1 起），不需系統管理員權限或 Windows Script Host。舊版請依包內說明使用 `GITGUI.vbs`。支援OS範圍見 [M4驗收](M4-ACCEPTANCE.md)。
 
 ## v0.9.0：大型衝突編輯、快照批次處理與提交簽章
 

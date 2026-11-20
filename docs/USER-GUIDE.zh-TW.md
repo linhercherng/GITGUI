@@ -18,14 +18,14 @@ v0.9.1 加入每個專案的本機暫存排除清單，檔案與資料夾皆可�
 
 1. 從本專案的[最新正式 Release](https://github.com/linhercherng/GITGUI/releases/latest)，下載名稱為 `GITGUI-版本-win-x64-portable.zip` 的附件；版本以該 Release 實際標示為準。
 2. 在檔案總管選擇「全部解壓縮」，保留整個資料夾結構。
-3. 開啟解壓縮資料夾，執行 **`GITGUI.vbs`**。請勿直接從 ZIP 內執行。
+3. 開啟解壓縮資料夾，執行 **`GITGUI.exe`**（v0.9.1 起）；舊版請依包內說明使用 `GITGUI.vbs`。請勿直接從 ZIP 內執行。
 4. 第一次使用可先到「Git 設定」確認執行檔來源為同資料夾下的 `PortableGit\cmd\git.exe`。
 
 同一使用者只允許一個一般 GITGUI 主視窗。重複啟動時會提示回到原視窗，請按「關閉」關掉提示。這項保護避免兩個 GUI 的快照與寫入交錯；外部 Git、編輯器及其他 Git 工具仍可能操作倉庫，執行寫入前請確認它們已完成。
 
 不必另外安裝 Git 或 .NET。移動程式時，請搬移整個資料夾。簽章、HTTPS 登入、SSH 遠端連線仍使用你自己的身分設定與金鑰。
 
-預設啟動方式需要 Windows 內建的 Windows Script Host。若你的環境不允許執行 VBS，可改用 `GitGui.App.exe`；正式冷啟動驗收使用 `GITGUI.vbs`，備用方式的啟動時間另計。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`、`PortableGit` 與其他隨附檔案。
+v0.9.1 的預設 `GITGUI.exe` 是單一原生程序，不需要 Windows Script Host；仍保留 `GITGUI.vbs` 與 `GitGui.App.exe` 作為備用啟動方式。正式冷啟動從預設 EXE 的實際 OS 建立時間計至真正 surface 完成，1,500ms 門檻不變；備用方式不能沿用其成績。請保留 `GitGui.Host.dll`、`GitGui.App.r2r.dll`、`PortableGit` 與其他隨附檔案。
 
 若 Windows 顯示下載程式的信任提示，先確認下載自本專案 Release，並核對 `SHA256SUMS.txt`；此版本未提供程式碼簽章。
 

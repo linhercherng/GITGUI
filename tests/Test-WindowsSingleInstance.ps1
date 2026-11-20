@@ -20,7 +20,7 @@ if ($HoldLock) {
 }
 $null = New-Item -ItemType Directory -Path $OutputDirectory
 function Launch([string]$Name, [bool]$Vbs) {
-    $exe = if ($Vbs) { Join-Path ([Environment]::SystemDirectory) 'wscript.exe' } else { Join-Path $app 'GitGui.App.exe' }
+    $exe = if ($Vbs) { Join-Path ([Environment]::SystemDirectory) 'wscript.exe' } elseif(Test-Path (Join-Path $app 'GITGUI.exe')) { Join-Path $app 'GITGUI.exe' } else { Join-Path $app 'GitGui.App.exe' }
     $start = [Diagnostics.ProcessStartInfo]::new($exe)
     $start.UseShellExecute = $false; $start.CreateNoWindow = $true
     if ($Vbs) { $start.ArgumentList.Add('//nologo'); $start.ArgumentList.Add((Join-Path $app 'GITGUI.vbs')) }
@@ -48,6 +48,17 @@ try {
     $second = Launch 'second' $true
     if ($second.WaitForExit(8000) -or (Test-Path -LiteralPath (Join-Path $OutputDirectory 'second.json')) -or (Test-Path -LiteralPath (Join-Path $data 'gitgui.db'))) { throw 'Second process entered the normal workspace instead of showing the duplicate-instance notice.' }
     $second.Kill($true); $second.WaitForExit()
+    if(Test-Path (Join-Path $app 'GITGUI.exe')) {
+        # The mutex owner locks the path name; each probe still requires a NEW data directory.
+        $retained=Join-Path $OutputDirectory 'legacy-duplicate-data'
+        foreach($path in @($data,$retained)) {
+            if(![IO.Path]::GetFullPath($path).StartsWith($OutputDirectory+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Retained test data escaped output directory'}
+        }
+        Move-Item -LiteralPath $data -Destination $retained
+        $second=Launch 'native-second' $false
+        if($second.WaitForExit(8000) -or (Test-Path (Join-Path $OutputDirectory 'native-second.json'))){throw 'Native executable bypassed the existing instance owner'}
+        $second.Kill($true);$second.WaitForExit()
+    }
     $owner.Kill($true); $owner.WaitForExit()
     $saved = Join-Path $OutputDirectory 'duplicate-data'
     if (-not ([IO.Path]::GetFullPath($data).StartsWith($OutputDirectory + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))) { throw 'Test path escaped output directory.' }
@@ -56,7 +67,7 @@ try {
     if (-not $recovered.WaitForExit(120000) -or $recovered.ExitCode -ne 0) { throw 'Application could not restart after owner termination.' }
     $report = Get-Content -LiteralPath (Join-Path $OutputDirectory 'recovered.json') -Raw | ConvertFrom-Json -AsHashtable
     if (-not $report.completed -or $report.ContainsKey('failure') -or $report.ContainsKey('provenanceFailure')) { throw 'Recovered desktop failed.' }
-    @{result='PASS';scope='Production SingleInstance in a separate owner blocks WScript workspace creation; apphost recovers after owner termination'} |
+    @{result='PASS';scope='Production SingleInstance blocks native/WScript workspace creation; default executable recovers after owner termination'} |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $OutputDirectory 'verification.json') -Encoding utf8
 } finally {
     foreach ($process in @($owner,$second,$recovered)) {

@@ -10,7 +10,7 @@
 
 ## Windows 免安裝版
 
-已發布的 Windows 免安裝版請從 [最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載名稱結尾為 `win-x64-portable.zip` 的主程式套件，解壓縮整個資料夾後開啟 **GITGUI.vbs**。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
+已發布的 Windows 免安裝版請從 [最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載名稱結尾為 `win-x64-portable.zip` 的主程式套件，解壓縮整個資料夾後開啟 **GITGUI.exe**（v0.9.1 起；舊版依包內說明使用 GITGUI.vbs）。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
 
 目前原始碼版本為 **v0.9.1**，新增每個專案的本機暫存排除清單，並改善首次啟動、Diff 文字列附加、無障礙通知及提交圖配置。Windows 渲染時鐘沿用自動 QoS 與正常執行緒優先序。[M4 正式驗收](docs/M4-ACCEPTANCE.md) 保留各候選的失敗紀錄；原門檻不變，只有受測套件全部通過才發布，最終數值以該 Release 的原始報告、逐項判定與程式雜湊為準。詳細數據與歷史失敗見 [M4 效能紀錄](docs/M4-PERFORMANCE.md)。
 

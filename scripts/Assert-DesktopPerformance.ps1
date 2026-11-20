@@ -62,12 +62,26 @@ function ReadReport([string]$path) {
     return $json
 }
 function NativeBundleValid($report) {
-    if(-not (Test-Path (Join-Path $appDirectory 'GitGui.Host.dll'))) {
+    if(-not (Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) -and -not (Test-Path (Join-Path $appDirectory 'GITGUI.exe'))) {
         Require (-not $report.Contains('nativeHostIdentity')) 'Unexpected native host identity'
         return $false
     }
     $identity=$report.nativeHostIdentity;$origin=$report.launchOrigin
     Require ($identity -is [Collections.IDictionary] -and $origin -is [Collections.IDictionary]) 'Missing native bundle/launcher identity'
+    $nativeExe=Join-Path $appDirectory 'GITGUI.exe'
+    if(Test-Path -LiteralPath $nativeExe) {
+        foreach($path in @($identity.processPath,$origin.LauncherPath,$origin.NativeHostPath)) {
+            Require ([StringComparer]::OrdinalIgnoreCase.Equals($path,$nativeExe)) 'Single native executable path differs from candidate'
+        }
+        $null=Integer $origin.ProcessId 1;$null=Integer $origin.LauncherProcessId 1
+        Require ($origin.ProcessId -eq $origin.LauncherProcessId) 'Single executable has an unexpected launcher process'
+        Require ($null -ne $origin.StartedUtc -and $null -ne $origin.ProcessStartedUtc -and [DateTime]$origin.StartedUtc -eq [DateTime]$origin.ProcessStartedUtc) 'Single executable must retain its actual OS creation time'
+        Require (-not $identity.Contains('scriptHostSha256')) 'Single executable cannot claim a script host'
+        foreach($field in @('processSha256','hostSha256','launcherSha256')) { HashEquals $identity[$field] $nativeExe }
+        HashEquals $identity.bundleSha256 $app
+        HashEquals $report.compositeImageSha256 (Join-Path $appDirectory 'GitGui.App.r2r.dll')
+        return $true
+    }
     $process=Join-Path ([Environment]::SystemDirectory) 'rundll32.exe'
     $scriptHost=Join-Path ([Environment]::SystemDirectory) 'wscript.exe'
     Require ([StringComparer]::OrdinalIgnoreCase.Equals($identity.processPath,$process)) 'Unexpected native process host'
@@ -173,7 +187,7 @@ function ProductAssembliesValid($report) {
             Require ($entry[$field] -is [string] -and $entry[$field] -ceq $candidateProducts[$name][$field]) "Candidate assembly identity mismatch: $name/$field"
             if($null -ne $script:referenceProducts) { Require ($entry[$field] -ceq $script:referenceProducts[$name][$field]) "Cross-run assembly identity mismatch: $name/$field" }
         }
-        if(Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) {
+        if((Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) -or (Test-Path (Join-Path $appDirectory 'GITGUI.exe'))) {
             $images=BundleImages;$image=$images["$name.dll"]
             Require ($entry.storage -ceq 'bundle') 'Native candidate must report its actual bundled assembly'
             SameNumber $entry.offset $image.offset
@@ -239,7 +253,10 @@ function MemoryValid($report) {
         $qpc=Integer $sample.RecordedQpc 1;$bytes=Limit $sample.WorkingSetBytes 300000000;Require ($bytes -gt 0) 'Invalid zero working set'
         if($report.Contains('nativeHostIdentity')) {
             $desktop=Limit $sample.DesktopWorkingSetBytes 300000000;$launcher=Limit $sample.LauncherWorkingSetBytes 300000000
-            Require ($desktop -gt 0 -and $launcher -gt 0) 'Native memory must include the live launcher'
+            Require ($desktop -gt 0) 'Native desktop memory must be positive'
+            if((Test-Path (Join-Path $appDirectory 'GITGUI.exe')) -and $report.launchOrigin.ProcessId -eq $report.launchOrigin.LauncherProcessId) {
+                Require ($launcher -eq 0) 'Single-process native memory cannot duplicate the desktop'
+            } else { Require ($launcher -gt 0) 'Native memory must include the live launcher' }
             SameNumber $bytes ($desktop+$launcher)
         }
         $maximum=[Math]::Max($maximum,$bytes)
@@ -368,7 +385,7 @@ if($null -ne $summaryData -and $summaryData.Contains('reports') -and $summaryDat
             $path=Join-Path $baseDirectory $row.file; HashEquals $row.sha256 $path
             $script:raw=ReadReport $path; SameNumber $raw.schema 1; True $raw.completed 'Incomplete raw report'
             HostValid $raw
-            if(Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) {
+            if((Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) -or (Test-Path (Join-Path $appDirectory 'GITGUI.exe'))) {
                 SameNumber $row.launcherProcessId $raw.launchOrigin.LauncherProcessId
                 Require ([DateTime]$row.launcherStartedUtc -eq [DateTime]$raw.launchOrigin.StartedUtc) 'Launcher creation time receipt mismatch'
             }
@@ -387,7 +404,10 @@ if($null -ne $summaryData -and $summaryData.Contains('reports') -and $summaryDat
                 $m=$raw.memoryProcesses
                 Require ($m.desktopProcessId -eq $raw.launchOrigin.ProcessId -and $m.launcherProcessId -eq $raw.launchOrigin.LauncherProcessId) 'Wrong resident-memory processes'
                 $desktop=Limit $m.desktopWorkingSetBytes 300000000;$launcher=Limit $m.launcherWorkingSetBytes 300000000
-                Require ($desktop -gt 0 -and $launcher -gt 0) 'Native memory must include the live launcher'
+                Require ($desktop -gt 0) 'Native desktop memory must be positive'
+                if((Test-Path (Join-Path $appDirectory 'GITGUI.exe')) -and $raw.launchOrigin.ProcessId -eq $raw.launchOrigin.LauncherProcessId) {
+                    Require ($launcher -eq 0) 'Single-process native memory cannot duplicate the desktop'
+                } else { Require ($launcher -gt 0) 'Native memory must include the live launcher' }
                 SameNumber $bytes ($desktop+$launcher)
             }
             return $bytes
@@ -451,7 +471,8 @@ if($ProfileReports.Count -eq 0 -and $ProfileProbeReports.Count -eq 0) {
             HostValid $pr; FixtureValid $pr
             ProductAssembliesValid $pr
             if(NativeBundleValid $pr) {
-                HashEquals $p.targetExecutableSha256 (Join-Path ([Environment]::SystemDirectory) 'rundll32.exe')
+                $nativeProcess=if(Test-Path (Join-Path $appDirectory 'GITGUI.exe')){Join-Path $appDirectory 'GITGUI.exe'}else{Join-Path ([Environment]::SystemDirectory) 'rundll32.exe'}
+                HashEquals $p.targetExecutableSha256 $nativeProcess
                 SameNumber $p.targetProcessId $pr.launchOrigin.ProcessId
             } else {HashEquals $p.targetExecutableSha256 $app}
             HashEquals $p.targetAppAssemblySha256 (Join-Path $appDirectory 'GitGui.App.dll')
@@ -473,7 +494,7 @@ if($ProfileReports.Count -eq 0 -and $ProfileProbeReports.Count -eq 0) {
                 $candidate=Join-Path $appDirectory ([IO.Path]::GetFileName($patch[0].module))
                 HashEquals $patch[0].sha256 $candidate
                 $null=Integer $patch[0].managedNativeHeaderSize 1
-                if(Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) {
+                if((Test-Path (Join-Path $appDirectory 'GitGui.Host.dll')) -or (Test-Path (Join-Path $appDirectory 'GITGUI.exe'))) {
                     $images=BundleImages;$image=$images[[IO.Path]::GetFileName($candidate)]
                     Require ($patch[0].mvid -ceq $image.mvid -and $patch[0].storage -ceq 'bundle') 'Profiler hooked a different loaded module'
                     SameNumber $patch[0].offset $image.offset

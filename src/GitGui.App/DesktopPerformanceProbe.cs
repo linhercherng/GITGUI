@@ -133,7 +133,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 heartbeat = "Worker timer to UI Dispatcher callback delay during product open/status/diff/scroll or idle sampling, including OS scheduling and dispatcher backlog. Excludes probe runtime/fixture validation/trust setup and startup. This estimates responsiveness, not exact duration of every UI callback.",
                 instrumentation = "Ordered heartbeat timestamps/phase, worker16ms timer elapsed and GC deltas are retained. Bound-property spans measure VM PropertyChanging through PropertyChanged observers registered after normal bindings; they include synchronous setter/earlier-subscriber work, exclude deferred layout and are not a full UI callback profiler. Explicit UpdateLayout spans are separate. Instrumentation does not change renderer/GC/thread-pool settings.",
                 avaloniaMetrics = "Avalonia 11.3.22 built-in Diagnostic.Meter histograms for layout measure/arrange/render/input and compositor update/render, enabled before framework startup only in this probe. Every measurement is retained without a duration threshold. RecordedQpc is the synchronous measurement callback timestamp (after the measured scope), not its start; Phase is the phase at that callback. NativeThreadId is GetCurrentThreadId on Windows, otherwise null. Observable counters are sampled once at report time. These scopes do not cover every DispatcherOperation; neither these samples nor heartbeat delays prove that every UI callback is <=16ms. Collection itself adds diagnostic overhead.",
-                memory = "Worker samples desktop plus the live WScript launcher's WorkingSet64 every100ms throughout exact five-second scrolling. Per-process values, their sum, both endpoints and every maximum are retained. Native launcher overhead is included in the unchanged300MB gate. No forced GC or per-frame UI process queries."
+                memory = "Worker samples desktop plus any distinct live launcher WorkingSet64 every100ms throughout exact five-second scrolling. A single native executable has one PID and zero additional launcher bytes; duplicate counting is rejected. Per-process values, their sum, both endpoints and every maximum are retained within the unchanged300MB gate. No forced GC or per-frame UI process queries."
             }
         };
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
@@ -157,7 +157,10 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 trace.SetPhase("probe-setup");
                 window.Title = "GITGUI — M4 " + Environment.ProcessId;
                 await File.WriteAllTextAsync(Path.Combine(DataPath, "driver-ready.tmp"),
-                    JsonSerializer.Serialize(new { desktopProcessId = Environment.ProcessId, windowTitle = window.Title, startupSurfaceMs = values["startupSurfaceInteractiveMs"] }), timeout.Token);
+                    JsonSerializer.Serialize(new { desktopProcessId = Environment.ProcessId, windowTitle = window.Title,
+                        startupSurfaceMs = values["startupSurfaceInteractiveMs"], startupSurfaceSubmission = startupSurface,
+                        launchOrigin, managedMainEntry = new { recordedQpc = Program.MainEntered.Qpc, recordedUtc = Program.MainEntered.Utc },
+                        timestampFrequency = Stopwatch.Frequency }), timeout.Token);
                 File.Move(Path.Combine(DataPath, "driver-ready.tmp"), Path.Combine(DataPath, "driver-ready.json"));
                 while (!File.Exists(Path.Combine(DataPath, "driver-continue"))) await Task.Delay(25, timeout.Token);
                 if (!window.IsActive) throw new InvalidOperationException("Native interactive driver requires the GITGUI window in the foreground.");
@@ -217,12 +220,12 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 }, TimeSpan.FromSeconds(2), timeout.Token)).Report;
             }
             using var process = Process.GetCurrentProcess(); process.Refresh();
-            using var launcher = launchOrigin.NativeHostPath is null ? null : Process.GetProcessById(launchOrigin.LauncherProcessId);
+            using var launcher = launchOrigin.ProcessId == launchOrigin.LauncherProcessId ? null : Process.GetProcessById(launchOrigin.LauncherProcessId);
             launcher?.Refresh();
             var desktopBytes = process.WorkingSet64; var launcherBytes = launcher?.WorkingSet64 ?? 0;
             values["workingSetBytes"] = checked(desktopBytes + launcherBytes);
             values["privateBytes"] = checked(process.PrivateMemorySize64 + (launcher?.PrivateMemorySize64 ?? 0));
-            values["memoryProcesses"] = new { desktopProcessId = process.Id, launcherProcessId = launcher?.Id,
+            values["memoryProcesses"] = new { desktopProcessId = process.Id, launcherProcessId = launchOrigin.LauncherProcessId,
                 desktopWorkingSetBytes = desktopBytes, launcherWorkingSetBytes = launcherBytes };
         }
         catch (Exception ex) { exitCode = 1; values["failure"] = ex.GetType().Name + ": " + ex.Message; }
@@ -264,7 +267,10 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
                 if (launchOrigin.NativeHostPath is { } nativeHost)
                 {
                     static string HashImage(string path) { using var image = File.OpenRead(path); return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(image)).ToLowerInvariant(); }
-                    values["nativeHostIdentity"] = new { processPath = Environment.ProcessPath, processSha256 = HashImage(Environment.ProcessPath!),
+                    values["nativeHostIdentity"] = launchOrigin.ProcessId == launchOrigin.LauncherProcessId
+                        ? (object)new { processPath = Environment.ProcessPath, processSha256 = HashImage(Environment.ProcessPath!),
+                            hostSha256 = HashImage(nativeHost), bundleSha256 = HashImage(Path.Combine(AppContext.BaseDirectory, "GitGui.App.exe")), launcherSha256 = HashImage(nativeHost) }
+                        : new { processPath = Environment.ProcessPath, processSha256 = HashImage(Environment.ProcessPath!),
                         hostSha256 = HashImage(nativeHost), bundleSha256 = HashImage(Path.Combine(AppContext.BaseDirectory, "GitGui.App.exe")),
                         launcherSha256 = HashImage(Path.Combine(AppContext.BaseDirectory, "GITGUI.vbs")), scriptHostSha256 = HashImage(launchOrigin.LauncherPath) };
                     values["compositeImageSha256"] = HashImage(Path.Combine(AppContext.BaseDirectory, "GitGui.App.r2r.dll"));
@@ -536,7 +542,7 @@ internal sealed class DesktopPerformanceProbe(string reportPath, string dataPath
             try
             {
                 using var process = Process.GetCurrentProcess();
-                using var launcher = launchOrigin.NativeHostPath is null ? null : Process.GetProcessById(launchOrigin.LauncherProcessId);
+                using var launcher = launchOrigin.ProcessId == launchOrigin.LauncherProcessId ? null : Process.GetProcessById(launchOrigin.LauncherProcessId);
                 void Sample()
                 {
                     process.Refresh(); launcher?.Refresh();

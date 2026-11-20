@@ -29,16 +29,24 @@ if($offset -lt $end -or $offset -ge (Get-Item $file).Length){throw 'Invalid SDK 
 "#define BUNDLE_HEADER_OFFSET $($offset)LL"|Set-Content "$build/BundleOffset.h" -Encoding ascii
 $source=Join-Path (Split-Path $PSScriptRoot -Parent) 'tools/WindowsNativeHost'
 Copy-Item "$source/GitGui.Host.cpp" $build
+Copy-Item (Join-Path (Split-Path $PSScriptRoot -Parent) 'src/GitGui.UI/Assets/gitgui.ico') (Join-Path $build 'gitgui.ico')
+'101 ICON "gitgui.ico"'|Set-Content (Join-Path $build 'GITGUI.rc') -Encoding ascii
 $vswhere=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 $visualStudio=(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1)
 if($LASTEXITCODE -or -not $visualStudio){throw 'Install the Visual Studio C++ x64 build tools to build the native host.'}
 @"
+@chcp 65001 >nul
 @call "$visualStudio\Common7\Tools\VsDevCmd.bat" -host_arch=x64 -arch=x64 >nul
+@if errorlevel 1 exit /b 1
+@pushd "$build"
+@rc /nologo /fo GITGUI.res GITGUI.rc
+@if errorlevel 1 exit /b 1
+@cl /nologo /O2 /MT /W4 /WX /DGITGUI_STANDALONE "$build\GitGui.Host.cpp" /Fo:"$build\GITGUI.obj" /Fe:"$app\GITGUI.exe" /link /SUBSYSTEM:WINDOWS shell32.lib "$build\GITGUI.res"
 @if errorlevel 1 exit /b 1
 @cl /nologo /O2 /MT /W4 /WX /LD "$build\GitGui.Host.cpp" /Fo:"$build\GitGui.Host.obj" /Fe:"$app\GitGui.Host.dll" /link shell32.lib /IMPLIB:"$build\GitGui.Host.lib"
 "@|Set-Content "$build/BuildHost.cmd" -Encoding utf8
 & "$build/BuildHost.cmd" *> "$build/build.log"
 if($LASTEXITCODE){Get-Content "$build/build.log" -Tail 10;throw 'Native host compilation failed.'}
 Copy-Item "$source/GITGUI.vbs" $app
-@{bundleHeaderOffset=$offset;hostSha256=(Get-FileHash "$app/GitGui.Host.dll").Hash;launcherSha256=(Get-FileHash "$app/GITGUI.vbs").Hash}|
+@{bundleHeaderOffset=$offset;hostSha256=(Get-FileHash "$app/GitGui.Host.dll").Hash;launcherSha256=(Get-FileHash "$app/GITGUI.exe").Hash;legacyLauncherSha256=(Get-FileHash "$app/GITGUI.vbs").Hash}|
     ConvertTo-Json|Set-Content "$build/verification.json"

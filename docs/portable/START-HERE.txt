@@ -1,7 +1,7 @@
 GITGUI 0.1.0 — Windows x64 免安裝版
 
 1. 將整個 ZIP 解壓縮至有寫入權限的資料夾。
-2. 開啟 GITGUI.vbs。不要直接在壓縮檔內啟動。
+2. 開啟 GITGUI.exe。不要直接在壓縮檔內啟動。
 3. 使用「瀏覽」開啟 Git 倉庫，或使用「倉庫操作」建立／複製倉庫。
    已有檔案但尚未初始化：在「倉庫操作」瀏覽原資料夾，首次使用填寫姓名／Email，
    按「初始化倉庫」，再檢查檔案、按「全部暫存」、輸入訊息並「提交」。
@@ -38,8 +38,7 @@ build-info.json 記錄本版程式版本與來源提交。
 同一使用者只開啟一個主視窗；重複啟動請關閉提示並回到原視窗。
 快照索引遺失時，開啟原工作樹，在「快照」按「重建快照索引」，詳見手冊第 6 章。
 M4 正式效能數據對應 v0.7.0 的受測版本，原門檻未調整，詳見 docs/M4-PERFORMANCE.md。
-預設啟動需要 Windows 內建 Windows Script Host；若環境不允許 VBS，
-可改用 GitGui.App.exe。1.5 秒冷啟動驗收使用 GITGUI.vbs，備用方式時間可能不同。
+v0.9.1 預設使用 GITGUI.exe，不需要 Windows Script Host。備用的 GITGUI.vbs／GitGui.App.exe 時間另計，不能沿用預設 EXE 的 1.5 秒驗收成績。
 請保留 GitGui.Host.dll、GitGui.App.r2r.dll 及所有隨附檔案。
 
 此處「免安裝」指執行環境隨附；使用者設定、信任清單、最近倉庫、

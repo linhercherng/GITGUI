@@ -34,7 +34,7 @@ $cases=[ordered]@{
     'different-os-script-host'={param($s,$r,$p) $r.nativeHostIdentity.scriptHostSha256='0'*64}
     'different-launcher-process'={param($s,$r,$p) $r.launchOrigin.LauncherProcessId+=1}
     'different-launcher-creation-time'={param($s,$r,$p) $r.launchOrigin.StartedUtc=([DateTime]$r.launchOrigin.StartedUtc).AddTicks(1)}
-    'omitted-launcher-memory'={param($s,$r,$p) $r.steadyMemory.samplesInOrder[0].LauncherWorkingSetBytes=0}
+    'omitted-launcher-memory'={param($s,$r,$p) if($r.launchOrigin.ProcessId -eq $r.launchOrigin.LauncherProcessId){$r.steadyMemory.samplesInOrder[0].DesktopWorkingSetBytes=0}else{$r.steadyMemory.samplesInOrder[0].LauncherWorkingSetBytes=0}}
     'different-memory-launcher-process'={param($s,$r,$p) $r.memoryProcesses.launcherProcessId+=1}
     'missing-foreground-evidence'={param($s,$r,$p) $r.scrollRendering.Remove('foreground')}
     'background-scroll-is-not-interactive-acceptance'={param($s,$r,$p) $r.scrollRendering.foreground.samplesInOrder[0].IsActive=$false}

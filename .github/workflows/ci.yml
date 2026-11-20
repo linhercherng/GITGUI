@@ -66,6 +66,7 @@ jobs:
           ./tests/Test-PerformanceComparison.ps1
           ./tests/Test-NativePhaseIndex.ps1
           ./tests/Test-DesktopPerformanceAcceptance.ps1
+          if ($IsWindows) { ./tests/Test-NativeExecutableIdentity.ps1 }
           ./tests/Test-VerifiedArchive.ps1
           ./tests/Test-ReleaseWorkflow.ps1
       - name: Build independent dispatcher diagnostic

@@ -24,7 +24,9 @@ for ($sample = 1; $sample -le $Samples; $sample++) {
         $start = [Diagnostics.ProcessStartInfo]::new($app)
         $launcher = Join-Path (Split-Path $app -Parent) 'GITGUI.vbs'
         $nativeBundle = Test-Path $launcher
-        if($nativeBundle) {
+        $nativeExe=Join-Path (Split-Path $app -Parent) 'GITGUI.exe'
+        if(Test-Path -LiteralPath $nativeExe) { $start.FileName=$nativeExe;$nativeBundle=$true }
+        elseif($nativeBundle) {
             $start.FileName=Join-Path $env:WINDIR 'System32/wscript.exe'
             $start.ArgumentList.Add($launcher)
         }
@@ -46,6 +48,9 @@ for ($sample = 1; $sample -le $Samples; $sample++) {
                     $ready=Join-Path $dataDirectory 'driver-ready.json'
                     if(-not $published -and (Test-Path -LiteralPath $ready)) {
                         $driver=Get-Content $ready -Raw|ConvertFrom-Json
+                        Copy-Item -LiteralPath $ready -Destination (Join-Path $output "$mode-$sample-startup.json")
+                        @{launcherProcessId=$launcherProcessId;launcherStartedUtc=$launcherStartedUtc;executable=$start.FileName}|
+                            ConvertTo-Json|Set-Content (Join-Path $output "$mode-$sample-launch.json")
                         @{mode=$mode;sample=$sample;dataDirectory=$dataDirectory;windowTitle=$driver.windowTitle;desktopProcessId=$driver.desktopProcessId;continuePath=(Join-Path $dataDirectory 'driver-continue')}|
                             ConvertTo-Json|Set-Content (Join-Path $output 'driver-request.json')
                         $published=$true
