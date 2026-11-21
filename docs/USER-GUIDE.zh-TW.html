@@ -17,7 +17,7 @@ pre{padding:16px;overflow:auto;border:1px solid var(--line);border-radius:6px;li
 <h1 id="gitgui">GITGUI 操作手冊</h1>
 <p>適用版本：0.9.1。Windows x64 免安裝包內含 Portable Git、Git LFS、SSH 工具及 .NET 執行環境。下載與校驗檔見 <a href="https://github.com/linhercherng/GITGUI/releases/latest">最新正式 Release</a>。本機開發手冊的版本可能高於已發布版本；請核對 Release 標示版本與包內 <code>build-info.json</code>。GitHub 的原始碼 ZIP 不包含完整免安裝執行環境。</p><nav aria-label="操作手冊目錄"><strong>快速前往</strong><ol><li><a href="#guide-chapter-1">1. 解壓縮與啟動</a></li><li><a href="#guide-chapter-2">2. 畫面與外觀</a></li><li><a href="#guide-chapter-3">3. 開啟、建立或複製倉庫</a></li><li><a href="#guide-chapter-4">4. 修改、暫存與提交</a></li><li><a href="#guide-chapter-5">5. 分支、同步與衝突</a></li><li><a href="#guide-chapter-6">6. 快照復原與重做</a></li><li><a href="#guide-chapter-7">7. 進階歷史操作</a></li><li><a href="#guide-chapter-8">8. 內建終端機</a></li><li><a href="#guide-chapter-9">9. 子模組（Submodules）</a></li><li><a href="#guide-chapter-10">10. 工作樹（Worktrees）</a></li><li><a href="#guide-chapter-11">11. Git LFS</a></li><li><a href="#guide-chapter-12">12. 二分定位（Bisect）</a></li><li><a href="#guide-chapter-13">13. 稀疏檢出（Sparse-checkout）</a></li><li><a href="#guide-chapter-14">14. 簽章提交與標籤</a></li><li><a href="#guide-chapter-15">15. 快捷鍵、命令選單與無障礙操作</a></li><li><a href="#guide-chapter-16">16. 中文訊息、路徑與換行設定</a></li><li><a href="#guide-chapter-17">17. 狀態刷新與提交分頁</a></li><li><a href="#guide-chapter-18">18. 錯誤建議與本機日誌</a></li><li><a href="#guide-chapter-19">19. 常見問題與驗證範圍</a></li><li><a href="#guide-chapter-20">20. 完整範例：第一次將新專案備份到 GitHub</a></li><li><a href="#guide-chapter-21">21. 完整範例：專案修改後再次更新上傳</a></li><li><a href="#guide-chapter-22">22. 完整範例：只在本機保存版本與再次提交</a></li><li><a href="#guide-chapter-23">23. 完整範例：單檔還原、撤銷提交與整個專案還原</a></li><li><a href="#guide-chapter-24">24. 完整範例：建立分支並合併回主分支</a></li></ol></nav>
 <p>**v0.9.1 效能限制：**本版依使用者接受延遲的決定，以完整功能測試、CI 與實際 ZIP 驗證為發布條件，未通過 M4 正式效能驗收。此驗收電腦曾記錄約 26～29 秒的啟動等待及捲動空檔超標，原因仍待確認；啟動後請稍候主視窗出現，避免連續重複開啟。原始冷啟動 1,500ms、捲動及 UI 工作門檻完全不變，詳見 <a href="M4-PERFORMANCE.md">效能紀錄</a>。</p>
-<p>v0.9.1 加入每個專案的本機暫存排除清單，檔案與資料夾皆可排除，詳見第 4.1 節。Diff 編輯器縮小每影格附加的文字列批次，保留完整文件、複製、唯讀、並排及無障礙文字讀取與捲動功能；文字裝飾圖層不再產生每列無語意的無障礙節點，並以完整可見區域建立及實際 surface 提交作為完成條件；提交圖也降低記憶體配置，保留分支與合併線條，並修正虛擬列離開快取後仍被事件保留的問題；列名、選取、捲動及無障礙座標通知保留。沿用 v0.9.0 的大型衝突編輯輸入回應改善，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。另修正工作區多選及重新整理時批次暫存點擊被忽略的問題。本版重新建置程式，<code>build-info.json</code> 記錄程式版本與實際來源提交。全手冊保留 24 章、44 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。</p>
+<p>v0.9.1 加入每個專案的本機暫存排除清單，檔案與資料夾皆可排除，詳見第 4.1、4.2 節。Diff 編輯器縮小每影格附加的文字列批次，保留完整文件、複製、唯讀、並排及無障礙文字讀取與捲動功能；文字裝飾圖層不再產生每列無語意的無障礙節點，並以完整可見區域建立及實際 surface 提交作為完成條件；提交圖也降低記憶體配置，保留分支與合併線條，並修正虛擬列離開快取後仍被事件保留的問題；列名、選取、捲動及無障礙座標通知保留。沿用 v0.9.0 的大型衝突編輯輸入回應改善，減少快照狀態檔與符號連結的 Git 程序呼叫；提交簽章改為「沿用 Git 設定／本次啟用／本次停用」，並提供簽章失敗說明。另修正工作區多選及重新整理時批次暫存點擊被忽略的問題。本版重新建置程式，<code>build-info.json</code> 記錄程式版本與實際來源提交。全手冊保留 24 章、57 張標示截圖；舊圖中的「簽署提交」核取方塊已由新版簽章選單取代，請依本章文字選擇。</p>
 <p>正式散佈須完成測試、CI 與實際免安裝 ZIP 驗證，結果隨 Release 提供；固定案例的改善量測與限制見 <a href="V0.9-PERFORMANCE.md">v0.9.0 改善驗證</a>。<a href="M4-PERFORMANCE.md">M4 正式效能紀錄</a> 分開保留 v0.7.0 歷史驗收及後續候選失敗紀錄。只有 Release 驗證附件證實通過的版本才是正式散佈版本；請核對原始報告、逐樣本判定及受測程式雜湊，不能以本機手冊版號推定驗收已通過。冷啟動 1,500ms、捲動逐幀空檔、UI 工作 16ms 等原門檻不變。不同版本與備用啟動方式不能沿用其成績。</p>
 <p>第一次將專案備份到 GitHub，請從第 20 章的完整範例開始；之後修改專案並再次上傳，請看第 21 章。</p>
 <p>第 20、21 章保留 16 張實際操作截圖與點擊標示。視窗大小或配色不同時，請依同名按鈕操作；GitHub 位置參考圖沿用現有 GITGUI 倉庫。</p>
@@ -78,6 +78,155 @@ git config --local user.email &quot;you@example.com&quot;
 <p>規則使用精確路徑，不是萬用字元；<code>*.log</code> 不代表所有 log 檔。可排除已追蹤及尚未追蹤的檔案；Git 已辨識的重新命名會同時檢查新、舊路徑。區塊暫存及「標記已解決」也遵守規則。</p>
 <p><strong>新增規則不會自動取消既有暫存。</strong> 提示若顯示符合排除規則的內容已暫存，請先切換「已暫存」並手動取消暫存，再提交；排除清單不會刪除工作檔、移除歷史版本或改寫快照。取消暫存、捨棄、合併與快照還原保持原本行為。</p>
 <p>這是依本機專案路徑保存於 GITGUI 設定資料庫的清單，不修改 <code>.gitignore</code>、不隨提交上傳，也不影響其他 Git 工具。切換專案會使用各自的規則；移動專案資料夾後請重新確認清單。若讀取規則失敗，新增暫存會停用，仍可取消既有暫存；請重新整理或重新儲存規則後再試。</p>
+<h3 id="section-5">4.2 完整範例：排除檔案、資料夾與恢復暫存</h3>
+<p>本節以 <code>demo-project</code> 示範：只暫存專案說明，略過本機設定及產出資料夾，之後再逐一移除規則。全程不用 PowerShell，也不需要遠端倉庫。13 張圖片取自獨立教學倉庫的實際桌面操作，使用目前版本的介面與 Git 引擎；設定及資料均與日常專案隔離。黃色編號是點擊或核對位置，點擊圖片可放大。檔案選擇器截去側邊導覽，不影響操作位置。</p>
+<h4 id="section-6">4.2.1 準備四個待暫存檔案</h4>
+<ol>
+<li>用檔案總管建立自己的練習資料夾 <code>demo-project</code>，在裡面建立 <code>README.md</code>、<code>settings.local.json</code>，以及資料夾 <code>build-output</code> 內的 <code>report.txt</code>。用文字編輯器填入簡單內容；設定檔只需放 <code>{&quot;theme&quot;:&quot;light&quot;}</code>，不要放真實密碼。</li>
+<li>依第 22.1 節，在 GITGUI 初始化這個資料夾，將上述三個檔案全部暫存，輸入「建立練習專案」並提交。這會建立第一個本機版本。</li>
+<li>用文字編輯器修改這三個檔案，例如在 README 加上一行說明、將設定改為 <code>{&quot;theme&quot;:&quot;blue&quot;}</code>、更新 report 的文字；另外新增 <code>build-output/cache.tmp</code>，填入任意示範文字。</li>
+<li>回到 GITGUI 開啟這個練習倉庫並重新整理。先保持四個檔案都在「未暫存」，不要先按「全部暫存」。</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>檔案</th>
+<th>此時的狀態</th>
+<th>本次目標</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>README.md</code></td>
+<td>已追蹤，內容修改</td>
+<td>允許暫存</td>
+</tr>
+<tr>
+<td><code>settings.local.json</code></td>
+<td>已追蹤，內容修改</td>
+<td>以檔案規則排除</td>
+</tr>
+<tr>
+<td><code>build-output/report.txt</code></td>
+<td>已追蹤，內容修改</td>
+<td>以資料夾規則排除</td>
+</tr>
+<tr>
+<td><code>build-output/cache.tmp</code></td>
+<td>新增、尚未追蹤</td>
+<td>同樣由資料夾規則排除</td>
+</tr>
+</tbody>
+</table>
+<h4 id="section-7">4.2.2 排除指定檔案</h4>
+<ol>
+<li>點 <strong>「工作區」</strong>，確認「未暫存」列出上述四個檔案。</li>
+<li>點 <strong>「暫存排除清單」</strong>。</li>
+</ol>
+<p><a href="images/walkthrough/04-01-open-exclusions.png"><img src="images/walkthrough/04-01-open-exclusions.png" alt="圖 4-1：開啟暫存排除清單" /></a></p>
+<p>圖 4-1：① 工作區；② 開啟排除清單；③ 核對四個待處理檔案。</p>
+<ol start="3">
+<li>在排除視窗點 <strong>「新增檔案…」</strong>。若要排除工作區已選取的檔案，也可改用左側的「排除工作區選取檔案」。本例使用檔案選擇器。</li>
+</ol>
+<p><a href="images/walkthrough/04-02-add-file.png"><img src="images/walkthrough/04-02-add-file.png" alt="圖 4-2：新增檔案規則" /></a></p>
+<p>圖 4-2：① 點「新增檔案…」。</p>
+<ol start="4">
+<li>在檔案選擇器開啟自己的 <code>demo-project</code>，點選 <strong><code>settings.local.json</code></strong>，再點 <strong>「開啟」</strong>。</li>
+</ol>
+<p><a href="images/walkthrough/04-03-select-file.png"><img src="images/walkthrough/04-03-select-file.png" alt="圖 4-3：選擇要排除的設定檔" /></a></p>
+<p>圖 4-3：① 選取設定檔；② 點「開啟」加入規則草稿。</p>
+<h4 id="section-8">4.2.3 排除整個資料夾並儲存</h4>
+<ol>
+<li>回到排除視窗，確認清單出現 <strong>「檔案 · settings.local.json」</strong>。</li>
+<li>點 <strong>「新增資料夾…」</strong>。</li>
+</ol>
+<p><a href="images/walkthrough/04-04-add-folder.png"><img src="images/walkthrough/04-04-add-folder.png" alt="圖 4-4：確認檔案規則並新增資料夾" /></a></p>
+<p>圖 4-4：① 已加入的檔案規則；② 點「新增資料夾…」。</p>
+<ol start="3">
+<li>在資料夾選擇器開啟自己的 <code>demo-project</code>，單擊 <strong><code>build-output</code></strong>，再點 <strong>「選擇資料夾」</strong>。請選專案內的產出資料夾，避免選到專案根目錄。</li>
+</ol>
+<p><a href="images/walkthrough/04-05-select-folder.png"><img src="images/walkthrough/04-05-select-folder.png" alt="圖 4-5：選擇要排除的產出資料夾" /></a></p>
+<p>圖 4-5：① 選取 <code>build-output</code>；② 確認選擇資料夾。</p>
+<ol start="4">
+<li>核對清單有兩條規則：<strong>「檔案 · settings.local.json」</strong> 與 <strong>「資料夾 · build-output/」</strong>，點 <strong>「儲存規則」</strong>。此時才會套用；按「取消」或直接關閉視窗，這次新增的草稿不會生效。</li>
+</ol>
+<p><a href="images/walkthrough/04-06-save-rules.png"><img src="images/walkthrough/04-06-save-rules.png" alt="圖 4-6：儲存兩條排除規則" /></a></p>
+<p>圖 4-6：① 核對檔案及資料夾兩條規則；② 點「儲存規則」。</p>
+<p>資料夾規則會涵蓋 <code>build-output</code> 內所有子資料夾與檔案，包括以後新增的檔案；不會排除旁邊的 <code>build-output-old</code>。本例同時示範已追蹤的 <code>report.txt</code> 及尚未追蹤的 <code>cache.tmp</code> 都會被略過。</p>
+<h4 id="readme">4.2.4 按「全部暫存」，確認只有 README 加入</h4>
+<ol>
+<li>回到工作區，先確認提示為 <strong>「2 項規則 · 工作區略過 3 項 · 已暫存 0 項仍可能提交」</strong>。</li>
+<li>點一次 <strong>「全部暫存」</strong>，等待操作完成。</li>
+</ol>
+<p><a href="images/walkthrough/04-07-stage-all.png"><img src="images/walkthrough/04-07-stage-all.png" alt="圖 4-7：查看規則提示並全部暫存" /></a></p>
+<p>圖 4-7：① 核對目前的排除提示；② 點「全部暫存」。</p>
+<ol start="3">
+<li>在 <strong>「未暫存」</strong> 分頁，應剩下設定檔、<code>report.txt</code> 與 <code>cache.tmp</code> 三個檔案。它們仍留在磁碟，可以繼續編輯及查看差異。</li>
+</ol>
+<p><a href="images/walkthrough/04-08-excluded-remain.png"><img src="images/walkthrough/04-08-excluded-remain.png" alt="圖 4-8：排除的三個檔案仍留在未暫存" /></a></p>
+<p>圖 4-8：① 未暫存分頁；② 被略過的三個檔案。</p>
+<ol start="4">
+<li>點 <strong>「已暫存」</strong>，應只看到 <strong><code>README.md</code></strong>。這才是本次可提交的內容；如要建立版本，仍須輸入提交訊息並按「提交」。為方便比較後續結果，本例先不提交。</li>
+</ol>
+<p><a href="images/walkthrough/04-09-only-readme-staged.png"><img src="images/walkthrough/04-09-only-readme-staged.png" alt="圖 4-9：只有 README 已暫存" /></a></p>
+<p>圖 4-9：① 已暫存分頁；② 只有 README 加入暫存區。</p>
+<p><strong>提示中的「已暫存 0 項仍可能提交」只計算「符合排除規則、卻已在暫存區」的項目，不是整個暫存區的總數。</strong> 因此這張圖已有一個 README，提示仍是 0。請以「已暫存」分頁核對實際要提交的檔案。若加入規則前已暫存設定檔，排除清單不會自動把它移出；需要先在「已暫存」選取該檔案並按「取消暫存」。</p>
+<h4 id="section-9">4.2.5 移除檔案規則，讓設定檔恢復暫存</h4>
+<ol>
+<li>再次點 <strong>「暫存排除清單」</strong>。</li>
+<li>點選 <strong>「檔案 · settings.local.json」</strong>，按 <strong>「移除選取規則」</strong>。</li>
+<li>確認只剩資料夾規則，按 <strong>「儲存規則」</strong>。這一步只改變允許暫存的範圍，設定檔還沒有自動加入暫存區。</li>
+</ol>
+<p><a href="images/walkthrough/04-10-remove-file-rule.png"><img src="images/walkthrough/04-10-remove-file-rule.png" alt="圖 4-10：移除指定檔案的排除規則" /></a></p>
+<p>圖 4-10：依序點 ① 檔案規則、②「移除選取規則」、③「儲存規則」。</p>
+<ol start="4">
+<li>回到工作區，再按 <strong>「全部暫存」</strong>，等操作完成後查看 <strong>「已暫存」</strong>：現在有 README 與設定檔兩個檔案。</li>
+<li>提示改為 <strong>「1 項規則 · 工作區略過 2 項」</strong>；資料夾內的 report 與 cache 仍留在「未暫存」。</li>
+</ol>
+<p><a href="images/walkthrough/04-11-file-allowed-again.png"><img src="images/walkthrough/04-11-file-allowed-again.png" alt="圖 4-11：移除檔案規則後再次全部暫存" /></a></p>
+<p>圖 4-11：① 已暫存分頁；② README 與設定檔已加入；③ 剩餘資料夾規則仍略過兩個檔案。</p>
+<h4 id="section-10">4.2.6 移除資料夾規則，恢復一般的全部暫存</h4>
+<ol>
+<li>再次開啟 <strong>「暫存排除清單」</strong>。</li>
+<li>點選剩下的 <strong>「資料夾 · build-output/」</strong>，按 <strong>「移除選取規則」</strong>，確認清單已空，再按 <strong>「儲存規則」</strong>。</li>
+</ol>
+<p><a href="images/walkthrough/04-12-remove-folder-rule.png"><img src="images/walkthrough/04-12-remove-folder-rule.png" alt="圖 4-12：移除資料夾排除規則" /></a></p>
+<p>圖 4-12：依序點 ① 資料夾規則、②「移除選取規則」、③「儲存規則」。</p>
+<ol start="3">
+<li>回到工作區，再按 <strong>「全部暫存」</strong>。沒有排除規則時，排除提示會消失。</li>
+<li>點 <strong>「已暫存」</strong>，確認四個檔案都在清單中；「未暫存」應已沒有這些變更。移除規則並沒有刪除資料夾或檔案，只是恢復它們可被暫存的狀態。</li>
+</ol>
+<p><a href="images/walkthrough/04-13-all-files-staged.png"><img src="images/walkthrough/04-13-all-files-staged.png" alt="圖 4-13：清除規則後四個檔案全部暫存" /></a></p>
+<p>圖 4-13：① 已暫存分頁；② 四個檔案都已加入，尚未提交。</p>
+<h4 id="section-11">4.2.7 三次「全部暫存」的結果對照</h4>
+<p>下表沿用同一個練習倉庫，過程中不提交、不取消既有暫存；每次儲存規則後都再按一次「全部暫存」。</p>
+<table>
+<thead>
+<tr>
+<th>儲存後的規則</th>
+<th>已暫存內容</th>
+<th>未暫存內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>檔案 + 資料夾，共 2 條</td>
+<td>README，共 1 個</td>
+<td>設定檔、report、cache，共 3 個</td>
+</tr>
+<tr>
+<td>移除檔案規則，只剩資料夾</td>
+<td>README、設定檔，共 2 個</td>
+<td>report、cache，共 2 個</td>
+</tr>
+<tr>
+<td>移除資料夾規則，清單為空</td>
+<td>全部 4 個</td>
+<td>無</td>
+</tr>
+</tbody>
+</table>
+<p>這些規則只存在這台電腦的 GITGUI 設定中，不會寫入 <code>.gitignore</code>，也不會隨提交分享給別人。其他 Git 工具仍可能暫存這些檔案，因此每次提交前都應核對「已暫存」分頁。完成練習後，可依自己需求重新加入規則；若要只提交 README，先取消其他三個檔案的暫存，再建立提交。本節桌面操作另以 Git 暫存區及本機規則資料庫核對五個中間狀態，確認檔案內容、既有提交及遠端設定未被改動。</p>
 <h2 id="guide-chapter-5">5. 分支、同步與衝突</h2>
 <ul>
 <li>建立分支：輸入分支名稱後建立，再切換到該分支。</li>
@@ -463,7 +612,7 @@ git config --local user.signingkey &quot;C:/Users/你的帳號/.ssh/id_ed25519&q
 <p><strong>C. 專案已經是 Git 倉庫</strong></p>
 <p>直接在 GITGUI 開啟原有資料夾，沿用既有歷史，不需要重新初始化。若現有分支叫 <code>master</code> 或其他名稱，後面步驟中的 <code>main</code> 請換成實際分支名稱。</p>
 <p>完成時應看到正確的倉庫路徑與目前分支；新初始化的倉庫是 <code>main</code>，尚未有提交是正常的。</p>
-<h3 id="section-15">20.3 準備檔案、忽略規則與作者資料</h3>
+<h3 id="section-22">20.3 準備檔案、忽略規則與作者資料</h3>
 <ol>
 <li><p>例如在專案資料夾建立 <code>README.md</code>，內容如下；已有 README 的專案可保留自己的內容：</p>
 <pre><code class="language-markdown"># hello-backup
@@ -513,7 +662,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tr>
 </tbody>
 </table>
-<h3 id="section-16">20.4 暫存並建立第一次提交</h3>
+<h3 id="section-23">20.4 暫存並建立第一次提交</h3>
 <ol>
 <li>按「重新整理」，在「工作區」的「未暫存」清單確認專案檔案與 <code>.gitignore</code> 都已列出。</li>
 <li>選取檔案，檢查右側差異；需要忽略的內容不應列入提交。</li>
@@ -676,7 +825,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p>確認檔案與提交都已在 GitHub 出現，才算完成這次遠端備份。未追蹤、被忽略或尚未提交的內容不會因為按 Push 而自動上傳。大型素材若需要 Git LFS，請先依第 11 章設定，再檢查對應的 LFS 上傳結果。</p>
 <h2 id="guide-chapter-21">21. 完整範例：專案修改後再次更新上傳</h2>
 <p>沿用第 20 章已備份成功的 <code>C:\Projects\hello-backup</code>、<code>main</code> 與 <code>origin</code>。之後每次更新都使用同一個倉庫，不必重新建立 GitHub 倉庫或初始化。</p>
-<h3 id="section-18">21.1 修改並保存專案</h3>
+<h3 id="section-25">21.1 修改並保存專案</h3>
 <ol>
 <li>在 GITGUI 從「最近開啟」選擇專案，或輸入原路徑再按「開啟」；確認目前分支與遠端正確。</li>
 <li>如果還沒開始修改，先按「Fetch」檢查遠端是否有新提交；本機乾淨且遠端有更新時，先 Pull 並確認成功，再開始編輯。</li>
@@ -714,7 +863,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tr>
 </tbody>
 </table>
-<h3 id="section-19">21.2 檢查、暫存與提交本次修改</h3>
+<h3 id="section-26">21.2 檢查、暫存與提交本次修改</h3>
 <ol>
 <li>回到 GITGUI 按「重新整理」，確認「未暫存」出現 <code>README.md</code>；新增或刪除檔案也會列為變更。</li>
 <li>選取它，在右側檢查差異，確認新增的文字正確，沒有混入本次不想保存的修改。</li>
@@ -856,7 +1005,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tbody>
 </table>
 <p>日常順序可記為：<strong>儲存檔案 → 檢查差異 → 暫存 → 提交 → Fetch／必要時 Pull → Push → GitHub 核對。</strong></p>
-<h3 id="section-20">21.4 更新上傳時的常見狀況</h3>
+<h3 id="section-27">21.4 更新上傳時的常見狀況</h3>
 <table>
 <thead>
 <tr>
@@ -902,7 +1051,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p>GitHub 的空白倉庫與 HTTPS 驗證說明可參閱官方文件：<a href="https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github?platform=windows">將本機程式碼加入 GitHub</a>、<a href="https://docs.github.com/en/get-started/git-basics/about-remote-repositories">遠端倉庫與 HTTPS 驗證</a>。本範例的 GITGUI 按鈕與行為依本專案介面撰寫。</p>
 <h2 id="guide-chapter-22">22. 完整範例：只在本機保存版本與再次提交</h2>
 <p>本章使用 <code>C:\Projects\local-notes</code> 作為示範專案。請換成自己的資料夾；不必新增遠端，也不必按 Fetch、Pull 或 Push。<strong>暫存是挑選本次要保存的內容，提交成功才會建立可取回的歷史版本。</strong></p>
-<h3 id="section-22">22.1 已有檔案的資料夾，建立第一次提交</h3>
+<h3 id="section-29">22.1 已有檔案的資料夾，建立第一次提交</h3>
 <ol>
 <li>按「倉庫操作」，瀏覽選取已有檔案的 <code>C:\Projects\local-notes</code>。</li>
 <li>依第 20.2 節填寫提交者姓名、電子郵件，按「初始化倉庫」。若資料夾已是 Git 倉庫，直接開啟即可，不必再初始化。</li>
@@ -912,7 +1061,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>按「提交」，等待成功，再到「提交歷史」確認出現 <code>初始版本備份</code>。若簽章失敗，依第 22.4 節處理後重試。</li>
 </ol>
 <p>提交只會保存納入 Git 追蹤的內容；被忽略、尚未暫存的檔案不會因此自動進入版本。</p>
-<h3 id="section-23">22.2 修改後，建立第二次與後續提交</h3>
+<h3 id="section-30">22.2 修改後，建立第二次與後續提交</h3>
 <ol>
 <li>用原本的編輯器修改專案，例如在 <code>README.md</code> 加入 <code>第二版：補上使用方式。</code>，並儲存。</li>
 <li>回到 GITGUI 按「重新整理」，到「未暫存」選取 <code>README.md</code>，確認差異。</li>
@@ -921,7 +1070,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>到「提交歷史」確認有兩筆不同的提交：<code>初始版本備份</code> 與 <code>補上使用方式</code>。之後每次都重複「儲存 → 檢查 → 暫存 → 新訊息 → 提交」。</li>
 </ol>
 <p>若按「提交」後失敗，先閱讀實際指令輸出並處理原因。一般提交失敗不會清空暫存區，不需要重新初始化倉庫。</p>
-<h3 id="section-24">22.3 本機版本與備份的差別</h3>
+<h3 id="section-31">22.3 本機版本與備份的差別</h3>
 <p>歷史紀錄主要存放在專案的隱藏 <code>.git</code> 資料夾；請保留它。只複製工作檔案，不會帶走完整 Git 歷史。若硬碟故障或整個專案資料夾被刪除，本機提交也可能一起遺失。要另做備份時，請在 Git 操作完成後，將含 <code>.git</code> 的整個專案複製到另一顆磁碟或其他備份位置。</p>
 <h3 id="gpg">22.4 提交失敗：GPG 找不到私鑰</h3>
 <p>若看到 <code>gpg: skipped ... No secret key</code> 與 <code>fatal: failed to write commit object</code>，代表要求簽章但找不到私鑰。姓名、電子郵件只用於提交者身分，不會自動產生 GPG 私鑰。</p>
@@ -973,7 +1122,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tbody>
 </table>
 <p><strong>先確認要保留的新修改已提交或另行備份。</strong> Git 不會替每次編輯器儲存建立歷史；從未提交、未納入快照或備份的內容，不保證能找回。</p>
-<h3 id="section-26">23.1 只放棄一個檔案尚未提交的修改</h3>
+<h3 id="section-33">23.1 只放棄一個檔案尚未提交的修改</h3>
 <p>情境：上次提交的 <code>README.md</code> 是正確版本，今天改壞了；其他檔案要保留。</p>
 <ol>
 <li>若 <code>README.md</code> 已暫存，先到「已暫存」只選它，按「取消暫存」。<strong>取消暫存本身不會刪掉工作檔的修改。</strong></li>
@@ -982,7 +1131,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>重新開啟檔案，確認回到目前分支最新提交的內容；其他未選取的檔案保持原狀。</li>
 </ol>
 <p>GITGUI 的捨棄會從暫存區還原工作檔，所以要回到最新提交時，應先取消該檔案的暫存。對尚未追蹤的新檔案按捨棄，會刪除該新檔案；第一次提交前也沒有可取回的已提交版本。</p>
-<h3 id="section-27">23.2 撤銷一筆普通提交，保留完整歷史</h3>
+<h3 id="section-34">23.2 撤銷一筆普通提交，保留完整歷史</h3>
 <p>情境：最新一筆 <code>補上使用方式</code> 的修改不想要了，希望留下撤銷紀錄。</p>
 <ol>
 <li>先讓工作區與暫存區乾淨，確認目前分支正確。</li>
@@ -992,7 +1141,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>核對歷史新增了一筆反向提交，原提交仍存在；檢查檔案內容符合預期。</li>
 </ol>
 <p>Revert 反轉的是那筆提交的變更，並不是直接把整個專案替換成該提交的內容。撤銷較早的提交可能與後續修改衝突；請依提示解決後，到「進階功能」按「繼續操作」，或「中止操作」。本範例適用普通提交；合併提交的 Revert 需要額外指定主線，v0.7.1 此按鈕未提供該選項。</p>
-<h3 id="section-28">23.3 只把一個檔案還原到指定舊版本</h3>
+<h3 id="section-35">23.3 只把一個檔案還原到指定舊版本</h3>
 <p>假設目前分支剛好有以下三筆提交，且工作區／暫存區乾淨：</p>
 <table>
 <thead>
@@ -1039,7 +1188,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p>只有確定要讓整個目前分支回到舊版時才使用；只想取回單檔請用第 23.3 節。本節全程不需要遠端，也不使用終端機。</p>
 <p><strong>示範情境：</strong> <code>main</code> 已有第 1～5 版，現在要回到第 2 版。先建立 <code>backup/before-restore</code> 保留第 5 版，再將 <code>main</code> 還原到第 2 版；最後示範切回備用分支取回第 5 版。</p>
 <p>以下圖片於 2026-10-30 以本專案實際主視窗、進階視窗及真實 Git 後端操作獨立示範倉庫拍攝；僅隔離啟動設定、示範資料與視窗尺寸／標題，沒有模擬後端。圖片只加上編號、框線與裁切。圖中的路徑、作者與 SHA 都屬於示範資料，請改用自己的專案與目標版本。</p>
-<h4 id="section-29">23.4.1 先保存修改，確認目前版本</h4>
+<h4 id="section-36">23.4.1 先保存修改，確認目前版本</h4>
 <p>將需要保留的修改先提交或另行備份，確認「未暫存」「已暫存」都沒有待保存變更。<strong>只有暫存仍不算保存成歷史版本。</strong></p>
 <p><strong>圖 23-A：核對專案、main 與乾淨的工作區。</strong></p>
 <p><a href="images/walkthrough/23-01-clean.png"><img src="images/walkthrough/23-01-clean.png" alt="專案路徑、main 與零變更、未暫存及已暫存頁籤、重新整理位置" /></a></p>
@@ -1069,7 +1218,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tr>
 </tbody>
 </table>
-<h4 id="section-30">23.4.2 建立備用分支，保留第 5 版</h4>
+<h4 id="section-37">23.4.2 建立備用分支，保留第 5 版</h4>
 <p><strong>圖 23-B：只建立備用分支，暫時不要切換。</strong></p>
 <p><a href="images/walkthrough/23-02-backup.png"><img src="images/walkthrough/23-02-backup.png" alt="確認 main、輸入 backup before restore 與建立分支按鈕" /></a></p>
 <table>
@@ -1156,7 +1305,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p><strong>圖 23-E：再次核對目標與模式，按執行 Reset。</strong></p>
 <p><a href="images/walkthrough/23-05-reset.png"><img src="images/walkthrough/23-05-reset.png" alt="完整目標 SHA、Hard 已選取及執行 Reset 按鈕" /></a></p>
 <p>圖中 <strong>1</strong> 核對完整 SHA；<strong>2</strong> 確認模式顯示 <code>Hard（替換工作檔）</code>；<strong>3</strong> 點「執行 Reset」。本流程不要按上方的 Cherry-pick 或 Revert，它們的用途不同。</p>
-<h4 id="section-31">23.4.5 閱讀確認視窗，等待完成</h4>
+<h4 id="section-38">23.4.5 閱讀確認視窗，等待完成</h4>
 <p><strong>圖 23-F：核對即將替換的檔案與目前分支將退出的提交。</strong></p>
 <p><a href="images/walkthrough/23-06-confirm.png"><img src="images/walkthrough/23-06-confirm.png" alt="Reset 確認視窗中的檔案、將退出的提交與確認執行按鈕" /></a></p>
 <table>
@@ -1213,7 +1362,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p>接著用原本的編輯器開啟專案工作檔，確認內容確實回到目標版本。本例實際核對 <code>README.md</code> 顯示 <code>這是第 2 版。</code>，<code>settings.json</code> 的 <code>version</code> 為 <code>2</code>；<code>main</code> 也已指向第 2 版 SHA。</p>
 <p>因為備用分支仍保留第 3～5 版，提交歷史仍可能顯示 5 筆，<strong>這不代表還原失敗，也不需要刪掉那些提交</strong>。應核對目前分支、工作檔內容與目標 SHA；若要額外查閱指向，可開「進階功能」→「標籤與 Reflog」查看本機 HEAD 移動紀錄。</p>
 <p>還原後可以直接在 <code>main</code> 修改、暫存並提交，從第 2 版繼續發展；原來的第 5 版仍保存在備用分支。</p>
-<h4 id="section-32">23.4.7 想取回原來第 5 版時，切換備用分支</h4>
+<h4 id="section-39">23.4.7 想取回原來第 5 版時，切換備用分支</h4>
 <p>先將當前需要保留的修改提交或另行備份，確認工作區乾淨，再展開左側「分支操作」。</p>
 <p><strong>圖 23-I：輸入既有備用分支，按切換。</strong></p>
 <p><a href="images/walkthrough/23-09-switch-back.png"><img src="images/walkthrough/23-09-switch-back.png" alt="輸入 backup before restore 與切換分支按鈕" /></a></p>
@@ -1281,7 +1430,7 @@ git config --local user.email &quot;you@example.com&quot;
 <p><a href="images/walkthrough/24-02-switch-feature.png"><img src="images/walkthrough/24-02-switch-feature.png" alt="建立後仍在 main、欄位保持功能分支名稱與切換按鈕" /></a></p>
 <p>圖中 <strong>1</strong> 頂端仍是 <code>main</code>；<strong>2</strong> 欄位保持 <code>feature/readme-update</code>；<strong>3</strong> 點「切換」。等待完成後，頂端必須顯示 <code>feature/readme-update</code>，才進行下一節的編輯。此時不必按「合併分支」。</p>
 <p>也可單擊左側既有分支來填入欄位，再按「切換」。單擊選取分支與實際切換是不同動作，請以頂端目前分支為準。</p>
-<h3 id="section-34">24.2 在新分支修改、暫存與提交</h3>
+<h3 id="section-41">24.2 在新分支修改、暫存與提交</h3>
 <ol>
 <li>在編輯器開啟專案的 <code>README.md</code>，加入一行 <code>新增功能分支的使用說明。</code>，並儲存。</li>
 <li>回到 GITGUI 按「重新整理」，再次確認目前分支是 <code>feature/readme-update</code>。</li>
@@ -1444,7 +1593,7 @@ git config --local user.email &quot;you@example.com&quot;
 合併完成後：A ── B  (main、feature/readme-update)
 </code></pre>
 <p>合併只變更目前接收分支，來源分支不會自動刪除，也不會自動與之永久同步。之後來源分支新增提交，仍需再次合併。Git 官方的方向與 fast-forward 說明見 <a href="https://git-scm.com/docs/git-merge">Merge 文件</a>。</p>
-<h3 id="section-35">24.4 合併遇到衝突時怎麼做</h3>
+<h3 id="section-42">24.4 合併遇到衝突時怎麼做</h3>
 <p>如果 <code>main</code> 與功能分支修改了同一段內容，Git 可能要求人工決定。此時保持在 <code>main</code>，不要重新初始化，也不要用 Reset Hard 當作解決衝突。</p>
 <p>以下 9 張圖於 2026-10-30 使用實際 Windows 主視窗與真實 Git 後端，在獨立本機示範倉庫拍攝。示範倉庫先準備兩邊各自修改同一行的提交，再由 GUI 執行合併、編輯、儲存、標記已解決及提交，並核對真實 Git refs、暫存區與工作檔；只有隔離啟動設定、路徑及視窗標題／尺寸不同。圖片僅加編號、框線與裁切，點擊可放大。編輯衝突時建議放大視窗，完整顯示三方內容與下方結果區。</p>
 <p>本例兩個分支的 README 都已各自提交，工作區乾淨：</p>
@@ -1615,7 +1764,7 @@ git config --local user.email &quot;you@example.com&quot;
 </tr>
 </tbody>
 </table>
-<h3 id="section-36">24.5 合併成功後，保留或刪除功能分支</h3>
+<h3 id="section-43">24.5 合併成功後，保留或刪除功能分支</h3>
 <ol>
 <li>合併成功後可以保留功能分支，繼續查閱；刪除不是必要步驟。</li>
 <li>若要刪除，先確認目前在 <code>main</code>，功能提交已納入且工作區乾淨。</li>
@@ -1623,7 +1772,7 @@ git config --local user.email &quot;you@example.com&quot;
 <li>如果提示尚未合併，先檢查分支與歷史，不要直接改勾強制刪除。正常刪除已合併的本機分支，<code>main</code> 中已納入的提交與檔案仍保留。</li>
 </ol>
 <p>以上只處理本機分支。若之後要上傳已合併結果，確認目前分支是 <code>main</code>，依第 21.3 節檢查遠端再 Push；刪除本機功能分支不會同時刪除遠端分支。</p>
-<h3 id="section-37">24.6 分支操作常見問題</h3>
+<h3 id="section-44">24.6 分支操作常見問題</h3>
 <table>
 <thead>
 <tr>

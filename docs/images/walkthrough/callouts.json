@@ -2729,6 +2729,580 @@
       ],
       "rawSHA256": "0034cd046836090b317930a58384e2718eefd2d9b564a759a0e1069f3a86c848",
       "annotatedSHA256": "c214d926271ccb3c0dcc5d88adb3e11bd65afcfab41226f5a6f79e3baa364b88"
+    },
+    {
+      "name": "04-01-open-exclusions",
+      "source": "04-01-open-exclusions",
+      "crop": [
+        260,
+        160,
+        1100,
+        410
+      ],
+      "points": [
+        {
+          "rect": [
+            270,
+            168,
+            48,
+            32
+          ],
+          "marker": [
+            248,
+            180
+          ],
+          "action": "點擊工作區"
+        },
+        {
+          "rect": [
+            796,
+            228,
+            120,
+            35
+          ],
+          "marker": [
+            960,
+            245
+          ],
+          "action": "點擊暫存排除清單"
+        },
+        {
+          "rect": [
+            288,
+            322,
+            370,
+            180
+          ],
+          "marker": [
+            715,
+            455
+          ],
+          "action": "確認四個尚未暫存的變更"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "7067b0693263860b8f8042e3f074537f489a02c030f1a74fa01a3788b373783b",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "460d28a1846b9409e21be510b27e65117494222db07f99350e7d66f7493afaba",
+      "annotatedSHA256": "f9a580fb496c112e34c00d2abd9e4a2a466a793fa327515d8c58bd6807043a8d"
+    },
+    {
+      "name": "04-02-add-file",
+      "source": "04-02-add-file",
+      "crop": [
+        12,
+        118,
+        410,
+        52
+      ],
+      "points": [
+        {
+          "rect": [
+            184,
+            126,
+            104,
+            34
+          ],
+          "marker": [
+            236,
+            106
+          ],
+          "action": "點擊新增檔案…"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "b7b57b6f7c95a1a7fac51cb21330982d2866396ff143318781f9b6e93a56d8ae",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "bce16cca6ea314c005ca090b79ea79e1e2717b264d6050ccb8c237f3795c1c70",
+      "annotatedSHA256": "511ab15fb10c45bab7edbddf38ff3f9785366180c08b1bb34040c6e78b25b523"
+    },
+    {
+      "name": "04-03-select-file",
+      "source": "04-03-select-file",
+      "points": [
+        {
+          "rect": [
+            45,
+            200,
+            598,
+            25
+          ],
+          "marker": [
+            710,
+            212
+          ],
+          "action": "選取 settings.local.json"
+        },
+        {
+          "rect": [
+            851,
+            638,
+            85,
+            24
+          ],
+          "marker": [
+            880,
+            590
+          ],
+          "action": "點擊開啟"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "2e9cf80ce5df769d68c7a63dc4589a2f48f76e6eb01748f94a7a49f12fa81cc2",
+      "publicSourceCrop": {
+        "left": 130,
+        "top": 32,
+        "width": 1056,
+        "height": 681
+      },
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "a3e8a1bd5dfcf8a3f281c38512501a832a13f3ae6b62dcd0fba50dfd9dc0c056",
+      "annotatedSHA256": "63ff0a4ec3441540655cf68ccf6a7157ed00bb076c0bd2e9f799c6dde72c808c"
+    },
+    {
+      "name": "04-04-add-folder",
+      "source": "04-04-add-folder",
+      "points": [
+        {
+          "rect": [
+            23,
+            205,
+            755,
+            41
+          ],
+          "marker": [
+            736,
+            180
+          ],
+          "action": "確認檔案規則已加入草稿"
+        },
+        {
+          "rect": [
+            294,
+            126,
+            115,
+            34
+          ],
+          "marker": [
+            455,
+            143
+          ],
+          "action": "點擊新增資料夾…"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "3ec5b35f2b295855aa30fbcf5f8d189833d151c3fad96a9cf7b0a78a12a2f78d",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "5ebe5cc49983df56e8d97d096efb31e2055a57bb9ebfeb0b8af279bc25dc51dd",
+      "annotatedSHA256": "e89f950c0f6cd9b6e05af3c9aad24438cecdb79fdf27d5d29a73339c6f3e17f1"
+    },
+    {
+      "name": "04-05-select-folder",
+      "source": "04-05-select-folder",
+      "points": [
+        {
+          "rect": [
+            45,
+            144,
+            598,
+            24
+          ],
+          "marker": [
+            710,
+            156
+          ],
+          "action": "選取 build-output 資料夾"
+        },
+        {
+          "rect": [
+            839,
+            638,
+            98,
+            24
+          ],
+          "marker": [
+            880,
+            590
+          ],
+          "action": "點擊選擇資料夾"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "6ab0efccea2a0b72d57217e172beb908a13e8d85fb3445c75ba94371354227fa",
+      "publicSourceCrop": {
+        "left": 130,
+        "top": 32,
+        "width": 1056,
+        "height": 681
+      },
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "dc998ef689734867068cd194735f7de185b015d140ad1adb3807eee64f5ad736",
+      "annotatedSHA256": "7d945a200f88ac8838010bba99831accdca397521ad55bbb445adffaa9b60e01"
+    },
+    {
+      "name": "04-06-save-rules",
+      "source": "04-06-save-rules",
+      "points": [
+        {
+          "rect": [
+            23,
+            205,
+            755,
+            80
+          ],
+          "marker": [
+            735,
+            320
+          ],
+          "action": "核對檔案與資料夾兩條規則"
+        },
+        {
+          "rect": [
+            684,
+            575,
+            95,
+            34
+          ],
+          "marker": [
+            799,
+            550
+          ],
+          "action": "點擊儲存規則才套用"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "41e3bc8fe4c87a4245d77c899876c20fce86cd5d53414fb878f39406aa4c3fbb",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "94fdf4e9c821ec97bab0cabfe77396b074cb9c117664be44b7446c7d483d3264",
+      "annotatedSHA256": "d981f01dc4e05aabfdc41bcfa87e800695f9da84f740abd01ac2f29f4bb66796"
+    },
+    {
+      "name": "04-07-stage-all",
+      "source": "04-07-stage-all",
+      "crop": [
+        260,
+        160,
+        1100,
+        410
+      ],
+      "points": [
+        {
+          "rect": [
+            275,
+            270,
+            360,
+            22
+          ],
+          "marker": [
+            710,
+            281
+          ],
+          "action": "確認工作區略過三項"
+        },
+        {
+          "rect": [
+            376,
+            229,
+            95,
+            34
+          ],
+          "marker": [
+            425,
+            208
+          ],
+          "action": "點擊全部暫存"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "772df85ab52a0c9398221d3aaec5e0aaebd27c39ddfbf3a3f12abbb13febc3b3",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "1329a361a090cc7c914bd4d4f22fc909b7348213680cc5db3eb591175022526f",
+      "annotatedSHA256": "5ff60eba9db4e7033b665928a864892f75c310db7864cc93513b455c1b621acc"
+    },
+    {
+      "name": "04-08-excluded-remain",
+      "source": "04-08-excluded-remain",
+      "crop": [
+        260,
+        160,
+        1100,
+        410
+      ],
+      "points": [
+        {
+          "rect": [
+            280,
+            307,
+            55,
+            27
+          ],
+          "marker": [
+            248,
+            320
+          ],
+          "action": "點擊未暫存"
+        },
+        {
+          "rect": [
+            288,
+            343,
+            370,
+            135
+          ],
+          "marker": [
+            715,
+            430
+          ],
+          "action": "確認三個排除檔案仍在工作區"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "80745881609b9870334d098300ae79778a354094fcc311d3ee2988f56e22d1ac",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "e3239dbecc88eb28d0563f48e60b941f3fbd7ec5da487916e0d1c868a05af2bb",
+      "annotatedSHA256": "eb9f92dc684708efad7d4ce146c2f3913f8cbb6943d5b9e31e683b8965f0c22d"
+    },
+    {
+      "name": "04-09-only-readme-staged",
+      "source": "04-09-only-readme-staged",
+      "crop": [
+        260,
+        160,
+        1100,
+        410
+      ],
+      "points": [
+        {
+          "rect": [
+            345,
+            307,
+            45,
+            27
+          ],
+          "marker": [
+            435,
+            320
+          ],
+          "action": "點擊已暫存"
+        },
+        {
+          "rect": [
+            288,
+            343,
+            370,
+            45
+          ],
+          "marker": [
+            715,
+            365
+          ],
+          "action": "確認只有 README.md 進入暫存區"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "0f17c852b40eb6c3f99eba79cde4b77f519a288d4508ae86c15169977b724a4d",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "5326cbc45abdbf91d1c282a00d9f7d033aa5ca1248f05b1af13ffb95a3ea6873",
+      "annotatedSHA256": "7e52deb59159ca64944c5d9989f2a21cc1a3469109a8b083a5cc9e3c4e43a98a"
+    },
+    {
+      "name": "04-10-remove-file-rule",
+      "source": "04-10-remove-file-rule",
+      "points": [
+        {
+          "rect": [
+            23,
+            205,
+            755,
+            41
+          ],
+          "marker": [
+            736,
+            180
+          ],
+          "action": "點選要移除的檔案規則"
+        },
+        {
+          "rect": [
+            24,
+            575,
+            118,
+            34
+          ],
+          "marker": [
+            2,
+            550
+          ],
+          "action": "點擊移除選取規則"
+        },
+        {
+          "rect": [
+            684,
+            575,
+            95,
+            34
+          ],
+          "marker": [
+            799,
+            550
+          ],
+          "action": "最後點擊儲存規則"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "32d7c74d5ca881dd507eb5e1ca80d8d39a30befe515ba88725886594fbf0a0b6",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "e85d583000d5d3152c775d76a6c8aea2a8f78bd0f56c0535c82205b846762ea8",
+      "annotatedSHA256": "1587cddc383081c04da218a2b315c7f5d0d4dfcf37a1e8a80cbd4ae8f773ef40"
+    },
+    {
+      "name": "04-11-file-allowed-again",
+      "source": "04-11-file-allowed-again",
+      "crop": [
+        260,
+        160,
+        1100,
+        410
+      ],
+      "points": [
+        {
+          "rect": [
+            345,
+            307,
+            45,
+            27
+          ],
+          "marker": [
+            435,
+            320
+          ],
+          "action": "再次全部暫存後查看已暫存"
+        },
+        {
+          "rect": [
+            288,
+            343,
+            370,
+            90
+          ],
+          "marker": [
+            715,
+            404
+          ],
+          "action": "確認 README 與設定檔兩項已暫存"
+        },
+        {
+          "rect": [
+            275,
+            270,
+            360,
+            22
+          ],
+          "marker": [
+            715,
+            281
+          ],
+          "action": "確認資料夾內兩項仍排除"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "2cf845c8bf3105dcbee8a2d4dbcf6ece2ccc8d6ebfb995186d8eb6f8698332b3",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "aafe2a51634ec4ef27508a6d644b82eaf65ad2be70ccac24f149f238db202af0",
+      "annotatedSHA256": "72fdf57a060a2eea84ba7107b1ba0f9b53b857f06b8af56812f8b24d91727fc5"
+    },
+    {
+      "name": "04-12-remove-folder-rule",
+      "source": "04-12-remove-folder-rule",
+      "points": [
+        {
+          "rect": [
+            23,
+            205,
+            755,
+            41
+          ],
+          "marker": [
+            736,
+            180
+          ],
+          "action": "點選資料夾規則"
+        },
+        {
+          "rect": [
+            24,
+            575,
+            118,
+            34
+          ],
+          "marker": [
+            2,
+            550
+          ],
+          "action": "點擊移除選取規則"
+        },
+        {
+          "rect": [
+            684,
+            575,
+            95,
+            34
+          ],
+          "marker": [
+            799,
+            550
+          ],
+          "action": "最後點擊儲存規則"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "14d000a12b25b3c1a17c8f22712d3f137017f405226829781eb41e34662bb48d",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "95d8c2f24d4f5cfed749f9b903afb4ecd4eccb2b5894e76c5b7cdd8d96ea32b5",
+      "annotatedSHA256": "e98858fd3bf82c04b2cd98b094fe40cee23f44c6bd46f1f89ca098ba7a035062"
+    },
+    {
+      "name": "04-13-all-files-staged",
+      "source": "04-13-all-files-staged",
+      "crop": [
+        260,
+        160,
+        1100,
+        410
+      ],
+      "points": [
+        {
+          "rect": [
+            345,
+            285,
+            45,
+            27
+          ],
+          "marker": [
+            435,
+            298
+          ],
+          "action": "移除規則並再次全部暫存後查看已暫存"
+        },
+        {
+          "rect": [
+            288,
+            322,
+            370,
+            180
+          ],
+          "marker": [
+            715,
+            455
+          ],
+          "action": "確認四個檔案均已暫存；尚未提交"
+        }
+      ],
+      "batch": "staging-exclusions-20261121",
+      "originalCaptureSHA256": "ee6a9bc9c8e89f85b1c68eb8d53e5e70a9646f82370829ad713c3f030a6410e8",
+      "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
+      "rawSHA256": "bfb4f7993e3dd4a76a374e1cdd18e804f61fdbe475947abf22baa35e40ee4791",
+      "annotatedSHA256": "d26239130a8071b1dda7a528e441b8eda6627cd9a1a134bc2abe7bf7c9087cc1"
     }
   ],
   "restoreWalkthrough": {
@@ -2920,5 +3494,164 @@
         "remotes": ""
       }
     }
+  },
+  "stagingExclusionsExample": {
+    "capturedOn": "2026-11-21",
+    "sourceCommit": "e0cc76f50698ed840cb0e3ab4dbbcfee6232d46e",
+    "sourceUiTree": "8ee30b41987dd41c7e11d25b990e04dd335130ff",
+    "project": "C:\\GitGui-Guide-Stage-c3fd4b5d\\demo-project",
+    "baseCommit": "e175d1e46149655718e0b7e023b3bdd4653cb3b7",
+    "method": "Current unmodified production MainWindow/VM/real Git engine; tutorial launcher isolates settings and trusts only created dummy repository. No user settings, remote or mocked UI.",
+    "figures": [
+      "04-01-open-exclusions",
+      "04-02-add-file",
+      "04-03-select-file",
+      "04-04-add-folder",
+      "04-05-select-folder",
+      "04-06-save-rules",
+      "04-07-stage-all",
+      "04-08-excluded-remain",
+      "04-09-only-readme-staged",
+      "04-10-remove-file-rule",
+      "04-11-file-allowed-again",
+      "04-12-remove-folder-rule",
+      "04-13-all-files-staged"
+    ],
+    "stateChecks": {
+      "after-first-stage": {
+        "result": "PASS",
+        "phase": "after-first-stage",
+        "staged": [
+          "README.md"
+        ],
+        "remaining": [
+          "build-output/cache.tmp",
+          "build-output/report.txt",
+          "settings.local.json"
+        ],
+        "rules": [
+          [
+            "settings.local.json",
+            0
+          ],
+          [
+            "build-output",
+            1
+          ]
+        ],
+        "head": "e175d1e46149655718e0b7e023b3bdd4653cb3b7",
+        "commitCount": 1,
+        "remotes": [],
+        "gitignoreCreated": false,
+        "worktreeSHA256": {
+          "README.md": "5d101c0ae43d1875b2c0d1dd3b7eb127c777a26c5e379d06659a602956cacc9d",
+          "settings.local.json": "4fb375ad6c9ada99ac30380310450ba3790143dfc0fab0139c908672161c8361",
+          "build-output/report.txt": "3891ca055399e687f8983ed31f8215219373843e9ec40398820af4500842dfc6",
+          "build-output/cache.tmp": "6b0731a1675c9e9bea271dddadd798061b4b3ce79405d579b04a877db69d9eac"
+        }
+      },
+      "after-file-rule-save": {
+        "result": "PASS",
+        "phase": "after-file-rule-save",
+        "staged": [
+          "README.md"
+        ],
+        "remaining": [
+          "build-output/cache.tmp",
+          "build-output/report.txt",
+          "settings.local.json"
+        ],
+        "rules": [
+          [
+            "build-output",
+            1
+          ]
+        ],
+        "head": "e175d1e46149655718e0b7e023b3bdd4653cb3b7",
+        "commitCount": 1,
+        "remotes": [],
+        "gitignoreCreated": false,
+        "worktreeSHA256": {
+          "README.md": "5d101c0ae43d1875b2c0d1dd3b7eb127c777a26c5e379d06659a602956cacc9d",
+          "settings.local.json": "4fb375ad6c9ada99ac30380310450ba3790143dfc0fab0139c908672161c8361",
+          "build-output/report.txt": "3891ca055399e687f8983ed31f8215219373843e9ec40398820af4500842dfc6",
+          "build-output/cache.tmp": "6b0731a1675c9e9bea271dddadd798061b4b3ce79405d579b04a877db69d9eac"
+        }
+      },
+      "after-second-stage": {
+        "result": "PASS",
+        "phase": "after-second-stage",
+        "staged": [
+          "README.md",
+          "settings.local.json"
+        ],
+        "remaining": [
+          "build-output/cache.tmp",
+          "build-output/report.txt"
+        ],
+        "rules": [
+          [
+            "build-output",
+            1
+          ]
+        ],
+        "head": "e175d1e46149655718e0b7e023b3bdd4653cb3b7",
+        "commitCount": 1,
+        "remotes": [],
+        "gitignoreCreated": false,
+        "worktreeSHA256": {
+          "README.md": "5d101c0ae43d1875b2c0d1dd3b7eb127c777a26c5e379d06659a602956cacc9d",
+          "settings.local.json": "4fb375ad6c9ada99ac30380310450ba3790143dfc0fab0139c908672161c8361",
+          "build-output/report.txt": "3891ca055399e687f8983ed31f8215219373843e9ec40398820af4500842dfc6",
+          "build-output/cache.tmp": "6b0731a1675c9e9bea271dddadd798061b4b3ce79405d579b04a877db69d9eac"
+        }
+      },
+      "after-folder-rule-save": {
+        "result": "PASS",
+        "phase": "after-folder-rule-save",
+        "staged": [
+          "README.md",
+          "settings.local.json"
+        ],
+        "remaining": [
+          "build-output/cache.tmp",
+          "build-output/report.txt"
+        ],
+        "rules": [],
+        "head": "e175d1e46149655718e0b7e023b3bdd4653cb3b7",
+        "commitCount": 1,
+        "remotes": [],
+        "gitignoreCreated": false,
+        "worktreeSHA256": {
+          "README.md": "5d101c0ae43d1875b2c0d1dd3b7eb127c777a26c5e379d06659a602956cacc9d",
+          "settings.local.json": "4fb375ad6c9ada99ac30380310450ba3790143dfc0fab0139c908672161c8361",
+          "build-output/report.txt": "3891ca055399e687f8983ed31f8215219373843e9ec40398820af4500842dfc6",
+          "build-output/cache.tmp": "6b0731a1675c9e9bea271dddadd798061b4b3ce79405d579b04a877db69d9eac"
+        }
+      },
+      "after-third-stage": {
+        "result": "PASS",
+        "phase": "after-third-stage",
+        "staged": [
+          "README.md",
+          "build-output/cache.tmp",
+          "build-output/report.txt",
+          "settings.local.json"
+        ],
+        "remaining": [],
+        "rules": [],
+        "head": "e175d1e46149655718e0b7e023b3bdd4653cb3b7",
+        "commitCount": 1,
+        "remotes": [],
+        "gitignoreCreated": false,
+        "worktreeSHA256": {
+          "README.md": "5d101c0ae43d1875b2c0d1dd3b7eb127c777a26c5e379d06659a602956cacc9d",
+          "settings.local.json": "4fb375ad6c9ada99ac30380310450ba3790143dfc0fab0139c908672161c8361",
+          "build-output/report.txt": "3891ca055399e687f8983ed31f8215219373843e9ec40398820af4500842dfc6",
+          "build-output/cache.tmp": "6b0731a1675c9e9bea271dddadd798061b4b3ce79405d579b04a877db69d9eac"
+        }
+      }
+    },
+    "note": "All clicks used native Windows UI. Only fixture initialization used CLI; independent read-only Git/SQLite checks verified staging and saved rules. No demo remote, commit or worktree content change during GUI sequence."
   }
 }
