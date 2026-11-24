@@ -30,7 +30,7 @@ public sealed partial class LibHistoryReader : IHistoryReader, IStableGraphHisto
             // FileHistory carries rename paths from children to parents. Time-only
             // ordering can visit a parent first when timestamps tie or clocks differ.
             foreach (var entry in repo.Commits.QueryBy(path, new CommitFilter
-                { SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time }).Take(500))
+                { SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time }))
             {
                 ct.ThrowIfCancellationRequested(); var c = entry.Commit;
                 history.Add(new(new(c.Sha, c.MessageShort, c.Author.Name, c.Author.When, c.Parents.Select(p => p.Sha).ToArray()), entry.Path));

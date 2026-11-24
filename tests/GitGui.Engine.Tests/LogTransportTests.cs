@@ -7,6 +7,43 @@ namespace GitGui.Engine.Tests;
 
 public sealed class LogTransportTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task File_history_returns_more_than_500_commits(bool native)
+    {
+        using var repo = new TemporaryRepository(); await repo.Init(commit: false);
+        var import = new StringBuilder();
+        for (var i = 1; i <= 501; i++)
+        {
+            var message = $"Edit {i:D4}\n"; var content = $"version {i}\n";
+            import.Append($"commit refs/heads/main\nmark :{i}\ncommitter Fixture <fixture@example.invalid> {1700000000 + i} +0000\ndata {message.Length}\n{message}");
+            if (i > 1) import.Append($"from :{i - 1}\n");
+            import.Append($"M 100644 inline program.cs\ndata {content.Length}\n{content}\n");
+        }
+        import.Append("done\n");
+        var runner = new GitProcessRunner();
+        await Write(runner, repo.Root, ["fast-import", "--quiet", "--done"], Encoding.UTF8.GetBytes(import.ToString()));
+        await repo.Git("reset", "--hard", "HEAD");
+        using var library = new GitGui.Engine.Lib.LibHistoryReader();
+        var commands = new List<CommandEntry>(); runner.CommandExecuted += (_, entry) => commands.Add(entry);
+        IFileHistoryReader reader = native ? library : new CliFileHistoryReader(runner);
+        var result = await reader.ReadAsync(repo.Root, "program.cs", default);
+        Assert.Equal(501, result.History.Count);
+        Assert.Equal("Edit 0501", result.History[0].Commit.Subject);
+        Assert.Equal("Edit 0001", result.History[^1].Commit.Subject);
+        Assert.All(result.History, entry => Assert.Equal("program.cs", entry.Path));
+        if (!native) Assert.True(commands.Count <= 5, "Complete history should use batched Git reads, not a process per commit.");
+    }
+
+    [Fact]
+    public async Task File_history_of_an_unborn_repository_is_empty()
+    {
+        using var repo = new TemporaryRepository(); await repo.Init(commit: false);
+        var history = await new CliFileHistoryReader(new GitProcessRunner()).ReadAsync(repo.Root, "new.cs", default);
+        Assert.Empty(history.History); Assert.Empty(history.Blame);
+    }
+
     [Fact]
     public async Task Thousands_of_distinct_visible_tips_use_bounded_arguments_and_preserve_all_namespaces_and_detached_HEAD()
     {

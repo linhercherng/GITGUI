@@ -129,6 +129,14 @@ public partial class MainWindow : Window, IWorkspaceInteraction
         return vm.CanOperate;
     }
     private int focusedPane;
+    private async void FileHistoryClick(object? sender, RoutedEventArgs args)
+    {
+        if (viewModel is not { CanOperate: true } vm) return;
+        var path = vm.IsHistoryDiff ? vm.SelectedCommitFile?.Path : vm.SelectedChange?.Path;
+        AdvancedClick(sender, args);
+        if (advancedWindow is { } window) await window.ShowFileHistoryAsync(path);
+    }
+
     private async void StagingExclusionsClick(object? sender, RoutedEventArgs args)
     {
         if (viewModel is not { CanManageStagingExclusions: true } vm) return;

@@ -172,6 +172,65 @@ public sealed class AdvancedWindowTests
         window.Close();
     }
 
+    [AvaloniaFact]
+    public async Task Workspace_file_history_button_opens_selected_file_history_directly()
+    {
+        var backend = new Backend { PendingState = new() };
+        using var vm = new MainWindowViewModel(backend, new Recent()) { RepositoryPath = Path.Combine(Path.GetTempPath(), "gitgui-m2-fixture") };
+        var window = new MainWindow(vm, workspace: backend); window.Show();
+        try
+        {
+            if (vm.InitializeCommand.ExecutionTask is { } init) await init;
+            await vm.RefreshCommand.ExecuteAsync(null);
+            vm.SelectedChange = new("src/current.cs", ".", "M", []);
+            var button = window.FindControl<Button>("FileHistoryButton"); Assert.NotNull(button);
+            button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            var advanced = Assert.IsType<AdvancedWindow>(Assert.Single(window.OwnedWindows));
+            Assert.Empty(advanced.ViewModel.FileHistory);
+            backend.PendingState.SetResult(State());
+            if (advanced.ViewModel.RefreshCommand.ExecutionTask is { } refresh) await refresh;
+            Dispatcher.UIThread.RunJobs();
+            if (advanced.ViewModel.LoadFileCommand.ExecutionTask is { } load) await load;
+            Assert.Equal(5, Control<TabControl>(advanced, "AdvancedTabs").SelectedIndex);
+            Assert.Equal("src/current.cs", advanced.ViewModel.FilePath);
+            Assert.Equal(2, advanced.ViewModel.FileHistory.Count);
+            Assert.NotNull(Control<Button>(advanced, "Advanced_BrowseFile"));
+            advanced.Close();
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task File_history_diff_uses_the_selected_commits_rename_path_and_clears_on_path_change()
+    {
+        var backend = new Backend(); using var vm = Vm(backend);
+        await vm.LoadFileCommand.ExecuteAsync(null);
+        vm.SelectedFileCommit = vm.FileHistory[1];
+        if (vm.LoadFileDiffCommand.ExecutionTask is { } diff) await diff;
+        Assert.Equal(new DiffRequest("src/old-name.cs", Commit: Sha('c')), backend.DiffRequests[^1]);
+        Assert.Equal("diff src/old-name.cs", vm.FileDiff);
+        vm.FilePath = "other.cs";
+        Assert.Empty(vm.FileDiff); Assert.Empty(vm.FileHistory); Assert.Empty(vm.Blame);
+    }
+
+    [AvaloniaFact]
+    public async Task File_history_diff_discards_late_selection_and_closed_window_results()
+    {
+        var backend = new Backend(); var olderRequest = new TaskCompletionSource<string>();
+        var newerRequest = new TaskCompletionSource<string>();
+        backend.PendingDiffs[Sha('b')] = olderRequest; backend.PendingDiffs[Sha('c')] = newerRequest;
+        using var vm = Vm(backend); await vm.LoadFileCommand.ExecuteAsync(null);
+        var older = vm.LoadFileDiffCommand.ExecutionTask!;
+        vm.SelectedFileCommit = vm.FileHistory[1]; var newer = vm.LoadFileDiffCommand.ExecutionTask!;
+        newerRequest.SetResult("current selection"); await newer;
+        olderRequest.SetResult("stale selection"); await older;
+        Assert.Equal("current selection", vm.FileDiff);
+        backend.PendingDiffs[Sha('b')] = new(); vm.SelectedFileCommit = vm.FileHistory[0];
+        var closing = vm.LoadFileDiffCommand.ExecutionTask!; var before = vm.FileDiff; vm.Dispose();
+        backend.PendingDiffs[Sha('b')].SetResult("closed window"); await closing;
+        Assert.Equal(before, vm.FileDiff);
+    }
+
     private static T Control<T>(Window window, string name) where T : Control => window.GetVisualDescendants().OfType<T>().Single(control => control.Name == name);
     private static string Sha(char value) => new(value, 40);
     private static AdvancedWindowViewModel Vm(Backend backend) => new(backend, backend, Path.Combine(Path.GetTempPath(), "gitgui-m2-fixture"), "src/current.cs", Sha('f'));
@@ -194,7 +253,10 @@ public sealed class AdvancedWindowTests
         public OperationOutcome Outcome { get; set; } = new(true, "Completed");
         public TaskCompletionSource<OperationOutcome>? PendingWrite { get; set; }
         public TaskCompletionSource<FileHistoryResult>? PendingFile { get; set; }
-        public Task<AdvancedState> GetAdvancedStateAsync(string root, CancellationToken ct) { RefreshCount++; return Task.FromResult(State); }
+        public TaskCompletionSource<AdvancedState>? PendingState { get; set; }
+        public List<DiffRequest> DiffRequests { get; } = [];
+        public Dictionary<string, TaskCompletionSource<string>> PendingDiffs { get; } = [];
+        public Task<AdvancedState> GetAdvancedStateAsync(string root, CancellationToken ct) { RefreshCount++; return PendingState?.Task ?? Task.FromResult(State); }
         public Task<IReadOnlyList<RebaseStep>> GetRebasePlanAsync(string root, string upstream, CancellationToken ct) => Task.FromResult<IReadOnlyList<RebaseStep>>([new(Sha('b'), Message: "Add recovery model"), new(Sha('d'), Message: "Add professional UI"), new(Sha('e'), Message: "Polish repository navigation")]);
         public Task<FileHistoryResult> GetFileHistoryAsync(string root, string path, CancellationToken ct) => PendingFile?.Task ?? Task.FromResult(History());
         public Task<OperationOutcome> ExecuteAsync(string root, GitOperation operation, IProgress<OperationProgress>? progress, CancellationToken ct) { Executed.Add(operation); return PendingWrite?.Task ?? Task.FromResult(Outcome); }
@@ -203,7 +265,11 @@ public sealed class AdvancedWindowTests
             MainRefreshCount++;
             return Task.FromResult(new WorkspaceState(path, new("main", Sha('f'), []), [new(Sha('f'), "M2 workspace", "Will Lin", DateTimeOffset.Now, [])], [], [], State.InProgress, true, []));
         }
-        public Task<string> GetDiffAsync(string root, DiffRequest request, CancellationToken ct) => throw new NotSupportedException();
+        public Task<string> GetDiffAsync(string root, DiffRequest request, CancellationToken ct)
+        {
+            DiffRequests.Add(request);
+            return request.Commit is { } hash && PendingDiffs.TryGetValue(hash, out var pending) ? pending.Task : Task.FromResult("diff " + request.Path);
+        }
         public Task<CommitDetails> GetCommitAsync(string root, string commit, CancellationToken ct) => throw new NotSupportedException();
         public Task<ConflictContent> GetConflictAsync(string root, string path, CancellationToken ct) => throw new NotSupportedException();
         public Task<FilePreview> GetPreviewAsync(string root, DiffRequest request, CancellationToken ct) => throw new NotSupportedException();

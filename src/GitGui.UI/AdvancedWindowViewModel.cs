@@ -21,6 +21,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
     private readonly IAdvancedWorkspaceService advanced;
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenSource? fileRequest;
+    private CancellationTokenSource? fileDiffRequest;
     private string? loadedUpstream;
     private HashSet<string> planCommits = new(StringComparer.Ordinal);
     private bool disposed;
@@ -52,6 +53,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
     [ObservableProperty] private AdvancedRemoteInfo? selectedRemote;
     [ObservableProperty] private string filePath = "";
     [ObservableProperty] private string fileBackend = "";
+    [ObservableProperty] private string fileDiff = "";
     [ObservableProperty] private FileHistoryEntry? selectedFileCommit;
     [ObservableProperty] private InProgressState inProgress = InProgressState.None;
     [ObservableProperty] private OperationOutcome? lastOutcome;
@@ -96,7 +98,18 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
     partial void OnUpstreamChanged(string value) { loadedUpstream = null; Plan.Clear(); SelectedStep = null; planCommits.Clear(); }
     partial void OnSelectedTagChanged(TagInfo? value) { if (value is not null) TagName = value.Name; OnPropertyChanged(nameof(SelectedTagDescription)); }
     partial void OnSelectedReflogChanged(ReflogInfo? value) { if (value is not null) Revision = value.Oid; }
-    partial void OnSelectedFileCommitChanged(FileHistoryEntry? value) { if (value is not null) Revision = value.Commit.Hash; }
+    partial void OnFilePathChanged(string value)
+    {
+        fileRequest?.Cancel(); fileDiffRequest?.Cancel();
+        SelectedFileCommit = null; FileHistory.Clear(); Blame.Clear(); FileBackend = ""; FileDiff = "";
+    }
+    partial void OnSelectedFileCommitChanged(FileHistoryEntry? value)
+    {
+        fileDiffRequest?.Cancel(); FileDiff = "";
+        if (value is null) return;
+        Revision = value.Commit.Hash;
+        _ = LoadFileDiffCommand.ExecuteAsync(null);
+    }
     partial void OnSelectedRemoteChanged(AdvancedRemoteInfo? value)
     {
         if (value is not null) { RemoteName = value.Name; RemoteUrl = (PushUrl ? value.PushUrls : value.FetchUrls).FirstOrDefault() ?? ""; }
@@ -154,14 +167,33 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
         IsBusy = true;
         try
         {
-            var path = Require(FilePath, "SelectFile");
+            var path = FilePath;
+            if (string.IsNullOrEmpty(path)) throw new InvalidOperationException(L["SelectFile"]);
+            SelectedFileCommit = null; FileDiff = "";
             var result = await advanced.GetFileHistoryAsync(Root, path, request.Token);
-            if (request.IsCancellationRequested || FilePath.Trim() != path) return;
-            Replace(Blame, result.Blame); Replace(FileHistory, result.History); FileBackend = result.Backend; Notice = L["AdvancedFileLoaded"];
+            if (request.IsCancellationRequested || FilePath != path) return;
+            Replace(Blame, result.Blame); Replace(FileHistory, result.History); FileBackend = result.Backend;
+            SelectedFileCommit = FileHistory.FirstOrDefault();
+            Notice = FileHistory.Count == 0 ? L["FileHistoryEmpty"] : L.Format("FileHistoryLoadedCount", FileHistory.Count);
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { Blame.Clear(); FileHistory.Clear(); FileBackend = ""; Notice = ex.Message; }
+        catch (Exception ex) { if (!request.IsCancellationRequested) { Blame.Clear(); FileHistory.Clear(); FileBackend = ""; Notice = ex.Message; } }
         finally { IsBusy = false; }
+    }
+    [RelayCommand]
+    private async Task LoadFileDiffAsync()
+    {
+        fileDiffRequest?.Cancel(); fileDiffRequest?.Dispose();
+        if (disposed || SelectedFileCommit is not { } entry) return;
+        var request = fileDiffRequest = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        FileDiff = L["FileHistoryLoadingDiff"];
+        try
+        {
+            var diff = await workspace.GetDiffAsync(Root, new(entry.Path, Commit: entry.Commit.Hash), request.Token);
+            if (!request.IsCancellationRequested && SelectedFileCommit == entry) FileDiff = diff;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { if (!request.IsCancellationRequested) FileDiff = ex.Message; }
     }
     [RelayCommand] private async Task ExecuteAsync(string? action)
     {
@@ -235,7 +267,7 @@ public sealed partial class AdvancedWindowViewModel : ObservableObject, IDisposa
     public void Dispose()
     {
         if (disposed) return;
-        disposed = true; Feedback.Dispose(); L.PropertyChanged -= LocaleChanged; lifetime.Cancel(); fileRequest?.Cancel(); fileRequest?.Dispose(); lifetime.Dispose();
+        disposed = true; Feedback.Dispose(); L.PropertyChanged -= LocaleChanged; lifetime.Cancel(); fileRequest?.Cancel(); fileRequest?.Dispose(); fileDiffRequest?.Cancel(); fileDiffRequest?.Dispose(); lifetime.Dispose();
     }
     public Task ExecuteSuggestedAsync(GitAction action) => CanOperate && action is GitAction.Fetch or GitAction.Pull ? RunAsync(new(action)) : Task.CompletedTask;
 }

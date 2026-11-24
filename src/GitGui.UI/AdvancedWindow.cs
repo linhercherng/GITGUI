@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using GitGui.Core;
 
@@ -217,13 +218,48 @@ public sealed class AdvancedWindow : Window
         form.Children.Add(Input(nameof(ViewModel.NewRemoteName), "AdvancedNewRemoteName")); var actions = new WrapPanel(); actions.Children.Add(Button("AdvancedRenameRemote", "RenameRemote", icon: "Rename")); actions.Children.Add(Button("AdvancedRemoveRemote", "RemoveRemote", icon: "Trash")); form.Children.Add(actions);
         var scroll = new ScrollViewer { Content = form }; Grid.SetColumn(scroll, 1); grid.Children.Add(scroll); return grid;
     }
+    public async Task ShowFileHistoryAsync(string? path)
+    {
+        this.GetVisualDescendants().OfType<TabControl>().Single(tab => tab.Name == "AdvancedTabs").SelectedIndex = 5;
+        if (path is not null) ViewModel.FilePath = path;
+        if (ViewModel.RefreshCommand.ExecutionTask is { } refresh) await refresh;
+        if (!IsVisible) return;
+        if (!string.IsNullOrEmpty(ViewModel.FilePath)) await ViewModel.LoadFileCommand.ExecuteAsync(null);
+    }
+
+    private async void BrowseFileClick(object? sender, Avalonia.Interactivity.RoutedEventArgs args)
+    {
+        if (!ViewModel.CanOperate) return;
+        try
+        {
+            using var location = await StorageProvider.TryGetFolderFromPathAsync(new Uri(ViewModel.Root));
+            var files = await StorageProvider.OpenFilePickerAsync(new() { Title = ViewModel.L["FileHistoryBrowse"],
+                AllowMultiple = false, SuggestedStartLocation = location });
+            try
+            {
+                if (files.Count == 0) return;
+                var path = files[0].TryGetLocalPath() ?? throw new ArgumentException(ViewModel.L["FileHistoryInsideRepository"]);
+                var relative = Path.GetRelativePath(ViewModel.Root, path);
+                if (Path.IsPathRooted(relative) || relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                    throw new ArgumentException(ViewModel.L["FileHistoryInsideRepository"]);
+                ViewModel.FilePath = relative.Replace(Path.DirectorySeparatorChar, '/');
+                await ViewModel.LoadFileCommand.ExecuteAsync(null);
+            }
+            finally { foreach (var file in files) file.Dispose(); }
+        }
+        catch (Exception ex) { ViewModel.Notice = ex.Message; }
+    }
+
     private Control FileHistoryPanel()
     {
-        var grid = FormGrid("Auto,Auto,*"); var search = new Grid { ColumnDefinitions = new("*,Auto"), ColumnSpacing = 8 };
-        search.Children.Add(Input(nameof(ViewModel.FilePath), "AdvancedFilePath")); var load = Button("AdvancedLoadFile", "LoadFile", icon: "Search"); load.Command = ViewModel.LoadFileCommand; Grid.SetColumn(load, 1); search.Children.Add(load); grid.Children.Add(search);
+        var grid = FormGrid("Auto,Auto,Auto,*"); var search = new Grid { ColumnDefinitions = new("*,Auto,Auto"), ColumnSpacing = 8 };
+        search.Children.Add(Input(nameof(ViewModel.FilePath), "AdvancedFilePath"));
+        var browse = Button("FileHistoryBrowse", "BrowseFile", icon: "Folder"); browse.Command = null; browse.Click += BrowseFileClick; Grid.SetColumn(browse, 1); search.Children.Add(browse);
+        var load = Button("AdvancedLoadFile", "LoadFile", icon: "Search"); load.Command = ViewModel.LoadFileCommand; Grid.SetColumn(load, 2); search.Children.Add(load); grid.Children.Add(search);
         var hint = new TextBlock { FontSize = 11 }; hint.Bind(TextBlock.TextProperty, Bind(nameof(ViewModel.FileBackend))); AppearanceManager.Bind(hint, TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetRow(hint, 1); grid.Children.Add(hint);
+        var scope = Label("FileHistoryScope"); Grid.SetRow(scope, 2); grid.Children.Add(scope);
         var panes = new Grid { ColumnDefinitions = new(".9*,1.1*"), ColumnSpacing = 12 };
-        panes.Children.Add(List<FileHistoryEntry>(nameof(ViewModel.FileHistory), nameof(ViewModel.SelectedFileCommit), entry => Text($"{entry.Commit.Label}\n{entry.Commit.Author} · {entry.Commit.Date:yyyy-MM-dd}\n{entry.Path}", 12)));
+        panes.Children.Add(List<FileHistoryEntry>(nameof(ViewModel.FileHistory), nameof(ViewModel.SelectedFileCommit), entry => Text($"{entry.Commit.Label}\n{entry.Commit.Author} · {entry.Commit.Date:yyyy-MM-dd HH:mm:ss zzz}\n{entry.Path}", 12)));
         var blame = new ListBox { Name = "AdvancedBlame", Background = Brushes.Transparent };
         blame.Bind(ItemsControl.ItemsSourceProperty, Bind(nameof(ViewModel.Blame))); blame.ItemTemplate = new FuncDataTemplate<BlameLine>((line, _) =>
         {
@@ -231,6 +267,11 @@ public sealed class AdvancedWindow : Window
             var row = new Grid { ColumnDefinitions = new("38,86,110,*"), ColumnSpacing = 8, Margin = new Thickness(0, 3) };
             row.Children.Add(Text(line.LineNumber.ToString(), 11, true)); var hash = Text(line.Commit[..Math.Min(8, line.Commit.Length)], 11, true); Grid.SetColumn(hash, 1); row.Children.Add(hash);
             var author = Text(line.Author, 11, true); Grid.SetColumn(author, 2); row.Children.Add(author); var code = Text(line.Text, 12); code.FontFamily = new("Cascadia Code,Consolas,Menlo,Microsoft JhengHei,monospace"); Grid.SetColumn(code, 3); row.Children.Add(code); return row;
-        }); Grid.SetColumn(blame, 1); panes.Children.Add(blame); Grid.SetRow(panes, 2); grid.Children.Add(panes); return grid;
+        });
+        var details = new TabControl();
+        var diff = new DiffEditor { Name = "FileHistoryDiff" }; diff.Bind(DiffEditor.SourceProperty, Bind(nameof(ViewModel.FileDiff)));
+        ViewModel.L.Bind(diff, DiffEditor.DocumentNameProperty, "FileHistoryDiff");
+        details.Items.Add(Tab("FileHistoryDiff", diff)); details.Items.Add(Tab("FileHistoryBlame", blame));
+        Grid.SetColumn(details, 1); panes.Children.Add(details); Grid.SetRow(panes, 3); grid.Children.Add(panes); return grid;
     }
 }
