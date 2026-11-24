@@ -12,11 +12,11 @@
 
 已發布的 Windows 免安裝版請從 [最新 Release](https://github.com/linhercherng/GITGUI/releases/latest) 下載名稱結尾為 `win-x64-portable.zip` 的主程式套件，解壓縮整個資料夾後開啟 **GITGUI.exe**（v0.9.1 起；舊版依包內說明使用 GITGUI.vbs）。內附 **.NET 10.0.13 + 完整 Portable Git 2.56.0.3**，不需另外安裝 .NET、Git 或設定 PATH。
 
-目前原始碼版本為 **v0.9.1**，新增每個專案的本機暫存排除清單，並改善首次啟動、Diff 文字列附加、無障礙通知及提交圖配置。Windows 渲染時鐘沿用自動 QoS 與正常執行緒優先序。[M4 正式驗收](docs/M4-ACCEPTANCE.md) 保留各候選的失敗紀錄；原門檻不變，只有受測套件全部通過才發布，最終數值以該 Release 的原始報告、逐項判定與程式雜湊為準。詳細數據與歷史失敗見 [M4 效能紀錄](docs/M4-PERFORMANCE.md)。
+目前原始碼版本為 **v0.9.2**，修正重新整理期間「暫存選取」沿用舊排除規則的問題，新增工作區「檔案歷程」、原生檔案選擇器與逐次提交差異，檔案歷程不再截斷為 500 筆，並追溯 Git 能辨識的重新命名。排除清單不會自動取消既有暫存；完整範例見操作手冊第 4.2、7.1 節。
 
-穩定版 v0.9.0 已支援工作區 Ctrl／Shift 多選、Ctrl+A 全選、背景重新整理期間等待後批次暫存，以及提交簽章選項、大型衝突編輯與快照批次處理改善。本分支操作手冊包含 v0.9.1 的開發功能；使用穩定版時，請以 Release 內附手冊為準。發布流程見 [RELEASING.md](docs/RELEASING.md)，v0.9.0 的驗證見 [效能紀錄](docs/V0.9-PERFORMANCE.md)。執行檔未簽章。
+本版沿用使用者接受延遲的功能版發布方式，須通過完整功能測試、同來源六格 CI 與實際 ZIP／桌面驗證；**M4 正式效能仍未通過，原門檻完全不變**。v0.9.1 的冷啟動約 26～29 秒及捲動空檔超標紀錄保留，不能當作 v0.9.2 的驗收成績。詳細限制見 [M4 效能紀錄](docs/M4-PERFORMANCE.md) 與本版 Release 附件。使用已下載的版本時，請以包內手冊為準；原始碼版號不代表 Release 已發布。發布流程見 [RELEASING.md](docs/RELEASING.md)。執行檔未簽章。
 
-預設啟動使用 Windows Script Host；環境不允許 VBS 時，可改用 `GitGui.App.exe`，但備用方式不沿用 1.5 秒啟動驗收結果。
+預設執行 `GITGUI.exe`，以單一原生程序載入內附執行環境；保留 `GitGui.App.exe` 與 `GITGUI.vbs` 作為備用啟動方式。不同啟動方式與版本不能沿用效能成績。
 
 請保留整個資料夾及 DLL。免安裝指執行環境隨附，設定與快照索引仍存於 `%LOCALAPPDATA%\GitGui`；Git 使用個人的作者、憑證與 SSH 設定。曾手動指定其他 Git 的使用者，可在「Git 設定」選「自動偵測」後儲存，切回隨附版本。封裝流程與驗證見 [Windows 發行說明](docs/WINDOWS-RELEASE.md)。
 
