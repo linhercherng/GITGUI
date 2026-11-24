@@ -419,12 +419,19 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             GitOperation? selectedOperation = null;
+            FileChange[]? pendingStageSelection = null;
             if (action is "Stage" or "StageAll" or "Unstage" or "UnstageAll" && !CanStageFiles) return;
             if (IsBusy)
             {
                 if (action is not ("Stage" or "StageAll" or "Unstage" or "UnstageAll") || !IsRefreshing || readCompletion is null) return;
                 var root = Root;
-                if (!action.EndsWith("All", StringComparison.Ordinal)) selectedOperation = CreateOperation(action);
+                if (action == "Stage")
+                {
+                    pendingStageSelection = (SelectedFiles.Count > 0 ? SelectedFiles.AsEnumerable() : SelectedChange is null ? [] : new[] { SelectedChange })
+                        .Where(f => f.WorktreeStatus is not "." and not " ").ToArray();
+                    if (pendingStageSelection.Length == 0) throw new InvalidOperationException(L["SelectFile"]);
+                }
+                else if (action == "Unstage") selectedOperation = CreateOperation(action);
                 do
                 {
                     Notice = L["WaitingForRefresh"];
@@ -436,7 +443,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 await workspace.TrustAsync(Root, lifetime.Token); await RefreshAsync(); return;
             }
-            var operation = selectedOperation ?? CreateOperation(action);
+            var operation = pendingStageSelection is null ? selectedOperation ?? CreateOperation(action) :
+                new GitOperation(GitAction.Stage) { Paths = StagingPaths(pendingStageSelection) };
             if (operation is null) return;
             await RunAsync(operation);
         }

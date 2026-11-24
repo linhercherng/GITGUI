@@ -136,6 +136,31 @@ public sealed class StagingExclusionViewModelTests
         Assert.Equal(["keep.txt"], Assert.Single(backend.Operations).Paths);
     }
 
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Queued_selected_staging_rechecks_new_rules_after_refresh(bool includeAllowed)
+    {
+        var backend = new Backend(); var store = new RuleStore();
+        using var vm = new MainWindowViewModel(backend, new NoRecent(), store) { RepositoryPath = backend.Root };
+        await vm.RefreshCommand.ExecuteAsync(null);
+        vm.SelectedFiles.Add(vm.Changes[1]);
+        if (includeAllowed) vm.SelectedFiles.Add(vm.Changes[0]);
+        store.Pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refresh = vm.RefreshCommand.ExecuteAsync(null);
+        await store.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var stage = vm.ActionCommand.ExecuteAsync("Stage");
+        Assert.False(stage.IsCompleted);
+        store.Pending.SetResult(Exclusions);
+        await refresh; await stage;
+        if (includeAllowed) Assert.Equal(["keep.txt"], Assert.Single(backend.Operations).Paths);
+        else
+        {
+            Assert.Empty(backend.Operations);
+            Assert.Equal(vm.L["StageExclusionsNothingToStage"], vm.Notice);
+        }
+    }
+
     private sealed class RuleStore : IStageExclusionStore
     {
         private readonly ConcurrentDictionary<string, IReadOnlyList<StageExclusion>> values = new();
