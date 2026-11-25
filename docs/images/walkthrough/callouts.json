@@ -3303,6 +3303,421 @@
       "captureScope": "Actual production UI source in isolated native tutorial; original JPEG private, public PNG normalized without pixel reconstruction. Picker navigation sidebar omitted.",
       "rawSHA256": "bfb4f7993e3dd4a76a374e1cdd18e804f61fdbe475947abf22baa35e40ee4791",
       "annotatedSHA256": "d26239130a8071b1dda7a528e441b8eda6627cd9a1a134bc2abe7bf7c9087cc1"
+    },
+    {
+      "name": "07-01-open-history",
+      "source": "07-01-open-history",
+      "crop": [
+        0,
+        94,
+        844,
+        450
+      ],
+      "points": [
+        {
+          "rect": [
+            14,
+            99,
+            229,
+            47
+          ],
+          "marker": [
+            265,
+            122
+          ]
+        },
+        {
+          "rect": [
+            402,
+            274,
+            95,
+            37
+          ],
+          "marker": [
+            520,
+            291
+          ]
+        }
+      ],
+      "captureSHA256": "bc10b0660f61f073662036a1beb0f95ee1964c1a698812ea6fe41913f8557952",
+      "rawSHA256": "08c4fd501da58f8c052d95a2d305b01c42d0d9a393137a92f3ac6c1fdf500a6c",
+      "annotatedSHA256": "5d03b6bac03b0a33b9ce2928ca1679d31834e53926f895029d9257bb8658ba51"
+    },
+    {
+      "name": "07-02-choose-file",
+      "source": "07-02-choose-file",
+      "crop": [
+        18,
+        122,
+        1085,
+        270
+      ],
+      "points": [
+        {
+          "rect": [
+            451,
+            137,
+            107,
+            33
+          ],
+          "marker": [
+            581,
+            150
+          ]
+        },
+        {
+          "rect": [
+            816,
+            187,
+            104,
+            37
+          ],
+          "marker": [
+            865,
+            239
+          ]
+        },
+        {
+          "rect": [
+            38,
+            188,
+            770,
+            38
+          ],
+          "marker": [
+            410,
+            241
+          ]
+        }
+      ],
+      "captureSHA256": "2665523a88bbd4d21dfa6cb526f20b42c0d051e61029d1ba28bdf8fb9e20466b",
+      "rawSHA256": "bca1eb1970e2ed75b07cd08d6bf6f24216d937e174a3ffe12825c46d67f0adf6",
+      "annotatedSHA256": "2cfb99ea4d9a20386e624b45fc61fa2ea8c738a9e7fcc1de4e4bc68c32727c3d"
+    },
+    {
+      "name": "07-03-picker",
+      "source": "07-03-picker",
+      "crop": [
+        0,
+        0,
+        1026,
+        599
+      ],
+      "points": [
+        {
+          "rect": [
+            15,
+            35,
+            600,
+            25
+          ],
+          "marker": [
+            640,
+            47
+          ]
+        },
+        {
+          "rect": [
+            45,
+            525,
+            762,
+            26
+          ],
+          "marker": [
+            400,
+            490
+          ]
+        },
+        {
+          "rect": [
+            821,
+            557,
+            86,
+            24
+          ],
+          "marker": [
+            900,
+            590
+          ]
+        }
+      ],
+      "publicSourceCrop": {
+        "left": 160,
+        "top": 113,
+        "width": 1026,
+        "height": 599
+      },
+      "privacyNote": "Only the native file list, filename and Open button are retained; private navigation sidebar excluded before saving the public raw image.",
+      "captureSHA256": "5adfafd72bd5cf2c3a068fd8874ce0989cb531a752432d29c6c5435acdc6b071",
+      "rawSHA256": "25f215eba7d97ce32a538899895193b067faca655ca42efe95d12a6212670175",
+      "annotatedSHA256": "8888228fad8a01199844acfec04595b619188d73d2624916a18b82cf6d0f9515"
+    },
+    {
+      "name": "07-04-latest-diff",
+      "source": "07-04-latest-diff",
+      "crop": [
+        18,
+        181,
+        1085,
+        410
+      ],
+      "points": [
+        {
+          "rect": [
+            39,
+            189,
+            768,
+            36
+          ],
+          "marker": [
+            410,
+            237
+          ]
+        },
+        {
+          "rect": [
+            37,
+            287,
+            465,
+            279
+          ],
+          "marker": [
+            18,
+            422
+          ]
+        },
+        {
+          "rect": [
+            526,
+            297,
+            80,
+            39
+          ],
+          "marker": [
+            600,
+            290
+          ]
+        },
+        {
+          "rect": [
+            545,
+            418,
+            500,
+            65
+          ],
+          "marker": [
+            1073,
+            440
+          ]
+        }
+      ],
+      "captureSHA256": "0125c609c3bf40089510ac698c890957660ca1c7ad9702472b38b298182d6452",
+      "rawSHA256": "17dc463261e3c563b2b92530d8913af3ad1a8083fa80e0e54604544e42e5d1b0",
+      "annotatedSHA256": "0dd3e651509b512dd15501ca0535dc4a3ddc51290a792dc30fc1b1199fd155e7"
+    },
+    {
+      "name": "07-05-second-version",
+      "source": "07-05-second-version",
+      "crop": [
+        18,
+        282,
+        1085,
+        310
+      ],
+      "points": [
+        {
+          "rect": [
+            37,
+            426,
+            465,
+            68
+          ],
+          "marker": [
+            18,
+            458
+          ]
+        },
+        {
+          "rect": [
+            545,
+            342,
+            500,
+            73
+          ],
+          "marker": [
+            1067,
+            375
+          ]
+        },
+        {
+          "rect": [
+            545,
+            417,
+            500,
+            51
+          ],
+          "marker": [
+            1067,
+            449
+          ]
+        }
+      ],
+      "captureSHA256": "bae57147c9fa20e0f3375fda9f59acff6a8a7545f7691a864de0faf3fe63f56f",
+      "rawSHA256": "72ade488e4d732400074412ce04cf50338d32e9c76ef8040ceb726d409f5484b",
+      "annotatedSHA256": "e8b6e79caadc4e1d70f232c523cb215dcbba763f925e9ab032876a77e1a3aa43"
+    },
+    {
+      "name": "07-06-first-version",
+      "source": "07-06-first-version",
+      "crop": [
+        18,
+        282,
+        1085,
+        310
+      ],
+      "points": [
+        {
+          "rect": [
+            37,
+            495,
+            465,
+            70
+          ],
+          "marker": [
+            18,
+            530
+          ]
+        },
+        {
+          "rect": [
+            545,
+            384,
+            420,
+            34
+          ],
+          "marker": [
+            1013,
+            399
+          ]
+        },
+        {
+          "rect": [
+            545,
+            433,
+            320,
+            21
+          ],
+          "marker": [
+            910,
+            447
+          ]
+        }
+      ],
+      "captureSHA256": "d439d37336e1bdc3af3d9b61e173d85bfa3818794b50b8a6e08cd101cf164dc0",
+      "rawSHA256": "c1cc79e46c3f0af4e222df196ded3d5265e3cbb9726fb8492875738fcb364ec3",
+      "annotatedSHA256": "17f207436d6ddae874753402be50b61b16378606fb0a0ac230bef5897975648b"
+    },
+    {
+      "name": "07-07-rename",
+      "source": "07-07-rename",
+      "crop": [
+        18,
+        282,
+        1085,
+        310
+      ],
+      "points": [
+        {
+          "rect": [
+            37,
+            357,
+            465,
+            69
+          ],
+          "marker": [
+            18,
+            391
+          ]
+        },
+        {
+          "rect": [
+            545,
+            350,
+            490,
+            68
+          ],
+          "marker": [
+            1068,
+            375
+          ]
+        },
+        {
+          "rect": [
+            43,
+            465,
+            140,
+            23
+          ],
+          "marker": [
+            225,
+            478
+          ]
+        }
+      ],
+      "captureSHA256": "a99a8d76f99e43cbbd3c17be09cecb75de590d073ce71f525994dca00104fc36",
+      "rawSHA256": "f047e102b637ecf62289becc45648b1f04657a41d3092d812a27f1278f9f70e2",
+      "annotatedSHA256": "f55fecfb475f03426cbd84a45874170b95aeba3d529a9f1bfb929aac248c169c"
+    },
+    {
+      "name": "07-08-head-blame",
+      "source": "07-08-head-blame",
+      "crop": [
+        18,
+        282,
+        1085,
+        310
+      ],
+      "points": [
+        {
+          "rect": [
+            37,
+            426,
+            465,
+            68
+          ],
+          "marker": [
+            18,
+            458
+          ]
+        },
+        {
+          "rect": [
+            628,
+            297,
+            123,
+            39
+          ],
+          "marker": [
+            804,
+            311
+          ]
+        },
+        {
+          "rect": [
+            530,
+            345,
+            540,
+            127
+          ],
+          "marker": [
+            1090,
+            488
+          ]
+        }
+      ],
+      "captureSHA256": "e9848d440da9fcdaade0f7a4ec19477008e2f93bd0cd4066f171232c486a41a2",
+      "rawSHA256": "748528c88105d58c6c72a2a8d1d4b868af669ccc0767847ebaceee5c1b1fa291",
+      "annotatedSHA256": "33b3687e39cde92e278aaa2cd41b4a4b1d2942d5841b432c21455ebd69899901"
     }
   ],
   "restoreWalkthrough": {
@@ -3653,5 +4068,51 @@
       }
     },
     "note": "All clicks used native Windows UI. Only fixture initialization used CLI; independent read-only Git/SQLite checks verified staging and saved rules. No demo remote, commit or worktree content change during GUI sequence."
+  },
+  "fileHistoryExample": {
+    "capturedOn": "2026-11-25",
+    "version": "0.9.2",
+    "sourceCommit": "e87482e3e8c3a84b9355c846a7a4d1df7945da13",
+    "sourceUiTree": "53206247943cb1407cc3c27229faea6eab618489",
+    "method": "Native Windows captures of production UI and real Git services; screenshot launcher only isolates settings and pre-trusts the demo fixture. JPEG captures were decoded to PNG, cropped and numbered with the existing renderer; UI text and success states were not redrawn.",
+    "captureFormat": "JPEG from Computer Use; PNG public raw images preserve decoded pixels",
+    "settingsIsolated": true,
+    "repository": "demo-project",
+    "totalCommits": 5,
+    "fileCommits": 4,
+    "commits": [
+      {
+        "message": "第1版：建立問候程式",
+        "sha": "ef5f6a13a8982c485499479d19734b67b7697069",
+        "path": "src/hello.cs"
+      },
+      {
+        "message": "第2版：更新問候文字",
+        "sha": "87b937bb069800500861f70c9a14a6df14d21a42",
+        "path": "src/hello.cs"
+      },
+      {
+        "message": "第3版：重新命名為 Program.cs",
+        "sha": "354526e0196f43fb445233759b83194f4d2c30be",
+        "path": "src/Program.cs"
+      },
+      {
+        "message": "第4版：支援指定使用者名稱",
+        "sha": "6708f1528548b923bd16ff4fdcea5dc25ad0098d",
+        "path": "src/Program.cs"
+      }
+    ],
+    "head": "395647eb79722591f39a4faa56400927d8e1a5b3",
+    "worktreeCleanAfter": true,
+    "headUnchanged": true,
+    "programUnchanged": true,
+    "remotes": [],
+    "renameDiffScope": "The current GUI filters the commit diff to its then-current path. A pure rename can appear as added contents at the new path; whole-commit Git diff confirms unchanged contents across the rename.",
+    "checks": [
+      "four history entries match git log --follow",
+      "all four selected commit diffs match path-filtered git show",
+      "old commit selection leaves HEAD blame at current HEAD",
+      "HEAD, worktree, index and file content unchanged after browsing"
+    ]
   }
 }
